@@ -1,0 +1,10 @@
+{
+  "loket-03": {
+    "role": "kiosk",
+    "servicePointIds": ["REG", "BPJS"]
+  },
+  "loket-07": {
+    "role": "kiosk",
+    "servicePointIds": ["REG"]
+  }
+}

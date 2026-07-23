@@ -1,0 +1,2 @@
+# Prettier is optional for C2.0; agents may format modified files with npx prettier when added.
+*.md

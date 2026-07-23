@@ -1,0 +1,136 @@
+:root {
+  color-scheme: light;
+  --bg: #0f2740;
+  --bg-accent: #163a5f;
+  --surface: #f4f7fb;
+  --text: #102033;
+  --muted: #5b6b7c;
+  --danger: #b42318;
+  --ok: #067647;
+  --btn: #1d6fb8;
+  --btn-disabled: #9bb7d0;
+  font-family: 'Segoe UI', 'Trebuchet MS', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+  height: 100%;
+}
+
+body {
+  background: radial-gradient(circle at top left, #1f4d7a, var(--bg) 55%);
+  color: var(--text);
+}
+
+.app-shell {
+  min-height: 100%;
+  display: grid;
+  place-items: stretch;
+}
+
+.panel {
+  margin: auto;
+  width: min(920px, calc(100% - 2rem));
+  background: var(--surface);
+  border-radius: 1.25rem;
+  padding: 2rem;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+.panel h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+}
+
+.panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.status {
+  margin-top: 1.25rem;
+  font-size: 1.05rem;
+}
+
+.status.error {
+  color: var(--danger);
+}
+
+.status.ok {
+  color: var(--ok);
+}
+
+.sp-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-top: 1.75rem;
+}
+
+.sp-btn {
+  appearance: none;
+  border: 0;
+  border-radius: 1rem;
+  min-height: 7rem;
+  padding: 1.25rem;
+  background: var(--btn);
+  color: white;
+  font-size: 1.35rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sp-btn:disabled {
+  background: var(--btn-disabled);
+  cursor: not-allowed;
+}
+
+.sp-btn small {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.queue-label {
+  margin-top: 1.5rem;
+  font-size: clamp(3rem, 10vw, 5.5rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--ok);
+  text-align: center;
+}
+
+.actions {
+  margin-top: 1.75rem;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.secondary-btn {
+  appearance: none;
+  border: 0;
+  border-radius: 0.75rem;
+  min-height: 3rem;
+  padding: 0.75rem 1.25rem;
+  background: #d9e6f3;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

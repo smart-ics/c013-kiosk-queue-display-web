@@ -1,0 +1,32 @@
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { copyFileSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
+function versionJsonPlugin() {
+  return {
+    name: 'aq-version-json',
+    closeBundle() {
+      const version = {
+        version: `0.0.0-${Date.now().toString(36)}`,
+        builtAt: new Date().toISOString(),
+      }
+      const outDir = resolve(__dirname, 'dist')
+      writeFileSync(resolve(outDir, 'version.json'), JSON.stringify(version, null, 2))
+      copyFileSync(resolve(__dirname, 'web.config'), resolve(outDir, 'web.config'))
+    },
+  }
+}
+
+export default defineConfig({
+  base: '/display/',
+  plugins: [vue(), versionJsonPlugin()],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+    },
+  },
+  server: {
+    port: 5174,
+  },
+})
