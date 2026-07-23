@@ -11,7 +11,7 @@ Officer Client remains in `c012_myhospital_web`.
 | `kiosk-web` | `/kiosk/{stationId}` | **C2 complete** — path boot, intake, local print/reprint |
 | `display-web` | `/display/{screenId}` | **C3 complete** — snapshot-first, SignalR hint, TTS, version reload |
 
-**C4 (ops):** Cross-client E2E + IIS cutover procedures live in `b09-bilreg-api` docs — see [docs/C4-implementation-summary.md](docs/C4-implementation-summary.md).
+**C4 (ops):** Cross-client E2E + IIS cutover — start at [docs/README.md](docs/README.md) (local mirrors of b09 ops artifacts).
 
 ## Setup
 
@@ -69,6 +69,14 @@ Copy `apps/kiosk-web/dist` → `wwwroot/kiosk`, `apps/display-web/dist` → `www
 
 ## Docs
 
-- [docs/C2-implementation-summary.md](docs/C2-implementation-summary.md)
-- [docs/C3-implementation-summary.md](docs/C3-implementation-summary.md)
-- [docs/C4-implementation-summary.md](docs/C4-implementation-summary.md) — E2E + IIS cutover (canonical report in b09)
+Ops / deploy index: [docs/README.md](docs/README.md)
+
+| Doc | Purpose |
+|-----|---------|
+| [IIS cutover checklist](docs/TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md) | Deploy Go / No-Go |
+| [Runbook](docs/TRACKER-ADMISSION-QUEUE-RUNBOOK.md) | Client §§8–11 + E2E |
+| [API V1](docs/TRACKER-ADMISSION-QUEUE-API-V1.md) | REST / SignalR contract |
+| [kiosk-queue-display-web.md](docs/kiosk-queue-display-web.md) | Path IIS ADR |
+| [C2](docs/C2-implementation-summary.md) / [C3](docs/C3-implementation-summary.md) / [C4](docs/C4-implementation-summary.md) | Phase pointers |
+
+Canonical Tracker docs remain in `b09-bilreg-api/docs/contexts/pasien-tracker/` — mirrors under `docs/` are for monorepo deployment and maintenance.

@@ -1,5 +1,8 @@
 # Tracker–Admission Queue API v1 and Compatibility Contract
 
+> **Operational mirror** of `b09-bilreg-api/docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-API-V1.md`.  
+> Prefer editing the b09 canonical copy, then re-sync here for monorepo client maintenance.
+
 ## Consumer inventory
 
 Repository search on 2026-07-23 confirmed no caller of `api/Antrian/anonymous-intake` or
