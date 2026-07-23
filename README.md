@@ -11,6 +11,8 @@ Officer Client remains in `c012_myhospital_web`.
 | `kiosk-web` | `/kiosk/{stationId}` | **C2 complete** — path boot, intake, local print/reprint |
 | `display-web` | `/display/{screenId}` | **C3 complete** — snapshot-first, SignalR hint, TTS, version reload |
 
+**C4 (ops):** Cross-client E2E + IIS cutover procedures live in `b09-bilreg-api` docs — see [docs/C4-implementation-summary.md](docs/C4-implementation-summary.md).
+
 ## Setup
 
 ```bash
@@ -69,3 +71,4 @@ Copy `apps/kiosk-web/dist` → `wwwroot/kiosk`, `apps/display-web/dist` → `www
 
 - [docs/C2-implementation-summary.md](docs/C2-implementation-summary.md)
 - [docs/C3-implementation-summary.md](docs/C3-implementation-summary.md)
+- [docs/C4-implementation-summary.md](docs/C4-implementation-summary.md) — E2E + IIS cutover (canonical report in b09)
