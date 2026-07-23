@@ -42,7 +42,19 @@ export function isOperationNotAllowed(error: unknown): boolean {
   return isAdmissionQueueError(error, AQ_ERROR_CODES.AQ_OPERATION_NOT_ALLOWED)
 }
 
+/** Network / ambiguous failure — ticket may already exist (R-05B deferred). */
+export function isUncertainIntakeError(error: unknown): boolean {
+  if (!(error instanceof ApiClientError)) return false
+  return error.status === 0
+}
+
 export function mapIntakeErrorMessage(error: unknown): string {
+  if (isUncertainIntakeError(error)) {
+    return (
+      'Respons tidak pasti (jaringan/timeout). Nomor mungkin sudah terbit. ' +
+      'Tekan "Coba lagi" hanya jika Anda yakin belum mendapat nomor — bisa terjadi duplikat.'
+    )
+  }
   if (isSequenceExhausted(error)) {
     return 'Antrian untuk Service Point ini sudah penuh hari ini (AQ_SEQUENCE_EXHAUSTED).'
   }

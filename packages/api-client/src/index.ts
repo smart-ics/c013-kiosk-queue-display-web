@@ -5,6 +5,7 @@ export {
   isAdmissionQueueError,
   isOperationNotAllowed,
   isSequenceExhausted,
+  isUncertainIntakeError,
   mapIntakeErrorMessage,
   type AdmissionQueueErrorCode,
 } from './errors'

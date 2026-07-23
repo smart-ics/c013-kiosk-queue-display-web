@@ -10,6 +10,7 @@ import { MissingAuthTokenError } from '@aq/auth'
 import { getAdmissionQueueApi, getAuthTokenProvider, getDeviceConfigProvider } from '../infrastructure'
 import { intersectOfferings } from '../lib/offerings'
 import { useKioskIntake } from '../composables/useKioskIntake'
+import { useKioskPrint } from '../composables/useKioskPrint'
 import BootErrorPage from './BootErrorPage.vue'
 
 const props = defineProps<{
@@ -18,6 +19,8 @@ const props = defineProps<{
 
 const bootError = ref<string | null>(null)
 const deviceConfig = ref<DeviceConfig | null>(null)
+const stationIdRef = computed(() => props.stationId)
+const printerProxyPort = computed(() => deviceConfig.value?.printerProxyPort)
 
 watch(
   () => props.stationId,
@@ -66,6 +69,7 @@ watch(
   },
   { immediate: true },
 )
+
 const servicePointsQuery = useQuery({
   queryKey: computed(() => ['service-points', props.stationId] as const),
   enabled: computed(() => !!deviceConfig.value && !bootError.value),
@@ -80,12 +84,42 @@ const offerings = computed(() => {
 const {
   pending,
   errorMessage,
+  errorUncertain,
   result,
+  lastAttemptServicePointId,
   canSubmit,
   submitIntake,
   retryLast,
   resetToSelection,
 } = useKioskIntake(offerings)
+
+const {
+  printPending,
+  printError,
+  printSucceeded,
+  printCommittedLabel,
+  resetPrintState,
+} = useKioskPrint({
+  stationId: stationIdRef,
+  result,
+  offerings,
+  printerProxyPort,
+})
+
+watch(result, (next, prev) => {
+  if (next && next !== prev) {
+    void printCommittedLabel(lastAttemptServicePointId.value ?? undefined)
+  }
+})
+
+function onResetToSelection() {
+  resetPrintState()
+  resetToSelection()
+}
+
+function onReprint() {
+  void printCommittedLabel(lastAttemptServicePointId.value ?? undefined)
+}
 
 const loadingMessage = computed(() => {
   if (bootError.value) return null
@@ -112,11 +146,27 @@ const loadingMessage = computed(() => {
 
   <section v-else-if="result" class="panel">
     <h1>Nomor Antrian Anda</h1>
-    <p>Simpan Queue Label berikut. Cetak akan tersedia di C2.1.</p>
+    <p>Simpan Queue Label berikut. Cetak memakai print proxy lokal.</p>
     <div class="queue-label" data-testid="queue-label">{{ result.queueLabel }}</div>
     <p class="status ok">Antrian ID {{ result.antrianId }} · Urut {{ result.noUrut }}</p>
+
+    <p v-if="printPending" class="status" data-testid="print-pending">Sedang mencetak…</p>
+    <p v-else-if="printSucceeded && !printError" class="status ok" data-testid="print-ok">
+      Tiket berhasil dicetak.
+    </p>
+    <p v-if="printError" class="status error" data-testid="print-error">{{ printError }}</p>
+
     <div class="actions">
-      <button type="button" class="secondary-btn" @click="resetToSelection">
+      <button
+        type="button"
+        class="secondary-btn"
+        :disabled="printPending"
+        data-testid="reprint"
+        @click="onReprint"
+      >
+        Cetak ulang
+      </button>
+      <button type="button" class="secondary-btn" :disabled="printPending" @click="onResetToSelection">
         Ambil nomor lain
       </button>
     </div>
@@ -130,7 +180,14 @@ const loadingMessage = computed(() => {
       {{ loadingMessage }}
     </p>
 
-    <p v-if="errorMessage" class="status error" data-testid="intake-error">{{ errorMessage }}</p>
+    <p
+      v-if="errorMessage"
+      class="status error"
+      :class="{ uncertain: errorUncertain }"
+      data-testid="intake-error"
+    >
+      {{ errorMessage }}
+    </p>
 
     <div v-if="offerings.length" class="sp-grid">
       <button

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ref } from 'vue'
 import type { AdmissionServicePoint } from '@aq/shared-types'
+import { ApiClientError } from '@aq/api-client'
 import { useKioskIntake } from '../useKioskIntake'
 
 const offerings = ref<AdmissionServicePoint[]>([
@@ -51,5 +52,17 @@ describe('useKioskIntake pending lock', () => {
     expect(calls).toHaveLength(1)
     expect(intake.result.value?.queueLabel).toBe('A0001')
     expect(intake.pending.value).toBe(false)
+  })
+
+  it('marks uncertain network errors and keeps deliberate retry only', async () => {
+    const intake = useKioskIntake(offerings, async () => {
+      throw new ApiClientError('Failed to fetch', 0)
+    })
+
+    await intake.submitIntake('REG')
+    expect(intake.result.value).toBeNull()
+    expect(intake.errorUncertain.value).toBe(true)
+    expect(intake.errorMessage.value).toContain('duplikat')
+    expect(intake.lastAttemptServicePointId.value).toBe('REG')
   })
 })

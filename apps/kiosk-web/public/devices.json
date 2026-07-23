@@ -1,10 +1,12 @@
 {
   "loket-03": {
     "role": "kiosk",
-    "servicePointIds": ["REG", "BPJS"]
+    "servicePointIds": ["REG", "BPJS"],
+    "printerProxyPort": 5050
   },
   "loket-07": {
     "role": "kiosk",
-    "servicePointIds": ["REG"]
+    "servicePointIds": ["REG"],
+    "printerProxyPort": 5050
   }
 }

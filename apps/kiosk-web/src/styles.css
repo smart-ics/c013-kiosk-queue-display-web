@@ -64,6 +64,13 @@ body {
   color: var(--danger);
 }
 
+.status.error.uncertain {
+  color: #9a3412;
+  background: #ffedd5;
+  border-radius: 0.75rem;
+  padding: 0.85rem 1rem;
+}
+
 .status.ok {
   color: var(--ok);
 }

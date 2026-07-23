@@ -3,6 +3,7 @@ import {
   ApiClientError,
   AQ_ERROR_CODES,
   isSequenceExhausted,
+  isUncertainIntakeError,
   mapIntakeErrorMessage,
 } from '../errors'
 
@@ -21,5 +22,12 @@ describe('mapIntakeErrorMessage', () => {
   it('maps 503 without code as exhausted', () => {
     const error = new ApiClientError('unavailable', 503)
     expect(isSequenceExhausted(error)).toBe(true)
+  })
+
+  it('maps network status 0 as uncertain with duplicate warning', () => {
+    const error = new ApiClientError('Failed to fetch', 0)
+    expect(isUncertainIntakeError(error)).toBe(true)
+    expect(mapIntakeErrorMessage(error)).toContain('duplikat')
+    expect(mapIntakeErrorMessage(error)).toContain('Coba lagi')
   })
 })
