@@ -28,6 +28,12 @@ describe('JsonDeviceConfigurationProvider', () => {
       role: 'kiosk',
       servicePointIds: ['SP-REG'],
     },
+    'lobby-poli-1': {
+      role: 'display',
+      loketIds: ['L1', 'L2'],
+      pollIntervalMs: 15000,
+      audioEnabled: true,
+    },
   })
 
   it('returns config for known station', async () => {
@@ -36,6 +42,17 @@ describe('JsonDeviceConfigurationProvider', () => {
       deviceId: 'loket-03',
       role: 'kiosk',
       servicePointIds: ['SP-REG'],
+    })
+  })
+
+  it('returns config for known display screen', async () => {
+    const config = await provider.getConfig('lobby-poli-1')
+    expect(config).toEqual({
+      deviceId: 'lobby-poli-1',
+      role: 'display',
+      loketIds: ['L1', 'L2'],
+      pollIntervalMs: 15000,
+      audioEnabled: true,
     })
   })
 

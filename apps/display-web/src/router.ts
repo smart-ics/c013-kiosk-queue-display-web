@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import DisplayStubPage from './views/DisplayStubPage.vue'
+import DisplayPage from './views/DisplayPage.vue'
 
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -7,13 +7,13 @@ export const router = createRouter({
     {
       path: '/:screenId',
       name: 'display',
-      component: DisplayStubPage,
+      component: DisplayPage,
       props: true,
     },
     {
       path: '/',
       name: 'missing-screen',
-      component: DisplayStubPage,
+      component: DisplayPage,
       props: { screenId: '' },
     },
   ],

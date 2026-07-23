@@ -10,4 +10,8 @@ export {
   type AdmissionQueueErrorCode,
 } from './errors'
 export { AdmissionQueueClient, type AdmissionQueueClientOptions } from './http'
-export { createAdmissionQueueApi, type AdmissionQueueApi } from './admissionQueue'
+export {
+  buildAdmissionQueueHubUrl,
+  createAdmissionQueueApi,
+  type AdmissionQueueApi,
+} from './admissionQueue'

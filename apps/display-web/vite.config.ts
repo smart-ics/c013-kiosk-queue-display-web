@@ -8,7 +8,7 @@ function versionJsonPlugin() {
     name: 'aq-version-json',
     closeBundle() {
       const version = {
-        version: `0.0.0-${Date.now().toString(36)}`,
+        version: `0.1.0-${Date.now().toString(36)}`,
         builtAt: new Date().toISOString(),
       }
       const outDir = resolve(__dirname, 'dist')

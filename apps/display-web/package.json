@@ -1,6 +1,6 @@
 {
   "name": "display-web",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,19 +8,27 @@
     "build": "vue-tsc -p tsconfig.app.json --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "vue-tsc -p tsconfig.app.json --noEmit",
-    "test": "echo \"no tests yet\"",
+    "test": "vitest run",
     "lint": "echo \"no lint yet\""
   },
   "dependencies": {
+    "@aq/api-client": "workspace:*",
+    "@aq/auth": "workspace:*",
+    "@aq/device-config": "workspace:*",
+    "@aq/shared-types": "workspace:*",
     "@aq/signalr-client": "workspace:*",
+    "@tanstack/vue-query": "^5.92.1",
     "vue": "^3.5.25",
     "vue-router": "^4.6.3"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
     "@vitejs/plugin-vue": "^6.0.2",
+    "@vue/test-utils": "^2.4.6",
+    "jsdom": "^26.1.0",
     "typescript": "~5.9.0",
     "vite": "^7.0.0",
+    "vitest": "^3.2.4",
     "vue-tsc": "^2.2.10"
   }
 }

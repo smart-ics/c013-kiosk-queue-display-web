@@ -12,7 +12,7 @@ Kiosk and Queue Display clients for Bilreg Admission Queue v1.
 ## Layout
 
 ```
-apps/kiosk-web      Path `/kiosk/{stationId}` intake client
+apps/kiosk-web      Path `/kiosk/{stationId}` intake client (C2)
 apps/display-web    Path `/display/{screenId}` display client (C3)
 packages/shared-types
 packages/api-client
@@ -26,13 +26,14 @@ packages/signalr-client
 - Device configuration and auth are infrastructure providers (`IDeviceConfigurationProvider`, `IAuthTokenProvider`). Apps must not know whether config is JSON or HTTP, or how the JWT was obtained.
 - Shared types must align with API-V1 field names (`queueLabel`, `loketKey`, `announcementVersion`).
 - No client-side Queue Label allocation. No second queue ledger.
-- SignalR is hint-only (snapshot-first) — implement in C3, not here for kiosk C2.0.
+- SignalR is hint-only (snapshot-first). Display C3 consumes `/hubs/admission-queue`; never treat hub payloads as display authority.
 
 ## Commands
 
 ```bash
 pnpm install
 pnpm dev:kiosk
+pnpm dev:display
 pnpm build
 pnpm test
 pnpm typecheck
