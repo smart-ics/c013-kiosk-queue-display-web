@@ -1,0 +1,196 @@
+:root {
+  color-scheme: light;
+  --bg: #0b3d2e;
+  --bg-accent: #145c45;
+  --surface: #f3faf6;
+  --text: #102820;
+  --muted: #5a7268;
+  --danger: #b42318;
+  --ok: #067647;
+  --btn: #0f7a56;
+  --btn-disabled: #9bb7a8;
+  --border: #c9ddd3;
+  font-family: 'Segoe UI', 'Trebuchet MS', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+  height: 100%;
+}
+
+body {
+  background: radial-gradient(circle at top left, #1a6b4f, var(--bg) 55%);
+  color: var(--text);
+}
+
+.app-shell {
+  min-height: 100%;
+}
+
+.panel {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.shell {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100%;
+}
+
+.shell-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  color: #f3faf6;
+}
+
+.shell-header h1 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.shell-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0 1.25rem 1rem;
+}
+
+.shell-nav a {
+  color: #e8fff4;
+  text-decoration: none;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  font-size: 0.9rem;
+}
+
+.shell-nav a.router-link-active {
+  background: #f3faf6;
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.shell-main {
+  padding: 0 1.25rem 1.25rem;
+}
+
+button,
+.btn {
+  appearance: none;
+  border: none;
+  border-radius: 8px;
+  background: var(--btn);
+  color: white;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+button.secondary {
+  background: #467a66;
+}
+
+button.danger {
+  background: var(--danger);
+}
+
+button:disabled {
+  background: var(--btn-disabled);
+  cursor: not-allowed;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.form-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  padding: 0.55rem 0.4rem;
+  vertical-align: top;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--danger);
+}
+
+.ok {
+  color: var(--ok);
+}
+
+.stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #d9eee4;
+  font-size: 0.8rem;
+}
+
+.badge.inactive {
+  background: #f3d7d4;
+}
+
+.login-wrap {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.login-card {
+  width: min(420px, 100%);
+}

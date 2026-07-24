@@ -10,6 +10,7 @@
   "scripts": {
     "dev:kiosk": "pnpm --filter kiosk-web dev",
     "dev:display": "pnpm --filter display-web dev",
+    "dev:config": "pnpm --filter config-web dev",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
