@@ -21,10 +21,6 @@ export class JsonDeviceConfigurationProvider implements IDeviceConfigurationProv
     return new JsonDeviceConfigurationProvider(json as DeviceConfigCatalog)
   }
 
-  async listDisplayScreenIds(): Promise<string[]> {
-    return []
-  }
-
   async getConfig(deviceId: string): Promise<DeviceConfig> {
     const key = deviceId.trim()
     if (!key) throw new DeviceConfigNotFoundError(deviceId)
@@ -49,5 +45,12 @@ export class JsonDeviceConfigurationProvider implements IDeviceConfigurationProv
     }
 
     return parsed.data
+  }
+
+  async listDisplayScreenIds(): Promise<string[]> {
+    return Object.entries(this.catalog)
+      .filter(([, raw]) => raw?.role === 'display')
+      .map(([id]) => id)
+      .sort((a, b) => a.localeCompare(b))
   }
 }
