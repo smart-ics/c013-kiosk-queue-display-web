@@ -56,6 +56,9 @@ export function getAdmissionQueueHubUrl(): string {
   if (!baseUrl) {
     throw new Error('VITE_BILREG_API_BASE is not configured')
   }
+  if (import.meta.env.DEV) {
+    return '/hubs/admission-queue'
+  }
   return buildAdmissionQueueHubUrl(baseUrl)
 }
 
