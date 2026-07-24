@@ -14,6 +14,7 @@ Kiosk and Queue Display clients for Bilreg Admission Queue v1.
 ```
 apps/kiosk-web      Path `/kiosk/{stationId}` intake client (C2)
 apps/display-web    Path `/display/{screenId}` display client (C3)
+apps/config-web     Path `/queue-config/` device configuration (D0–D7)
 packages/shared-types
 packages/api-client
 packages/device-config
@@ -34,6 +35,7 @@ packages/signalr-client
 pnpm install
 pnpm dev:kiosk
 pnpm dev:display
+pnpm dev:config
 pnpm build
 pnpm test
 pnpm typecheck
