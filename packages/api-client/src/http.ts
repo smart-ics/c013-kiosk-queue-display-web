@@ -55,12 +55,32 @@ export class AdmissionQueueClient {
     )
   }
 
-  private async request<T>(url: string, init: RequestInit, schema: z.ZodType<T>): Promise<T> {
-    const token = this.auth.getToken()
-    if (!token) throw new MissingAuthTokenError()
+  async putJson<T>(path: string, body: unknown, schema: z.ZodType<T>): Promise<T> {
+    const url = `${this.baseUrl}/${path.replace(/^\//, '')}`
+    return this.request(
+      url,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+      schema,
+    )
+  }
 
+  private async request<T>(
+    url: string,
+    init: RequestInit,
+    schema: z.ZodType<T>,
+    options?: { requireAuth?: boolean },
+  ): Promise<T> {
+    const requireAuth = options?.requireAuth !== false
     const headers = new Headers(init.headers)
-    headers.set('Authorization', `Bearer ${token}`)
+    if (requireAuth) {
+      const token = this.auth.getToken()
+      if (!token) throw new MissingAuthTokenError()
+      headers.set('Authorization', `Bearer ${token}`)
+    }
     headers.set('Accept', 'application/json')
 
     let response: Response
@@ -87,8 +107,7 @@ export class AdmissionQueueClient {
       const fail = jsendFailOrErrorSchema.safeParse(payload)
       const code = fail.success ? fail.data.code : undefined
       const message =
-        (fail.success && fail.data.message) ||
-        `Request failed with status ${response.status}`
+        (fail.success && fail.data.message) || `Request failed with status ${response.status}`
       throw new ApiClientError(message, response.status, code, payload)
     }
 
@@ -99,7 +118,10 @@ export class AdmissionQueueClient {
 
     const parsed = schema.safeParse(success.data.data)
     if (!parsed.success) {
-      throw new ApiClientError(`Response data validation failed: ${parsed.error.message}`, response.status)
+      throw new ApiClientError(
+        `Response data validation failed: ${parsed.error.message}`,
+        response.status,
+      )
     }
     return parsed.data
   }

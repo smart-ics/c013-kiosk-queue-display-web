@@ -15,3 +15,11 @@ export {
   createAdmissionQueueApi,
   type AdmissionQueueApi,
 } from './admissionQueue'
+export {
+  buildLoginUrl,
+  createConfigurationApi,
+  createRuntimeDeviceApi,
+  loginBilreg,
+  type ConfigurationApi,
+  type RuntimeDeviceApi,
+} from './configuration'

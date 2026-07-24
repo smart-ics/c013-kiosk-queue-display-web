@@ -31,3 +31,34 @@ export function createEnvAuthTokenProvider(
 ): EnvAuthTokenProvider {
   return new EnvAuthTokenProvider(env.VITE_BILREG_TOKEN)
 }
+
+/**
+ * Interactive session token holder for config-web.
+ * Tokens stay in memory only — never written to localStorage.
+ */
+export class SessionAuthTokenProvider implements IAuthTokenProvider {
+  private token: string | null = null
+
+  getToken(): string | null {
+    return this.token
+  }
+
+  setToken(token: string | null | undefined): void {
+    const value = token?.trim()
+    this.token = value ? value : null
+  }
+
+  clear(): void {
+    this.token = null
+  }
+
+  requireToken(): string {
+    const token = this.getToken()
+    if (!token) throw new MissingAuthTokenError('Session authentication token is missing')
+    return token
+  }
+}
+
+export function createSessionAuthTokenProvider(): SessionAuthTokenProvider {
+  return new SessionAuthTokenProvider()
+}
