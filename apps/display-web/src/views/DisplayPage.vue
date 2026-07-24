@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import type { DeviceConfig } from '@aq/shared-types'
 import {
@@ -24,7 +25,11 @@ const props = defineProps<{
   screenId: string
 }>()
 
+const route = useRoute()
+const isPreview = computed(() => String(route.query.preview ?? '') === '1')
+
 const DEFAULT_POLL_MS = 15_000
+const CONFIG_REFRESH_MS = 60_000
 
 const bootError = ref<string | null>(null)
 const deviceConfig = ref<DeviceConfig | null>(null)
@@ -81,8 +86,41 @@ watch(
 
 const configuredLoketIds = computed(() => deviceConfig.value?.loketIds ?? [])
 const pollIntervalMs = computed(() => deviceConfig.value?.pollIntervalMs ?? DEFAULT_POLL_MS)
-const audioEnabled = computed(() => deviceConfig.value?.audioEnabled !== false)
+const audioEnabled = computed(
+  () => !isPreview.value && deviceConfig.value?.audioEnabled !== false,
+)
 const displayReady = computed(() => !!deviceConfig.value && !bootError.value)
+
+watch(
+  displayReady,
+  (ready, _prev, onCleanup) => {
+    if (!ready) return
+    const timer = window.setInterval(() => {
+      void (async () => {
+        try {
+          const provider = await getDeviceConfigProvider()
+          const config = await provider.getConfig(props.screenId.trim())
+          const validation = validateDisplayDeviceConfig(props.screenId.trim(), config)
+          if (!validation.ok) {
+            bootError.value = validation.message
+            deviceConfig.value = null
+            return
+          }
+          deviceConfig.value = config
+        } catch (error) {
+          if (error instanceof DeviceConfigInvalidError || error instanceof DeviceConfigNotFoundError) {
+            bootError.value =
+              error instanceof DeviceConfigNotFoundError
+                ? `Konfigurasi tidak ditemukan untuk screen '${error.deviceId}'.`
+                : `Konfigurasi tidak valid untuk '${error.deviceId}'.`
+            deviceConfig.value = null
+          }
+        }
+      })()
+    }, CONFIG_REFRESH_MS)
+    onCleanup(() => window.clearInterval(timer))
+  },
+)
 
 const snapshotQuery = useQuery({
   queryKey: computed(() => ['display-snapshot', props.screenId, configuredLoketIds.value] as const),
@@ -138,6 +176,9 @@ const sortedItems = computed(() => {
   </main>
 
   <main v-else class="display-root">
+    <p v-if="isPreview" class="status" style="background:#fff3cd;color:#7a5b00;padding:0.5rem 1rem">
+      Mode Preview — audio dimatikan; konfigurasi tidak diubah.
+    </p>
     <header class="display-header">
       <h1>Antrian Admisi</h1>
       <p class="screen-meta">

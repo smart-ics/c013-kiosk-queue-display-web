@@ -4,4 +4,5 @@ export {
   DeviceConfigInvalidError,
 } from './provider'
 export { JsonDeviceConfigurationProvider, type DeviceConfigCatalog } from './jsonProvider'
+export { ApiDeviceConfigurationProvider, type ApiDeviceConfigurationProviderOptions } from './apiProvider'
 export { parseStationIdFromPath, parseScreenIdFromPath } from './path'
