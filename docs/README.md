@@ -1,6 +1,7 @@
 # Docs — Kiosk & Queue Display
 
-Operational mirrors and local pointers for deploying and maintaining `kiosk-web` / `display-web`.
+Operational mirrors and local pointers for deploying and maintaining `kiosk-web`, `display-web`, and
+the planned `config-web`.
 
 **Canonical source of truth** for these Tracker / Admission Queue artifacts is:
 
@@ -17,6 +18,7 @@ Re-copy from that folder when backend/ops docs change. Client-facing procedures 
 | [TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md](./TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md) | Backend R1–R5 + client **R6** |
 | [kiosk-queue-display-web.md](./kiosk-queue-display-web.md) | Path-based IIS + monorepo ADR |
 | [TRACKER-ADMISSION-QUEUE-API-V1.md](./TRACKER-ADMISSION-QUEUE-API-V1.md) | REST / SignalR / error contract |
+| [TRACKER-ADMISSION-QUEUE-DEVICE-CONFIGURATION-IMPLEMENTATION-PLAN.md](./TRACKER-ADMISSION-QUEUE-DEVICE-CONFIGURATION-IMPLEMENTATION-PLAN.md) | Workstation, Queue Display, segmentation, and third-app implementation plan |
 
 ## Phase reports
 
