@@ -21,6 +21,10 @@ export class JsonDeviceConfigurationProvider implements IDeviceConfigurationProv
     return new JsonDeviceConfigurationProvider(json as DeviceConfigCatalog)
   }
 
+  async listDisplayScreenIds(): Promise<string[]> {
+    return []
+  }
+
   async getConfig(deviceId: string): Promise<DeviceConfig> {
     const key = deviceId.trim()
     if (!key) throw new DeviceConfigNotFoundError(deviceId)
