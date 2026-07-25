@@ -50,4 +50,8 @@ export class ApiDeviceConfigurationProvider implements IDeviceConfigurationProvi
     }
     return parsed.data
   }
+
+  async listDisplayScreenIds(): Promise<string[]> {
+    return []
+  }
 }
