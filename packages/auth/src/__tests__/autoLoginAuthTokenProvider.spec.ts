@@ -32,10 +32,6 @@ function createOkLogin(
   }))
 }
 
-function flushMicrotasks(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 0))
-}
-
 function createOptions(
   overrides: Partial<AutoLoginAuthTokenProviderOptions> = {},
 ): AutoLoginAuthTokenProviderOptions {

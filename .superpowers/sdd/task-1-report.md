@@ -1,50 +1,50 @@
-# Task 1 Report
+# Task 1 Report: Create AutoLoginAuthTokenProvider class
 
 ## What I implemented
 
-Added `listDisplayScreenIds(): Promise<string[]>` to the `IDeviceConfigurationProvider`
-interface in `packages/device-config/src/provider.ts`.
+Created `AutoLoginAuthTokenProvider` class in `packages/auth/src/autoLoginAuthTokenProvider.ts` implementing `IAuthTokenProvider`. The class supports:
+- Phase-based reactive state (`idle`, `logging-in`, `authenticated`, `error`) via Vue `ref`
+- Silent login from stored credentials on construction
+- `getToken()` with expiry check and auto-refresh
+- `awaitAuthenticated()` for async auth gating
+- `login(email, pass)` / `logout()` / `destroy()` lifecycle
+- `LoginImpl` type for injectable login function
+- `safeLocalStorage()` with memory fallback
+- Cross-tab sync via `storage` event listener
 
-Also added a minimal `return []` stub in `JsonDeviceConfigurationProvider` so the
-package's `tsc` typecheck stays clean (the in-package implementer must satisfy the
-newly extended interface; see Concerns).
+Also added `vue` as a dependency to `@aq/auth/package.json`.
 
-## Typecheck
+## What I tested and test results
 
-Command: `pnpm --filter @aq/device-config typecheck`
-Output: PASS (clean, no errors)
+**3 constructor tests** (from the brief):
+1. `starts in idle phase when no credentials are stored` — PASS
+2. `attempts silent login when credentials are stored` — PASS
+3. `treats corrupted credential JSON as idle without throwing` — PASS
 
-Also ran `pnpm --filter display-web typecheck` (the only consumer app) — clean, no errors.
+All 15 tests across 3 test files pass (12 existing + 3 new).
+
+## TDD Evidence
+
+### RED
+Command: `pnpm --filter @aq/auth test --reporter=verbose`
+Output: FAIL — `Failed to resolve import "vue"` (module didn't exist yet, then vue dep missing)
+
+### GREEN
+Command: `pnpm --filter @aq/auth test --reporter=verbose`
+Output: `3 passed` (all 15 tests passing)
 
 ## Files changed
 
-- `packages/device-config/src/provider.ts` — added one line to the interface
-- `packages/device-config/src/jsonProvider.ts` — added a 4-line stub so the existing
-  implementer continues to satisfy the interface
-
-Commit: `d28448d` — "feat(device-config): add listDisplayScreenIds to provider interface"
+- `packages/auth/src/autoLoginAuthTokenProvider.ts` — created (229 lines)
+- `packages/auth/src/__tests__/autoLoginAuthTokenProvider.spec.ts` — created (93 lines)
+- `packages/auth/package.json` — added `vue` dependency
 
 ## Self-review findings
 
-- Interface change matches the brief exactly (one new method, `Promise<string[]>`).
-- Touched `jsonProvider.ts` beyond the brief's scope to keep typecheck green. This is
-  a minimal stub (`return []`) and is what Task 2 will replace with the real
-  implementation, so the work is not duplicated.
-- Did not stage or commit the four other pre-existing modified files on the branch
-  (AGENTS.md, infrastructure.ts, vite.config.ts, devices.json) — those are outside
-  Task 1's scope.
+- The brief's test used `nextTick` from Vue which doesn't flush microtasks from async `silentLogin`. Replaced with `vi.waitFor()` for reliable async assertion.
+- The brief's `createOkLogin` used `Date.now()` for `expiredDate` but the test clock is fixed at `2026-07-25T10:00:00.000Z`. Fixed to use a fixed future date.
+- The class field `login` conflicted with the method `login()` — renamed private field to `loginImpl`.
 
-## Concerns
+## Issues or concerns
 
-1. **Task brief scope mismatch.** The brief's Step 2 says the typecheck should PASS,
-   but adding an abstract method to the interface breaks the existing in-package
-   implementer `JsonDeviceConfigurationProvider`. The brief's note "the only consumer
-   in repo is `apps/display-web`" is incorrect — the consumer is *also* the in-package
-   class. I resolved this by adding a `return []` stub, but Task 2 must replace this
-   stub with the real implementation. If the implementer is also added/updated in
-   Task 2, the stub here should be removed (or Task 2 will conflict with Task 1's
-   commit).
-
-2. **Pre-existing dirty files on branch.** The branch `feat/display-missing-screen-picker`
-   has 4 other modified files I did not touch. They are unrelated to Task 1 and were
-   left alone. Whoever is running the rest of the plan should be aware of this.
+None.

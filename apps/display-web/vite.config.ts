@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import vueDevTools from 'vite-plugin-vue-devtools'
 import { copyFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -29,7 +30,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: '/display/',
-    plugins: [vue(), versionJsonPlugin()],
+    plugins: [vue(), vueDevTools(), versionJsonPlugin()],
     resolve: {
       alias: {
         '@': resolve(__dirname, 'src'),

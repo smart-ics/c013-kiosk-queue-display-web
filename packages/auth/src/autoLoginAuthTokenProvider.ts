@@ -34,7 +34,8 @@ export class AutoLoginAuthTokenProvider implements IAuthTokenProvider {
   private readonly clock: () => Date
   private readonly defaultLifetimeMs: number
   private readonly expirySkewMs: number
-  private inFlight: Promise<void> | null = null
+  private loginInFlight: Promise<void> | null = null
+  private silentLoginInFlight: Promise<void> | null = null
   private readonly handleStorageEvent = (event: StorageEvent) => {
     if (event.key !== null && event.key !== CRED_KEY) return
     if (!this.readCredentials()) {
@@ -84,8 +85,9 @@ export class AutoLoginAuthTokenProvider implements IAuthTokenProvider {
     if (current.kind === 'authenticated' && !this.isExpired(current.expiredAt)) {
       return
     }
-    if (this.inFlight) {
-      await this.inFlight
+    const inFlight = this.loginInFlight ?? this.silentLoginInFlight
+    if (inFlight) {
+      await inFlight
       const after = this.phase.value
       if (after.kind === 'authenticated') return
       const { MissingAuthTokenError } = await import('./index')
@@ -100,13 +102,12 @@ export class AutoLoginAuthTokenProvider implements IAuthTokenProvider {
   }
 
   async login(email: string, pass: string): Promise<void> {
-    if (this.inFlight) return this.inFlight
     this.phase.value = { kind: 'logging-in' }
-    this.inFlight = this.doLogin(email, pass, /* clearOnAuthFail */ true)
+    this.loginInFlight = this.doLogin(email, pass, /* clearOnAuthFail */ true)
     try {
-      await this.inFlight
+      await this.loginInFlight
     } finally {
-      this.inFlight = null
+      this.loginInFlight = null
     }
   }
 
@@ -122,13 +123,13 @@ export class AutoLoginAuthTokenProvider implements IAuthTokenProvider {
   }
 
   private async silentLogin(email: string, pass: string): Promise<void> {
-    if (this.inFlight) return this.inFlight
+    if (this.silentLoginInFlight) return this.silentLoginInFlight
     this.phase.value = { kind: 'logging-in' }
-    this.inFlight = this.doLogin(email, pass, /* clearOnAuthFail */ false)
+    this.silentLoginInFlight = this.doLogin(email, pass, /* clearOnAuthFail */ false)
     try {
-      await this.inFlight
+      await this.silentLoginInFlight
     } finally {
-      this.inFlight = null
+      this.silentLoginInFlight = null
     }
   }
 
