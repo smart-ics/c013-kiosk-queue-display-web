@@ -82,4 +82,20 @@ describe('getCurrentDisplays', () => {
     const url = String(fetchImpl.mock.calls[0]?.[0])
     expect(url).toContain('loketKey=L1')
   })
+
+  it('accepts the legacy nested JSend payload used by older Bilreg deployments', async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(JSON.stringify({ status: 'success', data: { data: [] } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    const client = new AdmissionQueueClient({
+      baseUrl: 'http://localhost:5000/api',
+      auth: createAuth(),
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+
+    await expect(createAdmissionQueueApi(client).getCurrentDisplays()).resolves.toEqual([])
+  })
 })

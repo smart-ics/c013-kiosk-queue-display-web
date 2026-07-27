@@ -1,10 +1,7 @@
-import { EnvAuthTokenProvider, type IAuthTokenProvider } from '@aq/auth'
 import {
   AdmissionQueueClient,
   buildAdmissionQueueHubUrl,
-  createAdmissionQueueApi,
   createRuntimeDeviceApi,
-  type AdmissionQueueApi,
 } from '@aq/api-client'
 import {
   ApiDeviceConfigurationProvider,
@@ -13,8 +10,6 @@ import {
 } from '@aq/device-config'
 
 let deviceConfigProvider: IDeviceConfigurationProvider | null = null
-let authTokenProvider: IAuthTokenProvider | null = null
-let admissionQueueApi: AdmissionQueueApi | null = null
 let runtimeDeviceApi: ReturnType<typeof createRuntimeDeviceApi> | null = null
 
 function getProviderMode(): 'api' | 'json' {
@@ -37,33 +32,12 @@ export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationPro
 
   const runtime = getRuntimeDeviceApi()
   deviceConfigProvider = new ApiDeviceConfigurationProvider({
-    getDisplayBootConfig: (displayId) => runtime.getDisplayBootConfig(displayId),
+    getDisplayBootConfig: (displayId) => runtime.getPublicDisplayBootConfig(displayId),
   })
   return deviceConfigProvider
 }
 
-export function getAuthTokenProvider(): IAuthTokenProvider {
-  if (!authTokenProvider) {
-    authTokenProvider = new EnvAuthTokenProvider(import.meta.env.VITE_BILREG_TOKEN)
-  }
-  return authTokenProvider
-}
-
-export function getAdmissionQueueApi(): AdmissionQueueApi {
-  if (admissionQueueApi) return admissionQueueApi
-  const baseUrl = import.meta.env.VITE_BILREG_API_BASE?.trim()
-  if (!baseUrl) {
-    throw new Error('VITE_BILREG_API_BASE is not configured')
-  }
-  const client = new AdmissionQueueClient({
-    baseUrl,
-    auth: getAuthTokenProvider(),
-  })
-  admissionQueueApi = createAdmissionQueueApi(client)
-  return admissionQueueApi
-}
-
-function getRuntimeDeviceApi() {
+export function getRuntimeDeviceApi() {
   if (runtimeDeviceApi) return runtimeDeviceApi
   const baseUrl = import.meta.env.VITE_BILREG_API_BASE?.trim()
   if (!baseUrl) {
@@ -71,7 +45,7 @@ function getRuntimeDeviceApi() {
   }
   const client = new AdmissionQueueClient({
     baseUrl,
-    auth: getAuthTokenProvider(),
+    auth: { getToken: () => null },
   })
   runtimeDeviceApi = createRuntimeDeviceApi(client)
   return runtimeDeviceApi
@@ -87,7 +61,5 @@ export function getAdmissionQueueHubUrl(): string {
 
 export function __resetInfrastructureForTests() {
   deviceConfigProvider = null
-  authTokenProvider = null
-  admissionQueueApi = null
   runtimeDeviceApi = null
 }

@@ -1,7 +1,7 @@
 import { onBeforeUnmount, watch, type Ref } from 'vue'
 import { createQueueConnection, type QueueConnection } from '@aq/signalr-client'
 import { shouldRefreshForHint } from '../lib/snapshot'
-import { getAdmissionQueueHubUrl, getAuthTokenProvider } from '../infrastructure'
+import { getAdmissionQueueHubUrl } from '../infrastructure'
 
 export function useDisplaySignalR(options: {
   enabled: Ref<boolean>
@@ -20,13 +20,7 @@ export function useDisplaySignalR(options: {
 
   async function connect() {
     await disconnect()
-    const tokenProvider = getAuthTokenProvider()
     connection = createQueueConnection(getAdmissionQueueHubUrl(), {
-      accessTokenFactory: () => {
-        const token = tokenProvider.getToken()
-        if (!token) throw new Error('Missing JWT for SignalR')
-        return token
-      },
       onRefreshHint: (hint) => {
         if (!shouldRefreshForHint(hint.loketKey, options.configuredLoketIds.value)) return
         options.onRefresh()

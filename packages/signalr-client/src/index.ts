@@ -16,7 +16,7 @@ export type QueueConnectionState =
   | 'disconnected'
 
 export type QueueConnectionHandlers = {
-  accessTokenFactory: () => string | Promise<string>
+  accessTokenFactory?: () => string | Promise<string>
   onRefreshHint: (hint: RefreshHint) => void
   /** Invoked after automatic reconnect — caller must snapshot-first. */
   onReconnected?: () => void
@@ -52,10 +52,14 @@ function defaultCreateHubConnection(
   handlers: QueueConnectionHandlers,
   reconnectDelaysMs: number[],
 ): HubConnection {
-  return new HubConnectionBuilder()
-    .withUrl(hubUrl, {
-      accessTokenFactory: () => handlers.accessTokenFactory(),
-    })
+  const builder = new HubConnectionBuilder()
+  const connection = handlers.accessTokenFactory
+    ? builder.withUrl(hubUrl, {
+        accessTokenFactory: () => handlers.accessTokenFactory!(),
+      })
+    : builder.withUrl(hubUrl)
+
+  return connection
     .withAutomaticReconnect(reconnectDelaysMs)
     .configureLogging(LogLevel.Warning)
     .build()

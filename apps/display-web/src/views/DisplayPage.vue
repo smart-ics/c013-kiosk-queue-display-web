@@ -7,11 +7,9 @@ import {
   DeviceConfigInvalidError,
   DeviceConfigNotFoundError,
 } from '@aq/device-config'
-import { MissingAuthTokenError } from '@aq/auth'
 import {
-  getAdmissionQueueApi,
-  getAuthTokenProvider,
   getDeviceConfigProvider,
+  getRuntimeDeviceApi,
 } from '../infrastructure'
 import { filterSnapshotByLoketIds } from '../lib/snapshot'
 import { validateDisplayDeviceConfig } from '../lib/boot'
@@ -52,9 +50,6 @@ watch(
     }
 
     try {
-      const token = getAuthTokenProvider().getToken()
-      if (!token) throw new MissingAuthTokenError()
-
       const provider = await getDeviceConfigProvider()
       const config = await provider.getConfig(screenId)
       if (cancelled) return
@@ -71,11 +66,7 @@ watch(
         return
       }
       if (error instanceof DeviceConfigInvalidError) {
-        bootError.value = `Konfigurasi tidak valid untuk '${error.deviceId}'.`
-        return
-      }
-      if (error instanceof MissingAuthTokenError) {
-        bootError.value = 'VITE_BILREG_TOKEN belum dikonfigurasi.'
+        bootError.value = `Konfigurasi tidak valid untuk '${error.deviceId}': ${error.message}`
         return
       }
       bootError.value = error instanceof Error ? error.message : 'Boot gagal.'
@@ -112,7 +103,7 @@ watch(
             bootError.value =
               error instanceof DeviceConfigNotFoundError
                 ? `Konfigurasi tidak ditemukan untuk screen '${error.deviceId}'.`
-                : `Konfigurasi tidak valid untuk '${error.deviceId}'.`
+                : `Konfigurasi tidak valid untuk '${error.deviceId}': ${error.message}`
             deviceConfig.value = null
           }
         }
@@ -127,12 +118,23 @@ const snapshotQuery = useQuery({
   enabled: displayReady,
   refetchInterval: pollIntervalMs,
   queryFn: async () => {
-    const all = await getAdmissionQueueApi().getCurrentDisplays()
-    return filterSnapshotByLoketIds(all, configuredLoketIds.value)
+    const items = await getRuntimeDeviceApi().getPublicDisplaySnapshot(props.screenId.trim())
+    return filterSnapshotByLoketIds(items, configuredLoketIds.value)
   },
 })
 
 const snapshotItems = computed(() => snapshotQuery.data.value)
+const isSnapshotError = computed(() => snapshotQuery.isError.value)
+const isSnapshotFetching = computed(() => snapshotQuery.isFetching.value)
+const snapshotErrorMessage = computed(() => {
+  const error = snapshotQuery.error.value
+  if (error instanceof Error) return error.message
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message: unknown }).message)
+  }
+  if (typeof error === 'string' && error.trim()) return error
+  return 'Permintaan snapshot gagal tanpa detail error.'
+})
 
 const { announcing } = useAnnouncementAudio({
   items: snapshotItems,
@@ -183,12 +185,12 @@ const sortedItems = computed(() => {
       <h1>Antrian Admisi</h1>
       <p class="screen-meta">
         Screen <strong>{{ screenId }}</strong>
-        <span v-if="snapshotQuery.isFetching" class="dot" aria-hidden="true" />
+        <span v-if="isSnapshotFetching" class="dot" aria-hidden="true" />
       </p>
     </header>
 
-    <p v-if="snapshotQuery.isError" class="status error">
-      Gagal memuat snapshot. Polling akan mencoba lagi.
+    <p v-if="isSnapshotError" class="status error">
+      Gagal memuat snapshot: {{ snapshotErrorMessage }} Polling akan mencoba lagi.
     </p>
 
     <section v-else-if="sortedItems.length === 0" class="empty">

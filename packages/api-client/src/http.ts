@@ -42,6 +42,20 @@ export class AdmissionQueueClient {
     return this.request(url.toString(), { method: 'GET' }, schema)
   }
 
+  async getPublicJson<T>(
+    path: string,
+    schema: z.ZodType<T>,
+    query?: Record<string, string | boolean | number>,
+  ): Promise<T> {
+    const url = new URL(`${this.baseUrl}/${path.replace(/^\//, '')}`)
+    if (query) {
+      for (const [key, value] of Object.entries(query)) {
+        url.searchParams.set(key, String(value))
+      }
+    }
+    return this.request(url.toString(), { method: 'GET' }, schema, { requireAuth: false })
+  }
+
   async postJson<T>(path: string, body: unknown, schema: z.ZodType<T>): Promise<T> {
     const url = `${this.baseUrl}/${path.replace(/^\//, '')}`
     return this.request(
@@ -116,7 +130,17 @@ export class AdmissionQueueClient {
       throw new ApiClientError('Unexpected success envelope', response.status, undefined, payload)
     }
 
-    const parsed = schema.safeParse(success.data.data)
+    // Some Bilreg deployments return JSend's payload directly while older
+    // deployments wrap it once more as { data: payload }. Accept both forms
+    // during the API transition.
+    const responseData =
+      success.data &&
+      typeof success.data === 'object' &&
+      !Array.isArray(success.data) &&
+      'data' in success.data
+        ? (success.data as { data: unknown }).data
+        : success.data
+    const parsed = schema.safeParse(responseData)
     if (!parsed.success) {
       throw new ApiClientError(
         `Response data validation failed: ${parsed.error.message}`,

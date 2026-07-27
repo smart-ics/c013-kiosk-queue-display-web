@@ -2,6 +2,7 @@ import {
   configurationAuditPageSchema,
   configurationSummarySchema,
   configurationWhoAmISchema,
+  currentLoketDisplayItemSchema,
   createQueueDisplayBodySchema,
   createWorkstationBodySchema,
   displayBootConfigSchema,
@@ -28,6 +29,7 @@ import type { AdmissionQueueClient } from './http'
 const workstationsSchema = z.array(workstationSchema)
 const displaysSchema = z.array(queueDisplaySchema)
 const availableWorkstationsSchema = z.array(workstationContextSchema)
+const currentDisplaysSchema = z.array(currentLoketDisplayItemSchema)
 
 /** Login lives at server root `/login`, not under `/api`. */
 export function buildLoginUrl(apiBase: string): string {
@@ -216,6 +218,20 @@ export function createRuntimeDeviceApi(client: AdmissionQueueClient) {
       return client.getJson(
         `v1/admission-queue/devices/displays/${encodeURIComponent(displayId)}`,
         displayBootConfigSchema,
+      )
+    },
+
+    getPublicDisplayBootConfig(displayId: string) {
+      return client.getPublicJson(
+        `v1/admission-queue/devices/displays/${encodeURIComponent(displayId)}`,
+        displayBootConfigSchema,
+      )
+    },
+
+    getPublicDisplaySnapshot(displayId: string) {
+      return client.getPublicJson(
+        `v1/admission-queue/devices/displays/${encodeURIComponent(displayId)}/snapshot`,
+        currentDisplaysSchema,
       )
     },
   }
