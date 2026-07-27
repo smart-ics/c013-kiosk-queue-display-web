@@ -51,8 +51,7 @@ watch(
     }
 
     try {
-      const token = getAuthTokenProvider().getToken()
-      if (!token) throw new MissingAuthTokenError()
+      await getAuthTokenProvider().awaitAuthenticated()
 
       const provider = await getDeviceConfigProvider()
       const config = await provider.getConfig(screenId)
@@ -74,7 +73,7 @@ watch(
         return
       }
       if (error instanceof MissingAuthTokenError) {
-        bootError.value = 'VITE_BILREG_TOKEN belum dikonfigurasi.'
+        bootError.value = 'Sesi berakhir. Silakan login ulang.'
         return
       }
       bootError.value = error instanceof Error ? error.message : 'Boot gagal.'
