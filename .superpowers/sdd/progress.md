@@ -10,7 +10,7 @@ Tasks:
 - [x] Task 3: Re-export from `@aq/auth` index
 - [x] Task 4: Wire provider in `infrastructure.ts`
 - [x] Task 5: Create `LoginView.vue`
-- [ ] Task 6: Add `/login` route and guard
+- [x] Task 6: Add `/login` route and guard
 - [ ] Task 7: Update `RootView.vue` loading state
 - [ ] Task 8: Update `DisplayPage.vue` with `awaitAuthenticated()`
 - [ ] Task 9: Remove `VITE_BILREG_TOKEN` from env/types/README
