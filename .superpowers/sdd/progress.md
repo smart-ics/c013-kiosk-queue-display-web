@@ -5,9 +5,9 @@ Plan: `docs/superpowers/plans/2026-07-25-display-web-auto-login-token-provider.m
 Spec: `docs/superpowers/specs/2026-07-25-display-web-auto-login-token-provider-design.md`
 
 Tasks:
-- [ ] Task 1: Create `AutoLoginAuthTokenProvider` class
-- [ ] Task 2: Comprehensive unit tests
-- [ ] Task 3: Re-export from `@aq/auth` index
+- [x] Task 1: Create `AutoLoginAuthTokenProvider` class (commits 3ec8402..a1a6e60, review clean after fix)
+- [x] Task 2: Comprehensive unit tests
+- [x] Task 3: Re-export from `@aq/auth` index
 - [ ] Task 4: Wire provider in `infrastructure.ts`
 - [ ] Task 5: Create `LoginView.vue`
 - [ ] Task 6: Add `/login` route and guard
