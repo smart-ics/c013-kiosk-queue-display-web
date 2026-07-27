@@ -13,6 +13,6 @@ Tasks:
 - [x] Task 6: Add `/login` route and guard
 - [x] Task 7: Update `RootView.vue` loading state
 - [x] Task 8: Update `DisplayPage.vue` with `awaitAuthenticated()`
-- [ ] Task 9: Remove `VITE_BILREG_TOKEN` from env/types/README
+- [x] Task 9: Remove `VITE_BILREG_TOKEN` from env/types/README
 - [ ] Task 10: Manual smoke verification
 - [ ] Task 11: Final verification
