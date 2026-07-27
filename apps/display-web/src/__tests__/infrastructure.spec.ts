@@ -36,3 +36,17 @@ describe('getAdmissionQueueHubUrl', () => {
     expect(() => getAdmissionQueueHubUrl()).toThrow('VITE_BILREG_API_BASE is not configured')
   })
 })
+
+describe('getAuthTokenProvider', () => {
+  it('returns an AutoLoginAuthTokenProvider', async () => {
+    ;(import.meta.env as Record<string, string | boolean>).VITE_BILREG_API_BASE =
+      'http://localhost:5000/api'
+    const { getAuthTokenProvider, __resetInfrastructureForTests } = await import(
+      '@/infrastructure'
+    )
+    __resetInfrastructureForTests()
+    const { AutoLoginAuthTokenProvider } = await import('@aq/auth')
+    const provider = getAuthTokenProvider()
+    expect(provider).toBeInstanceOf(AutoLoginAuthTokenProvider)
+  })
+})

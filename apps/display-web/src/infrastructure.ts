@@ -1,9 +1,10 @@
-import { EnvAuthTokenProvider, type IAuthTokenProvider } from '@aq/auth'
+import { AutoLoginAuthTokenProvider, type IAuthTokenProvider } from '@aq/auth'
 import {
   AdmissionQueueClient,
   buildAdmissionQueueHubUrl,
   createAdmissionQueueApi,
   createRuntimeDeviceApi,
+  loginBilreg,
   type AdmissionQueueApi,
 } from '@aq/api-client'
 import {
@@ -13,7 +14,7 @@ import {
 } from '@aq/device-config'
 
 let deviceConfigProvider: IDeviceConfigurationProvider | null = null
-let authTokenProvider: IAuthTokenProvider | null = null
+let authTokenProvider: AutoLoginAuthTokenProvider | null = null
 let admissionQueueApi: AdmissionQueueApi | null = null
 let runtimeDeviceApi: ReturnType<typeof createRuntimeDeviceApi> | null = null
 
@@ -42,9 +43,17 @@ export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationPro
   return deviceConfigProvider
 }
 
-export function getAuthTokenProvider(): IAuthTokenProvider {
+export function getAuthTokenProvider(): AutoLoginAuthTokenProvider {
   if (!authTokenProvider) {
-    authTokenProvider = new EnvAuthTokenProvider(import.meta.env.VITE_BILREG_TOKEN)
+    const baseUrl = import.meta.env.VITE_BILREG_API_BASE?.trim()
+    if (!baseUrl) {
+      throw new Error('VITE_BILREG_API_BASE is not configured')
+    }
+    authTokenProvider = new AutoLoginAuthTokenProvider({
+      apiBase: baseUrl,
+      loginImpl: (apiBase, credentials) =>
+        loginBilreg(apiBase, { ...credentials, appId: 'BilregDisplay' }),
+    })
   }
   return authTokenProvider
 }
@@ -94,3 +103,5 @@ export function __resetInfrastructureForTests() {
   admissionQueueApi = null
   runtimeDeviceApi = null
 }
+
+export type { IAuthTokenProvider }
