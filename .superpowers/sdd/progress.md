@@ -8,7 +8,7 @@ Tasks:
 - [x] Task 1: Create `AutoLoginAuthTokenProvider` class (commits 3ec8402..a1a6e60, review clean after fix)
 - [x] Task 2: Comprehensive unit tests
 - [x] Task 3: Re-export from `@aq/auth` index
-- [ ] Task 4: Wire provider in `infrastructure.ts`
+- [x] Task 4: Wire provider in `infrastructure.ts`
 - [ ] Task 5: Create `LoginView.vue`
 - [ ] Task 6: Add `/login` route and guard
 - [ ] Task 7: Update `RootView.vue` loading state
