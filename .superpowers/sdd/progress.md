@@ -14,5 +14,5 @@ Tasks:
 - [x] Task 7: Update `RootView.vue` loading state
 - [x] Task 8: Update `DisplayPage.vue` with `awaitAuthenticated()`
 - [x] Task 9: Remove `VITE_BILREG_TOKEN` from env/types/README
-- [ ] Task 10: Manual smoke verification
-- [ ] Task 11: Final verification
+- [x] Task 10: Manual smoke verification
+- [x] Task 11: Final verification
