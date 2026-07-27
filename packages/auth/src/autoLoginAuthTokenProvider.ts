@@ -102,6 +102,7 @@ export class AutoLoginAuthTokenProvider implements IAuthTokenProvider {
   }
 
   async login(email: string, pass: string): Promise<void> {
+    if (this.loginInFlight) return this.loginInFlight
     this.phase.value = { kind: 'logging-in' }
     this.loginInFlight = this.doLogin(email, pass, /* clearOnAuthFail */ true)
     try {
@@ -138,10 +139,10 @@ export class AutoLoginAuthTokenProvider implements IAuthTokenProvider {
     pass: string,
     clearOnAuthFail: boolean,
   ): Promise<void> {
+    this.writeCredentials({ email, pass })
     try {
       const response = await this.loginImpl(this.apiBase, { email, pass })
       const expiredAt = this.computeExpiredAt(response.expiredDate)
-      this.writeCredentials({ email, pass })
       this.phase.value = {
         kind: 'authenticated',
         token: response.tokenAuth,
@@ -149,7 +150,13 @@ export class AutoLoginAuthTokenProvider implements IAuthTokenProvider {
       }
     } catch (error) {
       const message = this.toMessage(error)
-      if (clearOnAuthFail) {
+      const isAuthError =
+        error &&
+        typeof error === 'object' &&
+        'statusCode' in error &&
+        ((error as { statusCode: number }).statusCode === 401 ||
+          (error as { statusCode: number }).statusCode === 403)
+      if (clearOnAuthFail && isAuthError) {
         try { this.storage.removeItem(CRED_KEY) } catch {}
       }
       this.phase.value = { kind: 'error', message }

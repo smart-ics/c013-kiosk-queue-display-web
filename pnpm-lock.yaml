@@ -195,6 +195,9 @@ importers:
 
   packages/auth:
     dependencies:
+      '@aq/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
       vue:
         specifier: ^3.5.0
         version: 3.5.40(typescript@5.9.3)

@@ -88,3 +88,10 @@ export function __resetSessionAuthForTests(): void {
 export function createSessionAuthTokenProvider(): SessionAuthTokenProvider {
   return new SessionAuthTokenProvider()
 }
+
+export {
+  AutoLoginAuthTokenProvider,
+  type AutoLoginAuthTokenProviderOptions,
+  type AutoLoginPhase,
+  type LoginImpl,
+} from './autoLoginAuthTokenProvider'
