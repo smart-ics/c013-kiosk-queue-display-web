@@ -11,7 +11,7 @@ Tasks:
 - [x] Task 4: Wire provider in `infrastructure.ts`
 - [x] Task 5: Create `LoginView.vue`
 - [x] Task 6: Add `/login` route and guard
-- [ ] Task 7: Update `RootView.vue` loading state
+- [x] Task 7: Update `RootView.vue` loading state
 - [ ] Task 8: Update `DisplayPage.vue` with `awaitAuthenticated()`
 - [ ] Task 9: Remove `VITE_BILREG_TOKEN` from env/types/README
 - [ ] Task 10: Manual smoke verification
