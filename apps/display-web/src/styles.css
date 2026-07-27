@@ -145,3 +145,30 @@ body {
   font-size: 1.2rem;
   font-weight: 600;
 }
+
+.picker-list {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.picker-list a {
+  display: block;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(61, 214, 140, 0.12);
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 1.1rem;
+}
+
+.picker-list a:hover,
+.picker-list a:focus-visible {
+  background: rgba(61, 214, 140, 0.22);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

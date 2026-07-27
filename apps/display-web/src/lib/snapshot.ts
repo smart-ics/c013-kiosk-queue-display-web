@@ -5,6 +5,7 @@ export function filterSnapshotByLoketIds(
   loketIds: string[],
 ): CurrentLoketDisplayItem[] {
   const allowed = new Set(loketIds)
+  console.log('filterSnapshotByLoketIds', loketIds, items, allowed)
   return items.filter((item) => allowed.has(item.loketKey))
 }
 

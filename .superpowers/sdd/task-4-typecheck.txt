@@ -1,0 +1,4 @@
+
+> display-web@0.1.0 typecheck E:\PROJECT\ICS\FE\c013-kiosk-queue-display-web\apps\display-web
+> vue-tsc -p tsconfig.app.json --noEmit
+

@@ -19,4 +19,6 @@ pnpm --filter display-web dev
 # http://localhost:5174/display/lobby-poli-1
 ```
 
-Requires `VITE_BILREG_API_BASE` and `VITE_BILREG_TOKEN` (see `.env.example`).
+Requires `VITE_BILREG_API_BASE` (see `.env.example`).
+
+On first-time boot, it will redirect to `/login` for interactive login. The credentials (`email` and `pass`) will be saved in `localStorage` under `aq.display.credentials` to support subsequent silent auto-logins. The token itself is kept in-memory only.

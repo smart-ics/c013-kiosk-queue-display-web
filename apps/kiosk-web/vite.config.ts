@@ -1,5 +1,6 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import vueDevTools from 'vite-plugin-vue-devtools'
 import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { copyFileSync } from 'node:fs'
@@ -19,18 +20,22 @@ function versionJsonPlugin() {
   }
 }
 
-export default defineConfig({
-  base: '/kiosk/',
-  plugins: [vue(), versionJsonPlugin()],
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, 'src'),
+export default defineConfig(({ mode }) => {
+  loadEnv(mode, resolve(__dirname), 'VITE_')
+
+  return {
+    base: '/kiosk/',
+    plugins: [vue(), vueDevTools(), versionJsonPlugin()],
+    resolve: {
+      alias: {
+        '@': resolve(__dirname, 'src'),
+      },
     },
-  },
-  server: {
-    port: 5173,
-  },
-  preview: {
-    port: 4173,
-  },
+    server: {
+      port: 5173,
+    },
+    preview: {
+      port: 4173,
+    },
+  }
 })
