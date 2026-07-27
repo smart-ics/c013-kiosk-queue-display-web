@@ -9,7 +9,7 @@ Tasks:
 - [x] Task 2: Comprehensive unit tests
 - [x] Task 3: Re-export from `@aq/auth` index
 - [x] Task 4: Wire provider in `infrastructure.ts`
-- [ ] Task 5: Create `LoginView.vue`
+- [x] Task 5: Create `LoginView.vue`
 - [ ] Task 6: Add `/login` route and guard
 - [ ] Task 7: Update `RootView.vue` loading state
 - [ ] Task 8: Update `DisplayPage.vue` with `awaitAuthenticated()`
