@@ -40,11 +40,10 @@ const kiosksSchema = z.array(queueKioskSchema)
 const availableWorkstationsSchema = z.array(workstationContextSchema)
 const currentDisplaysSchema = z.array(currentLoketDisplayItemSchema)
 
-/** Login lives at server root `/login`, not under `/api`. */
+/** Bilreg issues tokens at `/api/User/login`. */
 export function buildLoginUrl(apiBase: string): string {
   const trimmed = apiBase.replace(/\/+$/, '')
-  const origin = trimmed.replace(/\/api$/i, '')
-  return `${origin}/login`
+  return `${trimmed}/User/login`
 }
 
 export async function loginBilreg(

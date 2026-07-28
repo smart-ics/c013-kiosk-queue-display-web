@@ -4,12 +4,16 @@ import { buildLoginUrl, createRuntimeDeviceApi } from '../configuration'
 import { vi } from 'vitest'
 
 describe('buildLoginUrl', () => {
-  it('strips trailing /api', () => {
-    expect(buildLoginUrl('http://localhost:5000/api')).toBe('http://localhost:5000/login')
+  it('uses Bilreg User/login under the API base', () => {
+    expect(buildLoginUrl('http://localhost:5000/api')).toBe(
+      'http://localhost:5000/api/User/login',
+    )
   })
 
   it('handles trailing slash', () => {
-    expect(buildLoginUrl('http://localhost:5000/api/')).toBe('http://localhost:5000/login')
+    expect(buildLoginUrl('http://localhost:5000/api/')).toBe(
+      'http://localhost:5000/api/User/login',
+    )
   })
 })
 
