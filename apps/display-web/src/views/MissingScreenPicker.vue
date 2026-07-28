@@ -54,7 +54,7 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
           class="picker-item-wrapper"
           :style="{ animationDelay: `${index * 75}ms` }"
         >
-          <RouterLink :to="`/display/${id}`" class="picker-link-card">
+          <RouterLink :to="`/${id}`" class="picker-link-card">
             <div class="card-left">
               <div class="screen-icon-bg">
                 <svg class="item-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
