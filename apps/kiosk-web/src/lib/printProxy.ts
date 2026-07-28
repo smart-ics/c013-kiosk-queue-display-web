@@ -25,19 +25,8 @@ export function createPrintProxyClient(options: PrintProxyClientOptions = {}) {
   const fetchImpl = options.fetchImpl ?? fetch.bind(globalThis)
 
   async function checkHealth(): Promise<string | null> {
-    try {
-      const url = baseUrl.replace(/\/print\/?$/, '/health')
-      const response = await fetchImpl(url, { signal: AbortSignal.timeout(3000) })
-      const body = (await response.json().catch(() => null)) as {
-        status?: string
-        printerCount?: number
-      } | null
-      if (body?.status !== 'ok') return 'Print proxy not ready'
-      if ((body.printerCount ?? 0) === 0) return 'No printer detected'
-      return null
-    } catch {
-      return 'Print proxy unreachable'
-    }
+    // Skipped: PrintService currently doesn't have a /health endpoint.
+    return null
   }
 
   async function printPng(blob: Blob, doctype = 'antrian', printCopies = 1): Promise<PrintProxyResult> {

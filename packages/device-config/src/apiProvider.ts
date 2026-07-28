@@ -7,6 +7,8 @@ import { deviceConfigSchema, type DeviceConfig, type DisplayBootConfig } from '@
 
 export type ApiDeviceConfigurationProviderOptions = {
   getDisplayBootConfig: (displayId: string) => Promise<DisplayBootConfig>
+  listDisplays?: () => Promise<{ deviceId: string }[]>
+  listKiosks?: () => Promise<{ deviceId: string }[]>
 }
 
 export class ApiDeviceConfigurationProvider implements IDeviceConfigurationProvider {
@@ -52,6 +54,18 @@ export class ApiDeviceConfigurationProvider implements IDeviceConfigurationProvi
   }
 
   async listDisplayScreenIds(): Promise<string[]> {
+    if (this.options.listDisplays) {
+      const displays = await this.options.listDisplays()
+      return displays.map((d) => d.deviceId)
+    }
+    return []
+  }
+
+  async listKioskStationIds(): Promise<string[]> {
+    if (this.options.listKiosks) {
+      const kiosks = await this.options.listKiosks()
+      return kiosks.map((k) => k.deviceId)
+    }
     return []
   }
 }
