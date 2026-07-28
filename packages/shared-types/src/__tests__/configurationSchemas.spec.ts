@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   configurationWhoAmISchema,
   displayBootConfigSchema,
+  kioskBootConfigSchema,
   workstationContextSchema,
 } from '../index'
 
@@ -40,5 +41,19 @@ describe('configuration schemas', () => {
       layoutKey: 'default',
     })
     expect(parsed.loketIds).toHaveLength(2)
+  })
+
+  it('parses kiosk boot config', () => {
+    const parsed = kioskBootConfigSchema.parse({
+      deviceId: 'loket-03',
+      role: 'kiosk',
+      displayName: 'Kiosk Loket 03',
+      locationName: 'Lobby',
+      servicePointIds: ['REG', 'BPJS'],
+      printerProxyPort: 5050,
+      rowVersion: '1',
+    })
+    expect(parsed.servicePointIds).toEqual(['REG', 'BPJS'])
+    expect(parsed.printerProxyPort).toBe(5050)
   })
 })

@@ -6,6 +6,7 @@ import ForbiddenPage from './views/ForbiddenPage.vue'
 import SummaryPage from './views/SummaryPage.vue'
 import WorkstationsPage from './views/WorkstationsPage.vue'
 import DisplaysPage from './views/DisplaysPage.vue'
+import KiosksPage from './views/KiosksPage.vue'
 import SegmentationPage from './views/SegmentationPage.vue'
 import AuditPage from './views/AuditPage.vue'
 
@@ -31,6 +32,7 @@ export const router = createRouter({
         { path: '', name: 'summary', component: SummaryPage },
         { path: 'workstations', name: 'workstations', component: WorkstationsPage },
         { path: 'displays', name: 'displays', component: DisplaysPage },
+        { path: 'kiosks', name: 'kiosks', component: KiosksPage },
         { path: 'segmentation', name: 'segmentation', component: SegmentationPage },
         { path: 'audit', name: 'audit', component: AuditPage },
       ],

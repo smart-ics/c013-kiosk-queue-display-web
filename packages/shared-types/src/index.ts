@@ -81,6 +81,9 @@ export const AQ_CONFIG_ERROR_CODES = {
   AQ_DISPLAY_NOT_FOUND: 'AQ_DISPLAY_NOT_FOUND',
   AQ_DISPLAY_INACTIVE: 'AQ_DISPLAY_INACTIVE',
   AQ_DISPLAY_MAPPING_REQUIRED: 'AQ_DISPLAY_MAPPING_REQUIRED',
+  AQ_KIOSK_NOT_FOUND: 'AQ_KIOSK_NOT_FOUND',
+  AQ_KIOSK_INACTIVE: 'AQ_KIOSK_INACTIVE',
+  AQ_KIOSK_MAPPING_REQUIRED: 'AQ_KIOSK_MAPPING_REQUIRED',
   AQ_CONFIG_CONCURRENCY: 'AQ_CONFIG_CONCURRENCY',
   AQ_CONFIG_FORBIDDEN: 'AQ_CONFIG_FORBIDDEN',
 } as const
@@ -228,13 +231,78 @@ export const displayBootConfigSchema = z.object({
 })
 export type DisplayBootConfig = z.infer<typeof displayBootConfigSchema>
 
+export const kioskServicePointMappingSchema = z.object({
+  servicePointId: z.string(),
+  sortOrder: z.number().int().optional(),
+})
+export type KioskServicePointMapping = z.infer<typeof kioskServicePointMappingSchema>
+
+export const queueKioskSchema = z.object({
+  stationId: z.string(),
+  displayName: z.string(),
+  locationName: z.string().nullable().optional(),
+  active: z.boolean(),
+  printerProxyPort: z.number().int().min(1).max(65535),
+  notes: z.string().nullable().optional(),
+  servicePoints: z.array(kioskServicePointMappingSchema).default([]),
+  createdAt: z.string().optional(),
+  createdBy: z.string().optional(),
+  updatedAt: z.string().optional(),
+  updatedBy: z.string().optional(),
+  rowVersion: z.string(),
+})
+export type QueueKiosk = z.infer<typeof queueKioskSchema>
+
+export const createQueueKioskBodySchema = z.object({
+  stationId: z.string().min(1).max(50),
+  displayName: z.string().min(1),
+  locationName: z.string().nullable().optional(),
+  active: z.boolean().default(true),
+  printerProxyPort: z.number().int().min(1).max(65535).default(5050),
+  notes: z.string().nullable().optional(),
+  servicePoints: z.array(kioskServicePointMappingSchema).default([]),
+})
+export type CreateQueueKioskBody = z.infer<typeof createQueueKioskBodySchema>
+
+export const updateQueueKioskBodySchema = z.object({
+  displayName: z.string().min(1),
+  locationName: z.string().nullable().optional(),
+  printerProxyPort: z.number().int().min(1).max(65535),
+  notes: z.string().nullable().optional(),
+  rowVersion: z.string().min(1),
+})
+export type UpdateQueueKioskBody = z.infer<typeof updateQueueKioskBodySchema>
+
+export const replaceKioskServicePointsBodySchema = z.object({
+  servicePoints: z.array(kioskServicePointMappingSchema),
+  rowVersion: z.string().min(1),
+})
+export type ReplaceKioskServicePointsBody = z.infer<
+  typeof replaceKioskServicePointsBodySchema
+>
+
+export const kioskBootConfigSchema = z.object({
+  deviceId: z.string(),
+  role: z.literal('kiosk'),
+  displayName: z.string(),
+  locationName: z.string().nullable().optional(),
+  servicePointIds: z.array(z.string()),
+  printerProxyPort: z.number().int().min(1).max(65535),
+  updatedAt: z.string().optional(),
+  rowVersion: z.string().optional(),
+})
+export type KioskBootConfig = z.infer<typeof kioskBootConfigSchema>
+
 export const configurationSummarySchema = z.object({
   activeWorkstationCount: z.number().int(),
   inactiveWorkstationCount: z.number().int(),
   activeDisplayCount: z.number().int(),
   inactiveDisplayCount: z.number().int(),
+  activeKioskCount: z.number().int(),
+  inactiveKioskCount: z.number().int(),
   activeLoketsWithoutDisplay: z.array(z.string()).default([]),
   displaysWithoutLoket: z.array(z.string()).default([]),
+  kiosksWithoutServicePoint: z.array(z.string()).default([]),
   invalidReferences: z.array(z.string()).default([]),
   recentChanges: z
     .array(

@@ -132,7 +132,6 @@ const snapshotErrorMessage = computed(() => {
   if (error && typeof error === 'object' && 'message' in error) {
     return String((error as { message: unknown }).message)
   }
-  if (typeof error === 'string' && error.trim()) return error
   return 'Permintaan snapshot gagal tanpa detail error.'
 })
 
