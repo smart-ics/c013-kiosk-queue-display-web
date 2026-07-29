@@ -335,7 +335,7 @@ export function createRuntimeDeviceApi(client: AdmissionQueueClient) {
     },
 
     listPublicKiosks() {
-      return client.getPublicJson(
+      return client.getJson(
         "v1/admission-queue/configuration/kiosks",
         kiosksSchema,
       );
