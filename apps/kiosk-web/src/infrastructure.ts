@@ -24,7 +24,10 @@ export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationPro
   )
   deviceConfigProvider = new ApiKioskDeviceConfigurationProvider({
     getKioskBootConfig: (stationId) => runtime.getPublicKioskBootConfig(stationId),
-    listKiosks: () => runtime.listPublicKiosks(),
+    listKiosks: () =>
+      runtime.listPublicKiosks().then((kiosks) =>
+        kiosks.filter((k) => k.active).map((k) => ({ stationId: k.stationId })),
+      ),
   })
   return deviceConfigProvider
 }
