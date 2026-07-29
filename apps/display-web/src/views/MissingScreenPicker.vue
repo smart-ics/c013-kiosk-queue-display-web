@@ -25,7 +25,7 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
         </svg>
       </div>
       <h1>Pilih Screen Display</h1>
-      <p class="subtitle">Silakan pilih salah satu screen aktif dari devices.json untuk mulai menampilkan antrean admisi.</p>
+      <p class="subtitle">Silakan pilih salah satu screen aktif untuk mulai menampilkan antrean admisi.</p>
     </div>
 
     <div v-if="status === 'loading'" class="loading-state">
@@ -41,8 +41,8 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
       </svg>
       <h2>Tidak Ada Screen Terdaftar</h2>
       <p>
-        Tidak ada entry screen display yang terdaftar di <code>devices.json</code>.
-        Pastikan Anda telah menambahkan entry dengan <code>role: 'display'</code> terlebih dahulu.
+        Tidak ada screen display yang terdaftar di sistem.
+        Pastikan admin telah mendaftarkan screen display melalui halaman konfigurasi.
       </p>
     </div>
 
