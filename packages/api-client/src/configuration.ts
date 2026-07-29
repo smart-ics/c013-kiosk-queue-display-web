@@ -333,6 +333,13 @@ export function createRuntimeDeviceApi(client: AdmissionQueueClient) {
         displaysSchema,
       );
     },
+
+    listPublicKiosks() {
+      return client.getPublicJson(
+        "v1/admission-queue/configuration/kiosks",
+        kiosksSchema,
+      );
+    },
   };
 }
 

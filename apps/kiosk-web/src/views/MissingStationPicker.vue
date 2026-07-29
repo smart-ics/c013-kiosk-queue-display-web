@@ -25,7 +25,7 @@ const empty = computed(() => status.value === 'ok' && stationIds.value.length ==
         </svg>
       </div>
       <h1>Pilih Station Kiosk</h1>
-      <p class="subtitle">Silakan pilih salah satu station aktif dari devices.json untuk mulai menggunakan kiosk.</p>
+      <p class="subtitle">Silakan pilih salah satu station aktif untuk mulai menggunakan kiosk.</p>
     </div>
 
     <div v-if="status === 'loading'" class="loading-state">
@@ -41,8 +41,8 @@ const empty = computed(() => status.value === 'ok' && stationIds.value.length ==
       </svg>
       <h2>Tidak Ada Station Terdaftar</h2>
       <p>
-        Tidak ada entry station kiosk yang terdaftar di <code>devices.json</code>.
-        Pastikan Anda telah menambahkan entry dengan <code>role: 'kiosk'</code> terlebih dahulu.
+        Tidak ada entry station kiosk yang terdaftar.
+        Pastikan Anda telah menambahkan station kiosk terlebih dahulu.
       </p>
     </div>
 
