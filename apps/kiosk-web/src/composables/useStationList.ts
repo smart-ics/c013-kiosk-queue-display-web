@@ -1,7 +1,8 @@
 import { getCurrentScope, onScopeDispose, ref, type Ref } from 'vue'
+import { createListFetcher, type DeviceListStatus } from '@aq/device-config'
 import { getDeviceConfigProvider } from '../infrastructure'
 
-export type KioskStationListStatus = 'idle' | 'loading' | 'ok' | 'error'
+export type KioskStationListStatus = DeviceListStatus
 
 export interface KioskStationListState {
   status: Ref<KioskStationListStatus>
@@ -15,10 +16,9 @@ const FALLBACK_ERROR = 'Gagal memuat daftar kiosk station.'
 export function useStationList(opts?: {
   fetchImpl?: () => Promise<string[]>
 }): KioskStationListState {
-  const status = ref<KioskStationListStatus>('idle')
+  const status = ref<KioskStationListStatus>('loading')
   const stationIds = ref<string[]>([])
   const error = ref<string | null>(null)
-  let loadId = 0
 
   const defaultFetch = async (): Promise<string[]> => {
     const provider = await getDeviceConfigProvider()
@@ -27,36 +27,22 @@ export function useStationList(opts?: {
 
   const fetchImpl = opts?.fetchImpl ?? defaultFetch
 
-  const run = (): void => {
-    const myId = ++loadId
-    status.value = 'loading'
-    error.value = null
-    fetchImpl()
-      .then((ids) => {
-        if (myId !== loadId) return
-        stationIds.value = ids
-        status.value = 'ok'
-      })
-      .catch((err: unknown) => {
-        if (myId !== loadId) return
-        error.value = err instanceof Error && err.message ? err.message : FALLBACK_ERROR
-        stationIds.value = []
-        status.value = 'error'
-      })
-  }
-
-  run()
+  const fetcher = createListFetcher(fetchImpl, FALLBACK_ERROR, (s) => {
+    status.value = s.status
+    stationIds.value = s.items
+    error.value = s.error
+  })
 
   if (getCurrentScope()) {
-    onScopeDispose(() => {
-      loadId += 1
-    })
+    onScopeDispose(() => fetcher.cancel())
   }
+
+  fetcher.run()
 
   return {
     status,
     stationIds,
     error,
-    refresh: run,
+    refresh: () => fetcher.run(),
   }
 }

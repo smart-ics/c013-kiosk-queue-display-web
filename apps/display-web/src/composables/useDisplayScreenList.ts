@@ -1,7 +1,8 @@
 import { getCurrentScope, onScopeDispose, ref, type Ref } from 'vue'
+import { createListFetcher, type DeviceListStatus } from '@aq/device-config'
 import { getDeviceConfigProvider } from '../infrastructure'
 
-export type DisplayScreenListStatus = 'idle' | 'loading' | 'ok' | 'error'
+export type DisplayScreenListStatus = DeviceListStatus
 
 export interface DisplayScreenListState {
   status: Ref<DisplayScreenListStatus>
@@ -15,10 +16,9 @@ const FALLBACK_ERROR = 'Gagal memuat daftar screen.'
 export function useDisplayScreenList(opts?: {
   fetchImpl?: () => Promise<string[]>
 }): DisplayScreenListState {
-  const status = ref<DisplayScreenListStatus>('idle')
+  const status = ref<DisplayScreenListStatus>('loading')
   const screenIds = ref<string[]>([])
   const error = ref<string | null>(null)
-  let loadId = 0
 
   const defaultFetch = async (): Promise<string[]> => {
     const provider = await getDeviceConfigProvider()
@@ -27,36 +27,22 @@ export function useDisplayScreenList(opts?: {
 
   const fetchImpl = opts?.fetchImpl ?? defaultFetch
 
-  const run = (): void => {
-    const myId = ++loadId
-    status.value = 'loading'
-    error.value = null
-    fetchImpl()
-      .then((ids) => {
-        if (myId !== loadId) return
-        screenIds.value = ids
-        status.value = 'ok'
-      })
-      .catch((err: unknown) => {
-        if (myId !== loadId) return
-        error.value = err instanceof Error && err.message ? err.message : FALLBACK_ERROR
-        screenIds.value = []
-        status.value = 'error'
-      })
-  }
-
-  run()
+  const fetcher = createListFetcher(fetchImpl, FALLBACK_ERROR, (s) => {
+    status.value = s.status
+    screenIds.value = s.items
+    error.value = s.error
+  })
 
   if (getCurrentScope()) {
-    onScopeDispose(() => {
-      loadId += 1
-    })
+    onScopeDispose(() => fetcher.cancel())
   }
+
+  fetcher.run()
 
   return {
     status,
     screenIds,
     error,
-    refresh: run,
+    refresh: () => fetcher.run(),
   }
 }
