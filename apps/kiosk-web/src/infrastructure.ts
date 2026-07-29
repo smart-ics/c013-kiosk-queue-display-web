@@ -19,7 +19,7 @@ export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationPro
   const runtime = createRuntimeDeviceApi(
     new AdmissionQueueClient({
       baseUrl,
-      auth: { getToken: () => null },
+      auth: { getToken: () => 'kiosk-no-auth' },
     }),
   )
   deviceConfigProvider = new ApiKioskDeviceConfigurationProvider({
@@ -37,7 +37,7 @@ export function getAdmissionQueueApi(): AdmissionQueueApi {
   }
   const client = new AdmissionQueueClient({
     baseUrl,
-    auth: { getToken: () => null },
+    auth: { getToken: () => 'kiosk-no-auth' },
   })
   admissionQueueApi = createAdmissionQueueApi(client)
   return admissionQueueApi

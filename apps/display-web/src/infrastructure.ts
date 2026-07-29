@@ -17,7 +17,8 @@ export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationPro
   const runtime = getRuntimeDeviceApi()
   deviceConfigProvider = new ApiDeviceConfigurationProvider({
     getDisplayBootConfig: (displayId) => runtime.getPublicDisplayBootConfig(displayId),
-    listDisplays: () => runtime.listPublicDisplays(),
+    listDisplays: () =>
+      runtime.listPublicDisplays().then((displays) => displays.map((d) => ({ deviceId: d.displayId }))),
   })
   return deviceConfigProvider
 }

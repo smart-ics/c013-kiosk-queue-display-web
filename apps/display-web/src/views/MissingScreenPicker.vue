@@ -12,7 +12,7 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
   <BootErrorPage
     v-if="status === 'error'"
     title="Queue Display — Boot gagal"
-    :message="error"
+    :message="error!"
   />
 
   <section v-else class="picker-panel">

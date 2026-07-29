@@ -12,7 +12,7 @@ const empty = computed(() => status.value === 'ok' && stationIds.value.length ==
   <BootErrorPage
     v-if="status === 'error'"
     title="Kiosk — Boot gagal"
-    :message="error"
+    :message="error!"
   />
 
   <section v-else class="picker-panel">
