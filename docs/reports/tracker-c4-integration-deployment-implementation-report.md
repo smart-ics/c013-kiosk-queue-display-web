@@ -5,10 +5,10 @@
 
 **Artifact status:** Implementation summary (closed for Phase C4)  
 **Bounded context:** Patient Tracker / Admission Queue — external clients  
-**Authoritative plan:** [`TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md`](TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md)  
-**Architecture addendum:** [`kiosk-queue-display-web.md`](kiosk-queue-display-web.md)  
-**Ops procedures:** [`TRACKER-ADMISSION-QUEUE-RUNBOOK.md`](TRACKER-ADMISSION-QUEUE-RUNBOOK.md) §§8–11  
-**IIS cutover gates:** [`TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md`](TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md)  
+**Authoritative plan:** [`TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md`](../plans/TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md)  
+**Architecture addendum:** [`kiosk-queue-display-web.md`](../architecture/kiosk-queue-display-web.md)  
+**Ops procedures:** [`TRACKER-ADMISSION-QUEUE-RUNBOOK.md`](../ops/TRACKER-ADMISSION-QUEUE-RUNBOOK.md) §§8–11  
+**IIS cutover gates:** [`TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md`](../ops/TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md)  
 **Code homes:** `c012_myhospital_web` (Officer), `c013-kiosk-queue-display-web` (Kiosk + Display)  
 **Date:** 2026-07-23
 
@@ -92,10 +92,10 @@ C4 delivers **executable ops procedures**. Live sign-off on an integration host 
 | Artifact | Role |
 |----------|------|
 | This report | C4 closure evidence |
-| [`TRACKER-ADMISSION-QUEUE-RUNBOOK.md`](TRACKER-ADMISSION-QUEUE-RUNBOOK.md) §§8–11 | Officer / Kiosk / Display / IIS / E2E procedures |
-| [`TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md`](TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md) | Go / No-Go gates for client IIS cutover |
-| [`TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md`](TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md) R6 | Backend Phase 5 checklist ↔ client cutover |
-| [`kiosk-queue-display-web.md`](kiosk-queue-display-web.md) | Path-based IIS + monorepo ADR |
+| [`TRACKER-ADMISSION-QUEUE-RUNBOOK.md`](../ops/TRACKER-ADMISSION-QUEUE-RUNBOOK.md) §§8–11 | Officer / Kiosk / Display / IIS / E2E procedures |
+| [`TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md`](../ops/TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md) | Go / No-Go gates for client IIS cutover |
+| [`TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md`](../ops/TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md) R6 | Backend Phase 5 checklist ↔ client cutover |
+| [`kiosk-queue-display-web.md`](../architecture/kiosk-queue-display-web.md) | Path-based IIS + monorepo ADR |
 | `c013-kiosk-queue-display-web/docs/C4-implementation-summary.md` | Local monorepo pointer |
 
 ---
@@ -116,9 +116,9 @@ C4 delivers **executable ops procedures**. Live sign-off on an integration host 
 ## 6. How ops uses C4
 
 1. Backend integration green: runbook §§1–5 + rollout R1–R5.  
-2. Client cutover: [IIS client cutover checklist](TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md).  
+2. Client cutover: [IIS client cutover checklist](../ops/TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md).  
 3. Prove constellation: runbook §11 cross-client E2E.  
-4. Record R6 on [rollout checklist](TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md).
+4. Record R6 on [rollout checklist](../ops/TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md).
 
 ---
 

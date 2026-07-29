@@ -61,4 +61,47 @@ describe('JsonDeviceConfigurationProvider', () => {
       DeviceConfigNotFoundError,
     )
   })
+
+  it('lists only display-role screen ids', async () => {
+    const ids = await provider.listDisplayScreenIds()
+    expect(ids).toEqual(['lobby-poli-1'])
+  })
+})
+
+describe('JsonDeviceConfigurationProvider.listDisplayScreenIds', () => {
+  it('returns sorted display ids from a mixed catalog', async () => {
+    const provider = new JsonDeviceConfigurationProvider({
+      'lobby-igd': { role: 'display', loketIds: ['L3'] },
+      'lobby-poli-1': { role: 'display', loketIds: ['L1', 'L2'] },
+      'loket-03': { role: 'kiosk', servicePointIds: ['SP-REG'] },
+    })
+    const ids = await provider.listDisplayScreenIds()
+    expect(ids).toEqual(['lobby-igd', 'lobby-poli-1'])
+  })
+
+  it('returns an empty array when there are no display entries', async () => {
+    const provider = new JsonDeviceConfigurationProvider({
+      'loket-03': { role: 'kiosk', servicePointIds: ['SP-REG'] },
+    })
+    expect(await provider.listDisplayScreenIds()).toEqual([])
+  })
+
+  it('returns an empty array for an empty catalog', async () => {
+    const provider = new JsonDeviceConfigurationProvider({})
+    expect(await provider.listDisplayScreenIds()).toEqual([])
+  })
+
+  it('ignores entries with no role', async () => {
+    const provider = new JsonDeviceConfigurationProvider({
+      'no-role': { servicePointIds: ['SP-REG'] } as never,
+    })
+    expect(await provider.listDisplayScreenIds()).toEqual([])
+  })
+
+  it('returns ids even if the entry would fail getConfig validation', async () => {
+    const provider = new JsonDeviceConfigurationProvider({
+      'broken-display': { role: 'display' } as never,
+    })
+    expect(await provider.listDisplayScreenIds()).toEqual(['broken-display'])
+  })
 })

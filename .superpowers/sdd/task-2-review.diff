@@ -1,0 +1,88 @@
+apps/kiosk-web/env.d.ts                |  1 -
+ apps/kiosk-web/package.json            |  1 -
+ apps/kiosk-web/src/infrastructure.ts   | 14 ++------------
+ apps/kiosk-web/src/views/KioskPage.vue | 10 +---------
+ 4 files changed, 3 insertions(+), 23 deletions(-)
+
+--- Changes ---
+
+apps/kiosk-web/env.d.ts
+  @@ -2,7 +2,6 @@
+  -  readonly VITE_BILREG_TOKEN: string
+   }
+   
+   interface ImportMeta {
+  +0 -1
+
+apps/kiosk-web/package.json
+  @@ -13,7 +13,6 @@
+  -    "@aq/auth": "workspace:*",
+       "@aq/device-config": "workspace:*",
+       "@aq/shared-types": "workspace:*",
+       "@tanstack/vue-query": "^5.92.1",
+  +0 -1
+
+apps/kiosk-web/src/infrastructure.ts
+  @@ -1,4 +1,3 @@
+  -import { EnvAuthTokenProvider, type IAuthTokenProvider } from '@aq/auth'
+   import {
+     AdmissionQueueClient,
+     createAdmissionQueueApi,
+  @@ -11,7 +10,6 @@ import {
+  -let authTokenProvider: IAuthTokenProvider | null = null
+   let admissionQueueApi: AdmissionQueueApi | null = null
+   
+   export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationProvider> {
+  @@ -21,7 +19,7 @@ export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationPro
+  -      auth: getAuthTokenProvider(),
+  +      auth: { getToken: () => null },
+       }),
+     )
+     deviceConfigProvider = new ApiKioskDeviceConfigurationProvider({
+  @@ -31,13 +29,6 @@ export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationPro
+  -export function getAuthTokenProvider(): IAuthTokenProvider {
+  -  if (!authTokenProvider) {
+  -    authTokenProvider = new EnvAuthTokenProvider(import.meta.env.VITE_BILREG_TOKEN)
+  -  }
+  -  return authTokenProvider
+  -}
+  -
+   export function getAdmissionQueueApi(): AdmissionQueueApi {
+     if (admissionQueueApi) return admissionQueueApi
+     const baseUrl = import.meta.env.VITE_BILREG_API_BASE?.trim()
+  @@ -46,7 +37,7 @@ export function getAdmissionQueueApi(): AdmissionQueueApi {
+  -    auth: getAuthTokenProvider(),
+  +    auth: { getToken: () => null },
+     })
+     admissionQueueApi = createAdmissionQueueApi(client)
+     return admissionQueueApi
+  @@ -54,6 +45,5 @@ export function getAdmissionQueueApi(): AdmissionQueueApi {
+  -  authTokenProvider = null
+     admissionQueueApi = null
+   }
+  +2 -12
+
+apps/kiosk-web/src/views/KioskPage.vue
+  @@ -6,8 +6,7 @@ import {
+  -import { MissingAuthTokenError } from '@aq/auth'
+  -import { getAdmissionQueueApi, getAuthTokenProvider, getDeviceConfigProvider } from '../infrastructure'
+  +import { getAdmissionQueueApi, getDeviceConfigProvider } from '../infrastructure'
+   import { intersectOfferings } from '../lib/offerings'
+   import { useKioskIntake } from '../composables/useKioskIntake'
+   import { useKioskPrint } from '../composables/useKioskPrint'
+  @@ -39,9 +38,6 @@ watch(
+  -      const token = getAuthTokenProvider().getToken()
+  -      if (!token) throw new MissingAuthTokenError()
+  -
+         const provider = await getDeviceConfigProvider()
+         const config = await provider.getConfig(stationId)
+         if (cancelled) return
+  @@ -60,10 +56,6 @@ watch(
+  -      if (error instanceof MissingAuthTokenError) {
+  -        bootError.value = 'VITE_BILREG_TOKEN belum dikonfigurasi.'
+  -        return
+  -      }
+         bootError.value = error instanceof Error ? error.message : 'Boot gagal.'
+       }
+     },
+  +1 -9

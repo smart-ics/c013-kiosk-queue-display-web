@@ -7,6 +7,8 @@ import { deviceConfigSchema, type DeviceConfig, type DisplayBootConfig } from '@
 
 export type ApiDeviceConfigurationProviderOptions = {
   getDisplayBootConfig: (displayId: string) => Promise<DisplayBootConfig>
+  listDisplays?: () => Promise<{ deviceId: string }[]>
+  listKiosks?: () => Promise<{ deviceId: string }[]>
 }
 
 export class ApiDeviceConfigurationProvider implements IDeviceConfigurationProvider {
@@ -49,5 +51,27 @@ export class ApiDeviceConfigurationProvider implements IDeviceConfigurationProvi
       throw new DeviceConfigInvalidError(id, 'deviceId mismatch in boot config')
     }
     return parsed.data
+  }
+
+  async listDisplayScreenIds(): Promise<string[]> {
+    if (!this.options.listDisplays) {
+      throw new DeviceConfigInvalidError(
+        '*',
+        'listDisplayScreenIds requires listDisplays option to be configured',
+      )
+    }
+    const displays = await this.options.listDisplays()
+    return displays.map((d) => d.deviceId)
+  }
+
+  async listKioskStationIds(): Promise<string[]> {
+    if (!this.options.listKiosks) {
+      throw new DeviceConfigInvalidError(
+        '*',
+        'listKioskStationIds requires listKiosks option to be configured',
+      )
+    }
+    const kiosks = await this.options.listKiosks()
+    return kiosks.map((k) => k.deviceId)
   }
 }

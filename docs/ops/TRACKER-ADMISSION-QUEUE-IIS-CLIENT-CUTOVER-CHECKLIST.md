@@ -1,14 +1,11 @@
 # Tracker–Admission Queue — IIS Client Cutover Checklist
 
-> **Operational mirror** of `b09-bilreg-api/docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md`.  
-> Prefer editing the b09 canonical copy, then re-sync here for monorepo ops.
-
 **Artifact role:** OPERATION — Kiosk + Display IIS packaging and cutover gates  
 **Audience:** Engineering, integration ops, Admisi operations  
 **Phase:** External clients **C4**  
-**Canonical report:** [tracker-c4-integration-deployment-implementation-report.md](./tracker-c4-integration-deployment-implementation-report.md)  
+**Canonical report:** [tracker-c4-integration-deployment-implementation-report.md](../reports/tracker-c4-integration-deployment-implementation-report.md)  
 **Procedures:** [TRACKER-ADMISSION-QUEUE-RUNBOOK.md](./TRACKER-ADMISSION-QUEUE-RUNBOOK.md) §§8–11  
-**Architecture:** [kiosk-queue-display-web.md](./kiosk-queue-display-web.md)
+**Architecture:** [kiosk-queue-display-web.md](../architecture/kiosk-queue-display-web.md)
 
 Production hospital-wide cutover execution remains site-owned. Use this checklist for **integration** (and site rehearsal) of Officer + Kiosk + Display against Bilreg Admission Queue v1.
 
@@ -32,7 +29,7 @@ Production hospital-wide cutover execution remains site-owned. Use this checklis
 | Gate | Evidence | Done |
 |------|----------|------|
 | `pnpm install` + `pnpm build` succeeds | CI or local log | [ ] |
-| `apps/kiosk-web/dist` contains `index.html`, `version.json`, `web.config`, `assets/` | Dir listing | [ ] |
+| `apps/kiosk-web/dist` contains `index.html`, `version.json`, `web.config`, `devices.json`, `assets/` | Dir listing | [ ] |
 | `apps/display-web/dist` contains `index.html`, `version.json`, `web.config`, `devices.json`, `assets/` | Dir listing | [ ] |
 | Build-time API base / token policy documented for the target env | `.env` / release notes (no secrets in git) | [ ] |
 
@@ -64,7 +61,7 @@ C:\inetpub\wwwroot\
 
 | Gate | Evidence | Done |
 |------|----------|------|
-| Every Chrome kiosk shortcut ID has an active matching row in config-web with at least one Service Point | Config review | [ ] |
+| Every Chrome kiosk shortcut ID has a matching `devices.json` (or future device-config API) row | Config review | [ ] |
 | Kiosk rows: `role: kiosk`, non-empty offerings / service-point allow-list | Config | [ ] |
 | Display rows: `role: display`, non-empty `loketIds` | Config | [ ] |
 | Officer `global_config.json` `admissionQueue.enabled` (and workstation keys) set for the env | `c012` config | [ ] |
@@ -108,7 +105,7 @@ Archive: build version (`version.json`), IIS host, rollout status response, E2E 
 | Situation | Action |
 |-----------|--------|
 | Bad kiosk/display static build | Restore previous `wwwroot/kiosk` and/or `wwwroot/display` backup |
-| Wrong kiosk config | Fix the kiosk in config-web and soft-reload / reopen shortcut — **no** DB DROP |
+| Wrong device config | Fix `devices.json` (or device API) and soft-reload / reopen shortcut — **no** DB DROP |
 | Officer flag regression | Revert `admissionQueue` flags in `global_config` / redeploy previous HIS |
 | Backend defect | Follow backend runbook rollback — do **not** DROP AQ tables for client-only issues |
 
@@ -118,7 +115,8 @@ Archive: build version (`version.json`), IIS host, rollout status response, E2E 
 
 | Path | Role |
 |------|------|
-| [tracker-c4-integration-deployment-implementation-report.md](./tracker-c4-integration-deployment-implementation-report.md) | C4 closure |
+| [tracker-c4-integration-deployment-implementation-report.md](../reports/tracker-c4-integration-deployment-implementation-report.md) | C4 closure |
 | [TRACKER-ADMISSION-QUEUE-RUNBOOK.md](./TRACKER-ADMISSION-QUEUE-RUNBOOK.md) | Full procedures |
+| [TRACKER-ADMISSION-QUEUE-KIOSK-DISPLAY-DEPLOY-ID.md](./TRACKER-ADMISSION-QUEUE-KIOSK-DISPLAY-DEPLOY-ID.md) | Panduan deploy/konfigurasi (Bahasa Indonesia; IT RS) |
 | [TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md](./TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md) | Backend R1–R5 + client R6 |
-| [kiosk-queue-display-web.md](./kiosk-queue-display-web.md) | Path / IIS ADR |
+| [kiosk-queue-display-web.md](../architecture/kiosk-queue-display-web.md) | Path / IIS ADR |

@@ -13,11 +13,7 @@ export const router = createRouter({
     {
       path: '/',
       name: 'missing-station',
-      component: () => import('./views/BootErrorPage.vue'),
-      props: {
-        title: 'Station ID diperlukan',
-        message: 'Buka kiosk dengan path /kiosk/{stationId}, contoh /kiosk/loket-03.',
-      },
+      component: () => import('./views/MissingStationPicker.vue'),
     },
   ],
 })

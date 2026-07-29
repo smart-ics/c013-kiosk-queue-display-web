@@ -6,8 +6,7 @@ import {
   DeviceConfigInvalidError,
   DeviceConfigNotFoundError,
 } from '@aq/device-config'
-import { MissingAuthTokenError } from '@aq/auth'
-import { getAdmissionQueueApi, getAuthTokenProvider, getDeviceConfigProvider } from '../infrastructure'
+import { getAdmissionQueueApi, getDeviceConfigProvider } from '../infrastructure'
 import { intersectOfferings } from '../lib/offerings'
 import { useKioskIntake } from '../composables/useKioskIntake'
 import { useKioskPrint } from '../composables/useKioskPrint'
@@ -39,9 +38,6 @@ watch(
     }
 
     try {
-      const token = getAuthTokenProvider().getToken()
-      if (!token) throw new MissingAuthTokenError()
-
       const provider = await getDeviceConfigProvider()
       const config = await provider.getConfig(stationId)
       if (cancelled) return
@@ -58,10 +54,6 @@ watch(
       }
       if (error instanceof DeviceConfigInvalidError) {
         bootError.value = `Konfigurasi tidak valid untuk '${error.deviceId}'.`
-        return
-      }
-      if (error instanceof MissingAuthTokenError) {
-        bootError.value = 'VITE_BILREG_TOKEN belum dikonfigurasi.'
         return
       }
       bootError.value = error instanceof Error ? error.message : 'Boot gagal.'

@@ -10,3 +10,4 @@ export {
   type ApiKioskDeviceConfigurationProviderOptions,
 } from './kioskApiProvider'
 export { parseStationIdFromPath, parseScreenIdFromPath } from './path'
+export * from './deviceList'

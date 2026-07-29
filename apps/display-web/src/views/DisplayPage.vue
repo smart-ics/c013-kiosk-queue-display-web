@@ -45,7 +45,6 @@ watch(
     deviceConfig.value = null
     const screenId = rawScreenId?.trim()
     if (!screenId) {
-      bootError.value = 'Screen ID kosong. Buka dengan path /display/{screenId}.'
       return
     }
 

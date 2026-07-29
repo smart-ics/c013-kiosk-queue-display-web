@@ -6,7 +6,7 @@
 **Status:** Authoritative external-client plan (living document).  
 **Scope:** Officer Client, Kiosk Client, and Queue Display Client that consume Bilreg Admission Queue v1.  
 **Relationship:** Part 2 of Admission Queue delivery. Part 1 (backend) is `b09-bilreg-api/docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-PLAN.md`.  
-**Architecture addendum (C2/C3):** [kiosk-queue-display-web.md](./kiosk-queue-display-web.md)  
+**Architecture addendum (C2/C3):** [kiosk-queue-display-web.md](../architecture/kiosk-queue-display-web.md)  
 **Evidence / revision date:** 2026-07-23 (C4 closed)
 
 **Roadmap status**
@@ -15,9 +15,9 @@
 |-------|--------|
 | **C0** Shared client foundations (Officer / `c012`) | ✅ Completed — baseline |
 | **C1** Officer Client | ✅ Completed — baseline; do not redesign |
-| **C2** Kiosk Client | ✅ Completed — monorepo path boot, intake, print ([report](./tracker-c2-kiosk-implementation-report.md)) |
-| **C3** Queue Display Client | ✅ Completed — snapshot-first, SignalR, TTS, version reload ([report](./tracker-c3-queue-display-implementation-report.md)) |
-| **C4** Integration & Deployment | ✅ Completed — E2E + IIS + runbook ([report](./tracker-c4-integration-deployment-implementation-report.md)) |
+| **C2** Kiosk Client | ✅ Completed — monorepo path boot, intake, print ([report](../reports/tracker-c2-kiosk-implementation-report.md)) |
+| **C3** Queue Display Client | ✅ Completed — snapshot-first, SignalR, TTS, version reload ([report](../reports/tracker-c3-queue-display-implementation-report.md)) |
+| **C4** Integration & Deployment | ✅ Completed — E2E + IIS + runbook ([report](../reports/tracker-c4-integration-deployment-implementation-report.md)) |
 
 **Primary references**
 
@@ -27,9 +27,9 @@
 | [TRACKER-DOMAIN.md](./TRACKER-DOMAIN.md) | Parent Patient Tracker domain |
 | [../admisi-rajal/admisi-rajal-domain.md](../admisi-rajal/admisi-rajal-domain.md) | Admisi Rajal Work List composition boundary |
 | [TRACKER-ADMISSION-QUEUE-SOP.md](./TRACKER-ADMISSION-QUEUE-SOP.md) | Target operational procedure |
-| [TRACKER-ADMISSION-QUEUE-API-V1.md](./TRACKER-ADMISSION-QUEUE-API-V1.md) | Versioned REST / SignalR / error contract |
-| [TRACKER-ADMISSION-QUEUE-RUNBOOK.md](./TRACKER-ADMISSION-QUEUE-RUNBOOK.md) | Workstation mapping, seed, smoke |
-| [kiosk-queue-display-web.md](./kiosk-queue-display-web.md) | Path-based IIS deploy + monorepo strategy for kiosk/display |
+| [TRACKER-ADMISSION-QUEUE-API-V1.md](../api/TRACKER-ADMISSION-QUEUE-API-V1.md) | Versioned REST / SignalR / error contract |
+| [TRACKER-ADMISSION-QUEUE-RUNBOOK.md](../ops/TRACKER-ADMISSION-QUEUE-RUNBOOK.md) | Workstation mapping, seed, smoke |
+| [kiosk-queue-display-web.md](../architecture/kiosk-queue-display-web.md) | Path-based IIS deploy + monorepo strategy for kiosk/display |
 | Code under `c012_myhospital_web` (Admisi) and `Bilreg.Api` Admission Queue v1 | Executable Officer baseline and API evidence |
 
 **Out of scope of this plan:** Backend authority redesign, R-02 claims-derived actor, R-05B Kiosk transport idempotency, R-14 automations, HiDok Self-Registration decision ownership, production SignalR scale-out, redesign of completed C0/C1 Officer work.
@@ -43,7 +43,7 @@
 | Change | Why |
 |--------|-----|
 | Mark C0 and C1 ✅ completed | Officer foundations and Officer Client are implemented in `c012`; they are the baseline |
-| Replace dual-repo / `c013`+`c014` placement with **monorepo** `apps/*` + `packages/*` | [kiosk-queue-display-web.md](./kiosk-queue-display-web.md) §2 — shared API/SignalR/types must not diverge |
+| Replace dual-repo / `c013`+`c014` placement with **monorepo** `apps/*` + `packages/*` | [kiosk-queue-display-web.md](../architecture/kiosk-queue-display-web.md) §2 — shared API/SignalR/types must not diverge |
 | Replace per-app URL/query config with **path-based routing** `/kiosk/{stationId}`, `/display/{screenId}` | Same doc §1 — on-prem IIS without SSL; one site; clean kiosk shortcuts |
 | Replace “separate IIS apps `/AdmissionKiosk/`” with **single IIS site**, folders `kiosk/` + `display/`, SPA `web.config` rewrite | Same doc §1 |
 | Add device-config boot resolution and `version.json` auto-refresh | Same doc §4.1 / §4.6 / §2.5 |
@@ -82,7 +82,7 @@ Part 2 external clients are **closed through C4**: cross-client E2E procedures, 
 |----------|---------|
 | `MyHospitalWeb/b09-bilreg-api` | Backend + docs; SignalR hub `/hubs/admission-queue` implemented |
 | `MyHospitalWeb/c012_myhospital_web` | **Officer baseline (C0/C1)** — do not move into monorepo |
-| **New monorepo** (working name `myhospitalweb-frontend` or under `MyHospitalWeb/`) | **C2/C3 home** — `apps/kiosk-web`, `apps/display-web`, `packages/*` per [kiosk-queue-display-web.md](./kiosk-queue-display-web.md) |
+| **New monorepo** (working name `myhospitalweb-frontend` or under `MyHospitalWeb/`) | **C2/C3 home** — `apps/kiosk-web`, `apps/display-web`, `packages/*` per [kiosk-queue-display-web.md](../architecture/kiosk-queue-display-web.md) |
 | `Project.Aktif/X1/kiosk_wpf` | Legacy WPF — UX/print patterns only |
 | `Project.Aktif/X1/antres_display*`, `X1/queue/*` | Legacy VB6 — do not port |
 | `Project.Aktif/_Published/A025_DisplayAntrian_SmartTV` | Optional later Android TV track |
@@ -421,7 +421,7 @@ Open /display/{screenId}
 
 ## 8. Backend / API prerequisites and detected gaps `[CHANGED]`
 
-Compare [kiosk-queue-display-web.md](./kiosk-queue-display-web.md) §4 wish-list against Bilreg Admission Queue v1. **No new business capabilities** — only technical contracts for path-based devices.
+Compare [kiosk-queue-display-web.md](../architecture/kiosk-queue-display-web.md) §4 wish-list against Bilreg Admission Queue v1. **No new business capabilities** — only technical contracts for path-based devices.
 
 ### 8.1 Already sufficient (use as-is)
 
@@ -568,7 +568,7 @@ Before go-live: runbook seed + workstation maps + edge headers + `rollout/status
 | **C2.0** | ✅ | Monorepo scaffold + kiosk path boot + intake |
 | **C2.1** | ✅ | Local print proxy + reprint-same-label + uncertain-response copy |
 
-Report: [`tracker-c2-kiosk-implementation-report.md`](./tracker-c2-kiosk-implementation-report.md).
+Report: [`tracker-c2-kiosk-implementation-report.md`](../reports/tracker-c2-kiosk-implementation-report.md).
 
 ### Completed C3 (closed)
 
@@ -577,7 +577,7 @@ Report: [`tracker-c2-kiosk-implementation-report.md`](./tracker-c2-kiosk-impleme
 | **C3.0** | ✅ | `display-web` `/display/:screenId`, device config, snapshot render, poll |
 | **C3.1** | ✅ | `signalr-client` RefreshHint → snapshot; AnnouncementVersion audio; `version.json` idle reload |
 
-Report: [`tracker-c3-queue-display-implementation-report.md`](./tracker-c3-queue-display-implementation-report.md).
+Report: [`tracker-c3-queue-display-implementation-report.md`](../reports/tracker-c3-queue-display-implementation-report.md).
 
 ### Completed C4 (closed)
 
@@ -585,8 +585,8 @@ Report: [`tracker-c3-queue-display-implementation-report.md`](./tracker-c3-queue
 |-------|--------|---------|
 | **C4** | ✅ | Cross-client E2E smoke, IIS cutover checklist, runbook client sections |
 
-Report: [`tracker-c4-integration-deployment-implementation-report.md`](./tracker-c4-integration-deployment-implementation-report.md).  
-Ops: [`TRACKER-ADMISSION-QUEUE-RUNBOOK.md`](./TRACKER-ADMISSION-QUEUE-RUNBOOK.md) §§8–11, [`TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md`](./TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md).
+Report: [`tracker-c4-integration-deployment-implementation-report.md`](../reports/tracker-c4-integration-deployment-implementation-report.md).  
+Ops: [`TRACKER-ADMISSION-QUEUE-RUNBOOK.md`](../ops/TRACKER-ADMISSION-QUEUE-RUNBOOK.md) §§8–11, [`TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md`](../ops/TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md).
 
 ### Immediate follow-ons
 

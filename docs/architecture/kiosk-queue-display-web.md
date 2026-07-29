@@ -6,7 +6,7 @@
 Status: Draft v1  
 Scope: Frontend only (kiosk-web, display-web). Backend, print proxy lokal, dan WinForm/WPF dianggap out of scope / sudah ada.
 
-**Consumed by:** [TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md](./TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md) (C2+ revision). That plan is authoritative for remaining Kiosk/Display implementation phases; this document remains the deployment/repo architecture decision record.
+**Consumed by:** [TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md](../plans/TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md) (C2+ revision). That plan is authoritative for remaining Kiosk/Display implementation phases; this document remains the deployment/repo architecture decision record.
 
 ---
 
