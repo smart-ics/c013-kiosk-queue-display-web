@@ -133,13 +133,14 @@ export class AdmissionQueueClient {
     // Some Bilreg deployments return JSend's payload directly while older
     // deployments wrap it once more as { data: payload }. Accept both forms
     // during the API transition.
+    const envelopeData = success.data.data
     const responseData =
-      success.data &&
-      typeof success.data === 'object' &&
-      !Array.isArray(success.data) &&
-      'data' in success.data
-        ? (success.data as { data: unknown }).data
-        : success.data
+      envelopeData &&
+      typeof envelopeData === 'object' &&
+      !Array.isArray(envelopeData) &&
+      'data' in envelopeData
+        ? (envelopeData as { data: unknown }).data
+        : envelopeData
     const parsed = schema.safeParse(responseData)
     if (!parsed.success) {
       throw new ApiClientError(

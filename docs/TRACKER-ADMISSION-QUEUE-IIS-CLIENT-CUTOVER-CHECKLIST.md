@@ -32,7 +32,7 @@ Production hospital-wide cutover execution remains site-owned. Use this checklis
 | Gate | Evidence | Done |
 |------|----------|------|
 | `pnpm install` + `pnpm build` succeeds | CI or local log | [ ] |
-| `apps/kiosk-web/dist` contains `index.html`, `version.json`, `web.config`, `devices.json`, `assets/` | Dir listing | [ ] |
+| `apps/kiosk-web/dist` contains `index.html`, `version.json`, `web.config`, `assets/` | Dir listing | [ ] |
 | `apps/display-web/dist` contains `index.html`, `version.json`, `web.config`, `devices.json`, `assets/` | Dir listing | [ ] |
 | Build-time API base / token policy documented for the target env | `.env` / release notes (no secrets in git) | [ ] |
 
@@ -64,7 +64,7 @@ C:\inetpub\wwwroot\
 
 | Gate | Evidence | Done |
 |------|----------|------|
-| Every Chrome kiosk shortcut ID has a matching `devices.json` (or future device-config API) row | Config review | [ ] |
+| Every Chrome kiosk shortcut ID has an active matching row in config-web with at least one Service Point | Config review | [ ] |
 | Kiosk rows: `role: kiosk`, non-empty offerings / service-point allow-list | Config | [ ] |
 | Display rows: `role: display`, non-empty `loketIds` | Config | [ ] |
 | Officer `global_config.json` `admissionQueue.enabled` (and workstation keys) set for the env | `c012` config | [ ] |
@@ -108,7 +108,7 @@ Archive: build version (`version.json`), IIS host, rollout status response, E2E 
 | Situation | Action |
 |-----------|--------|
 | Bad kiosk/display static build | Restore previous `wwwroot/kiosk` and/or `wwwroot/display` backup |
-| Wrong device config | Fix `devices.json` (or device API) and soft-reload / reopen shortcut — **no** DB DROP |
+| Wrong kiosk config | Fix the kiosk in config-web and soft-reload / reopen shortcut — **no** DB DROP |
 | Officer flag regression | Revert `admissionQueue` flags in `global_config` / redeploy previous HIS |
 | Backend defect | Follow backend runbook rollback — do **not** DROP AQ tables for client-only issues |
 

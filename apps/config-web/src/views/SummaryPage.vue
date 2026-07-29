@@ -53,6 +53,14 @@ const summaryQuery = useQuery({
           <div class="muted">Display nonaktif</div>
           <strong>{{ summaryQuery.data.value.inactiveDisplayCount }}</strong>
         </div>
+        <div>
+          <div class="muted">Kiosk aktif</div>
+          <strong>{{ summaryQuery.data.value.activeKioskCount }}</strong>
+        </div>
+        <div>
+          <div class="muted">Kiosk nonaktif</div>
+          <strong>{{ summaryQuery.data.value.inactiveKioskCount }}</strong>
+        </div>
       </div>
       <div>
         <h3>Peringatan operasional</h3>
@@ -64,6 +72,10 @@ const summaryQuery = useQuery({
           <li>
             Display tanpa loket:
             {{ summaryQuery.data.value.displaysWithoutLoket?.join(', ') || '—' }}
+          </li>
+          <li>
+            Kiosk tanpa Service Point:
+            {{ summaryQuery.data.value.kiosksWithoutServicePoint?.join(', ') || '—' }}
           </li>
         </ul>
       </div>

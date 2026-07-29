@@ -212,7 +212,7 @@ pnpm build
 | `apps/kiosk-web/dist/` | `wwwroot/kiosk/` |
 | `apps/display-web/dist/` | `wwwroot/display/` |
 
-Each dist must include `index.html`, `assets/`, `version.json`, `web.config`, and `devices.json` (JSON device-config provider until `GET /api/devices/{id}/config` exists).
+Each dist must include `index.html`, `assets/`, `version.json`, and `web.config`. Display-web also currently includes `devices.json`; kiosk-web resolves its managed configuration from `GET /api/v1/admission-queue/devices/kiosks/{stationId}`.
 
 ### Device config
 

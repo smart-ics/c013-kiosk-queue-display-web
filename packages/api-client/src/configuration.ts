@@ -4,37 +4,46 @@ import {
   configurationWhoAmISchema,
   currentLoketDisplayItemSchema,
   createQueueDisplayBodySchema,
+  createQueueKioskBodySchema,
   createWorkstationBodySchema,
   displayBootConfigSchema,
+  kioskBootConfigSchema,
   loginResponseSchema,
   queueDisplaySchema,
+  queueKioskSchema,
   replaceDisplayLoketsBodySchema,
+  replaceKioskServicePointsBodySchema,
   segmentationCoverageSchema,
   updateQueueDisplayBodySchema,
+  updateQueueKioskBodySchema,
   updateWorkstationBodySchema,
   workstationContextSchema,
   workstationSchema,
   type CreateQueueDisplayBody,
+  type CreateQueueKioskBody,
   type CreateWorkstationBody,
   type LoginRequest,
   type LoginResponse,
   type ReplaceDisplayLoketsBody,
+  type ReplaceKioskServicePointsBody,
   type UpdateQueueDisplayBody,
+  type UpdateQueueKioskBody,
   type UpdateWorkstationBody,
 } from "@aq/shared-types";
 import { z } from "zod";
 import { ApiClientError } from "./errors";
 import type { AdmissionQueueClient } from "./http";
 
-const workstationsSchema = z.array(workstationSchema);
-const displaysSchema = z.array(queueDisplaySchema);
-const availableWorkstationsSchema = z.array(workstationContextSchema);
-const currentDisplaysSchema = z.array(currentLoketDisplayItemSchema);
+const workstationsSchema = z.array(workstationSchema)
+const displaysSchema = z.array(queueDisplaySchema)
+const kiosksSchema = z.array(queueKioskSchema)
+const availableWorkstationsSchema = z.array(workstationContextSchema)
+const currentDisplaysSchema = z.array(currentLoketDisplayItemSchema)
 
-/** Login lives at server root `/login`, not under `/api`. */
+/** Bilreg issues tokens at `/api/User/login`. */
 export function buildLoginUrl(apiBase: string): string {
-  const trimmed = apiBase.replace(/\/+$/, "");
-  return `${trimmed}/user/login`;
+  const trimmed = apiBase.replace(/\/+$/, '')
+  return `${trimmed}/User/login`
 }
 
 export async function loginBilreg(
@@ -208,6 +217,59 @@ export function createConfigurationApi(client: AdmissionQueueClient) {
       );
     },
 
+    listKiosks() {
+      return client.getJson(`${base}/kiosks`, kiosksSchema)
+    },
+
+    getKiosk(stationId: string) {
+      return client.getJson(
+        `${base}/kiosks/${encodeURIComponent(stationId)}`,
+        queueKioskSchema,
+      )
+    },
+
+    createKiosk(body: CreateQueueKioskBody) {
+      const parsed = createQueueKioskBodySchema.parse(body)
+      return client.postJson(`${base}/kiosks`, parsed, queueKioskSchema)
+    },
+
+    updateKiosk(stationId: string, body: UpdateQueueKioskBody) {
+      const parsed = updateQueueKioskBodySchema.parse(body)
+      return client.putJson(
+        `${base}/kiosks/${encodeURIComponent(stationId)}`,
+        parsed,
+        queueKioskSchema,
+      )
+    },
+
+    replaceKioskServicePoints(
+      stationId: string,
+      body: ReplaceKioskServicePointsBody,
+    ) {
+      const parsed = replaceKioskServicePointsBodySchema.parse(body)
+      return client.putJson(
+        `${base}/kiosks/${encodeURIComponent(stationId)}/service-points`,
+        parsed,
+        queueKioskSchema,
+      )
+    },
+
+    activateKiosk(stationId: string, rowVersion?: string) {
+      return client.postJson(
+        `${base}/kiosks/${encodeURIComponent(stationId)}/activate`,
+        { rowVersion },
+        queueKioskSchema,
+      )
+    },
+
+    deactivateKiosk(stationId: string, rowVersion?: string) {
+      return client.postJson(
+        `${base}/kiosks/${encodeURIComponent(stationId)}/deactivate`,
+        { rowVersion },
+        queueKioskSchema,
+      )
+    },
+
     getSegmentation() {
       return client.getJson(`${base}/segmentation`, segmentationCoverageSchema);
     },
@@ -249,6 +311,13 @@ export function createRuntimeDeviceApi(client: AdmissionQueueClient) {
         `v1/admission-queue/devices/displays/${encodeURIComponent(displayId)}`,
         displayBootConfigSchema,
       );
+    },
+
+    getPublicKioskBootConfig(stationId: string) {
+      return client.getPublicJson(
+        `v1/admission-queue/devices/kiosks/${encodeURIComponent(stationId)}`,
+        kioskBootConfigSchema,
+      )
     },
 
     getPublicDisplaySnapshot(displayId: string) {

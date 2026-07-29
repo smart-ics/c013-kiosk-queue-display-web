@@ -2,10 +2,11 @@ import { EnvAuthTokenProvider, type IAuthTokenProvider } from '@aq/auth'
 import {
   AdmissionQueueClient,
   createAdmissionQueueApi,
+  createRuntimeDeviceApi,
   type AdmissionQueueApi,
 } from '@aq/api-client'
 import {
-  JsonDeviceConfigurationProvider,
+  ApiKioskDeviceConfigurationProvider,
   type IDeviceConfigurationProvider,
 } from '@aq/device-config'
 
@@ -15,12 +16,17 @@ let admissionQueueApi: AdmissionQueueApi | null = null
 
 export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationProvider> {
   if (deviceConfigProvider) return deviceConfigProvider
-  const response = await fetch(`${import.meta.env.BASE_URL}devices.json`, { cache: 'no-store' })
-  if (!response.ok) {
-    throw new Error(`Failed to load devices.json (${response.status})`)
-  }
-  const json = (await response.json()) as unknown
-  deviceConfigProvider = JsonDeviceConfigurationProvider.fromJson(json)
+  const baseUrl = import.meta.env.VITE_BILREG_API_BASE?.trim()
+  if (!baseUrl) throw new Error('VITE_BILREG_API_BASE is not configured')
+  const runtime = createRuntimeDeviceApi(
+    new AdmissionQueueClient({
+      baseUrl,
+      auth: getAuthTokenProvider(),
+    }),
+  )
+  deviceConfigProvider = new ApiKioskDeviceConfigurationProvider({
+    getKioskBootConfig: (stationId) => runtime.getPublicKioskBootConfig(stationId),
+  })
   return deviceConfigProvider
 }
 
