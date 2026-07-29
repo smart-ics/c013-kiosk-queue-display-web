@@ -87,7 +87,7 @@ Signed evidence (ops log + rollout status response + test filter output) should 
 
 ## R6 — External clients (Phase C4)
 
-Officer + Kiosk + Display constellation. Detailed gates: [TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md](./TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md). Evidence: [tracker-c4-integration-deployment-implementation-report.md](./tracker-c4-integration-deployment-implementation-report.md).
+Officer + Kiosk + Display constellation. Detailed gates: [TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md](./TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md). Evidence: [tracker-c4-integration-deployment-implementation-report.md](../reports/tracker-c4-integration-deployment-implementation-report.md).
 
 | Gate | Evidence | Done |
 |------|----------|------|
@@ -120,6 +120,6 @@ Officer + Kiosk + Display constellation. Detailed gates: [TRACKER-ADMISSION-QUEU
 |------|------|
 | [TRACKER-ADMISSION-QUEUE-RUNBOOK.md](./TRACKER-ADMISSION-QUEUE-RUNBOOK.md) | Procedures |
 | [TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md](./TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md) | Client IIS cutover |
-| [TRACKER-ADMISSION-QUEUE-API-V1.md](./TRACKER-ADMISSION-QUEUE-API-V1.md) | Contracts |
+| [TRACKER-ADMISSION-QUEUE-API-V1.md](../api/TRACKER-ADMISSION-QUEUE-API-V1.md) | Contracts |
 | [tracker-admission-queue-phase5-rollout-implementation-report.md](./tracker-admission-queue-phase5-rollout-implementation-report.md) | Phase 5 delivery evidence |
-| [tracker-c4-integration-deployment-implementation-report.md](./tracker-c4-integration-deployment-implementation-report.md) | C4 client integration closure |
+| [tracker-c4-integration-deployment-implementation-report.md](../reports/tracker-c4-integration-deployment-implementation-report.md) | C4 client integration closure |

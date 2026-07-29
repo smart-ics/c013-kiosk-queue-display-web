@@ -5,8 +5,8 @@
 
 **Artifact status:** Implementation summary (closed for Phase C2)  
 **Bounded context:** Patient Tracker / Admission Queue — external clients  
-**Authoritative plan:** [`TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md`](TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md)  
-**Architecture addendum:** [`kiosk-queue-display-web.md`](kiosk-queue-display-web.md)  
+**Authoritative plan:** [`TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md`](../plans/TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md)  
+**Architecture addendum:** [`kiosk-queue-display-web.md`](../architecture/kiosk-queue-display-web.md)  
 **Code home:** `MyHospitalWeb/c013-kiosk-queue-display-web`  
 **Date:** 2026-07-23
 

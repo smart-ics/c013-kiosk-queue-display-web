@@ -54,18 +54,24 @@ export class ApiDeviceConfigurationProvider implements IDeviceConfigurationProvi
   }
 
   async listDisplayScreenIds(): Promise<string[]> {
-    if (this.options.listDisplays) {
-      const displays = await this.options.listDisplays()
-      return displays.map((d) => d.deviceId)
+    if (!this.options.listDisplays) {
+      throw new DeviceConfigInvalidError(
+        '*',
+        'listDisplayScreenIds requires listDisplays option to be configured',
+      )
     }
-    return []
+    const displays = await this.options.listDisplays()
+    return displays.map((d) => d.deviceId)
   }
 
   async listKioskStationIds(): Promise<string[]> {
-    if (this.options.listKiosks) {
-      const kiosks = await this.options.listKiosks()
-      return kiosks.map((k) => k.deviceId)
+    if (!this.options.listKiosks) {
+      throw new DeviceConfigInvalidError(
+        '*',
+        'listKioskStationIds requires listKiosks option to be configured',
+      )
     }
-    return []
+    const kiosks = await this.options.listKiosks()
+    return kiosks.map((k) => k.deviceId)
   }
 }

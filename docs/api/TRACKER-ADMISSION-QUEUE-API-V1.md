@@ -189,12 +189,12 @@ ownership must supply it after consumer migration is verified.
 | `POST /api/Antrian/start` | Legacy direct Waiting→InService | `LegacyEndpointsEnabled`; warning log |
 | `PATCH /api/Antrian/mulaiPeriksa/{id}/{n}` | Physician Serve (compat) | Ungated; warning log; not officer AQ v1 |
 | `PATCH /api/Antrian/selesaiPeriksa/{id}/{n}` | Physician Done (compat) | Ungated; warning log; not officer AQ v1 |
-| Registration create-on-queue paths | Legacy registration without prior intake | Compatibility; disposition recorded on [rollout checklist](./TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md) |
+| Registration create-on-queue paths | Legacy registration without prior intake | Compatibility; disposition recorded on [rollout checklist](../ops/TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md) |
 
 Physician/compat mutators are intentionally not feature-gated in Phase 2; they remain inventoried for
 Phase 5 compatibility closure. Phase 5 supplies the go/no-go checklist and runbook; it does not invent
 a deprecation date. Integration evidence and workstation/edge requirements are in
-[TRACKER-ADMISSION-QUEUE-RUNBOOK.md](./TRACKER-ADMISSION-QUEUE-RUNBOOK.md).
+[TRACKER-ADMISSION-QUEUE-RUNBOOK.md](../ops/TRACKER-ADMISSION-QUEUE-RUNBOOK.md).
 
 ### Rollout preflight (Phase 5)
 

@@ -1,0 +1,13 @@
+packages/api-client/src/configuration.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- Changes ---
+
+packages/api-client/src/configuration.ts
+  @@ -335,7 +335,7 @@ export function createRuntimeDeviceApi(client: AdmissionQueueClient) {
+  -      return client.getJson(
+  +      return client.getPublicJson(
+           "v1/admission-queue/configuration/kiosks",
+           kiosksSchema,
+         );
+  +1 -1
