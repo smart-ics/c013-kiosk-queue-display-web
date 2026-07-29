@@ -1,4 +1,3 @@
-import { EnvAuthTokenProvider, type IAuthTokenProvider } from '@aq/auth'
 import {
   AdmissionQueueClient,
   createAdmissionQueueApi,
@@ -11,7 +10,6 @@ import {
 } from '@aq/device-config'
 
 let deviceConfigProvider: IDeviceConfigurationProvider | null = null
-let authTokenProvider: IAuthTokenProvider | null = null
 let admissionQueueApi: AdmissionQueueApi | null = null
 
 export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationProvider> {
@@ -21,7 +19,7 @@ export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationPro
   const runtime = createRuntimeDeviceApi(
     new AdmissionQueueClient({
       baseUrl,
-      auth: getAuthTokenProvider(),
+      auth: { getToken: () => null },
     }),
   )
   deviceConfigProvider = new ApiKioskDeviceConfigurationProvider({
@@ -29,13 +27,6 @@ export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationPro
     listKiosks: () => runtime.listPublicKiosks(),
   })
   return deviceConfigProvider
-}
-
-export function getAuthTokenProvider(): IAuthTokenProvider {
-  if (!authTokenProvider) {
-    authTokenProvider = new EnvAuthTokenProvider(import.meta.env.VITE_BILREG_TOKEN)
-  }
-  return authTokenProvider
 }
 
 export function getAdmissionQueueApi(): AdmissionQueueApi {
@@ -46,7 +37,7 @@ export function getAdmissionQueueApi(): AdmissionQueueApi {
   }
   const client = new AdmissionQueueClient({
     baseUrl,
-    auth: getAuthTokenProvider(),
+    auth: { getToken: () => null },
   })
   admissionQueueApi = createAdmissionQueueApi(client)
   return admissionQueueApi
@@ -54,6 +45,5 @@ export function getAdmissionQueueApi(): AdmissionQueueApi {
 
 export function __resetInfrastructureForTests() {
   deviceConfigProvider = null
-  authTokenProvider = null
   admissionQueueApi = null
 }

@@ -2,7 +2,6 @@
 
 interface ImportMetaEnv {
   readonly VITE_BILREG_API_BASE: string
-  readonly VITE_BILREG_TOKEN: string
 }
 
 interface ImportMeta {
