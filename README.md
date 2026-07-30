@@ -29,11 +29,13 @@ cp apps/display-web/public/global_config.example.json apps/display-web/public/gl
 cp apps/config-web/public/global_config.example.json apps/config-web/public/global_config.json
 # Edit global_config.json in each app to set your bilregApiBase
 
-# Set up local dev server config (for Vite proxy and tokens)
-cp apps/kiosk-web/.env.example apps/kiosk-web/.env.local
+# Set up local dev server config (.env.local) if needed
+# - kiosk-web: (No .env configuration needed)
+# - display-web: set VITE_BILREG_API_BASE (used as Vite proxy target for SignalR /hubs)
 cp apps/display-web/.env.example apps/display-web/.env.local
+# - config-web: set VITE_PUBLIC_ORIGIN if mapping to custom display domain
 cp apps/config-web/.env.example apps/config-web/.env.local
-# Display: set VITE_BILREG_API_BASE in .env.local (used by Vite proxy)
+
 pnpm dev:kiosk
 # or
 pnpm dev:display
@@ -48,13 +50,12 @@ Config: `http://localhost:5175/queue-config/`.
 ## Environment & Configuration
 
 Applications are configured post-deployment via `public/global_config.json`.
-Local development uses `.env.local` for Vite proxy configuration and tokens.
+Local development uses `.env.local` for Vite proxy configuration or other local-only properties.
 
 | Variable/Config | Purpose |
 |----------|---------|
 | `global_config.json -> bilregApiBase` | Bilreg API root including `/api` (e.g. `http://localhost:5000/api`) |
-| `VITE_BILREG_API_BASE` | Local dev only: Vite proxy target |
-| `VITE_BILREG_TOKEN` | Local dev only: JWT for testing display REST + SignalR |
+| `VITE_BILREG_API_BASE` | Local dev only (`display-web`): Vite dev-server proxy target for SignalR `/hubs` |
 | `VITE_DEVICE_CONFIG_PROVIDER` | Display: `api` (default) or `json` emergency/tests |
 | `VITE_PUBLIC_ORIGIN` | Config app: public origin for canonical `/display/{id}` URLs |
 
