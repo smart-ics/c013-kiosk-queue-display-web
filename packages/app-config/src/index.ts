@@ -1,6 +1,10 @@
-export interface AppConfig {
-  bilregApiBase: string
-}
+import { z } from 'zod'
+
+const appConfigSchema = z.object({
+  bilregApiBase: z.string().min(1, 'bilregApiBase must not be empty')
+})
+
+export type AppConfig = z.infer<typeof appConfigSchema>
 
 class ConfigService {
   private config: AppConfig | null = null
@@ -21,8 +25,15 @@ class ConfigService {
       throw new Error(`Failed to load global_config.json: ${res.status} ${res.statusText}`)
     }
     
-    this.config = await res.json()
-    return this.config!
+    const data = await res.json()
+    const parsed = appConfigSchema.safeParse(data)
+    
+    if (!parsed.success) {
+      throw new Error(`Invalid global_config.json: ${parsed.error.message}`)
+    }
+    
+    this.config = parsed.data
+    return this.config
   }
 
   getConfig(): AppConfig {

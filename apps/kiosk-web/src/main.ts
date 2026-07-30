@@ -16,4 +16,12 @@ const queryClient = new QueryClient({
 
 configService.initialize(import.meta.env.BASE_URL).then(() => {
   createApp(App).use(router).use(VueQueryPlugin, { queryClient }).mount('#app')
+}).catch((err) => {
+  console.error('Configuration failed to load:', err)
+  document.getElementById('app')!.innerHTML = `
+    <div style="padding: 20px; color: red; font-family: sans-serif;">
+      <h2>Configuration failed to load</h2>
+      <p>Please check the console for details.</p>
+    </div>
+  `
 })
