@@ -89,6 +89,6 @@ describe('createQueueConnection', () => {
     })
 
     expect(received).toBeDefined()
-    await expect(received!.accessTokenFactory()).resolves.toBe('jwt')
+    await expect(received!.accessTokenFactory!()).resolves.toBe('jwt')
   })
 })
