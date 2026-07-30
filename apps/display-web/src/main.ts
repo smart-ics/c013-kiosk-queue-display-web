@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import { VueQueryPlugin, QueryClient } from '@tanstack/vue-query'
+import { configService } from '@aq/app-config'
 import App from './App.vue'
 import { router } from './router'
 import './styles.css'
@@ -13,4 +14,14 @@ const queryClient = new QueryClient({
   },
 })
 
-createApp(App).use(router).use(VueQueryPlugin, { queryClient }).mount('#app')
+configService.initialize(import.meta.env.BASE_URL).then(() => {
+  createApp(App).use(router).use(VueQueryPlugin, { queryClient }).mount('#app')
+}).catch((err) => {
+  console.error('Configuration failed to load:', err)
+  document.getElementById('app')!.innerHTML = `
+    <div style="padding: 20px; color: red; font-family: sans-serif;">
+      <h2>Configuration failed to load</h2>
+      <p>Please check the console for details.</p>
+    </div>
+  `
+})

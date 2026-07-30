@@ -8,14 +8,15 @@ import {
   ApiKioskDeviceConfigurationProvider,
   type IDeviceConfigurationProvider,
 } from '@aq/device-config'
+import { configService } from '@aq/app-config'
 
 let deviceConfigProvider: IDeviceConfigurationProvider | null = null
 let admissionQueueApi: AdmissionQueueApi | null = null
 
 export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationProvider> {
   if (deviceConfigProvider) return deviceConfigProvider
-  const baseUrl = import.meta.env.VITE_BILREG_API_BASE?.trim()
-  if (!baseUrl) throw new Error('VITE_BILREG_API_BASE is not configured')
+  const baseUrl = configService.getConfig().bilregApiBase
+  if (!baseUrl) throw new Error('bilregApiBase is not configured in global_config.json')
   const runtime = createRuntimeDeviceApi(
     new AdmissionQueueClient({
       baseUrl,
@@ -34,9 +35,9 @@ export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationPro
 
 export function getAdmissionQueueApi(): AdmissionQueueApi {
   if (admissionQueueApi) return admissionQueueApi
-  const baseUrl = import.meta.env.VITE_BILREG_API_BASE?.trim()
+  const baseUrl = configService.getConfig().bilregApiBase
   if (!baseUrl) {
-    throw new Error('VITE_BILREG_API_BASE is not configured')
+    throw new Error('bilregApiBase is not configured in global_config.json')
   }
   const client = new AdmissionQueueClient({
     baseUrl,

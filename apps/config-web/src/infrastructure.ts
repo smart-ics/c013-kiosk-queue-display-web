@@ -6,6 +6,7 @@ import {
 } from '@aq/api-client'
 import { SessionAuthTokenProvider } from '@aq/auth'
 import type { LoginRequest, LoginResponse } from '@aq/shared-types'
+import { configService } from '@aq/app-config'
 
 let sessionAuth: SessionAuthTokenProvider | null = null
 let client: AdmissionQueueClient | null = null
@@ -18,8 +19,8 @@ export function getSessionAuth(): SessionAuthTokenProvider {
 }
 
 export function getApiBase(): string {
-  const baseUrl = import.meta.env.VITE_BILREG_API_BASE?.trim()
-  if (!baseUrl) throw new Error('VITE_BILREG_API_BASE is not configured')
+  const baseUrl = configService.getConfig().bilregApiBase
+  if (!baseUrl) throw new Error('bilregApiBase is not configured in global_config.json')
   return baseUrl
 }
 
