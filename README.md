@@ -23,11 +23,17 @@ Device configuration plan/report:
 
 ```bash
 pnpm install
+# Set up global runtime config (used in production and dev)
+cp apps/kiosk-web/public/global_config.example.json apps/kiosk-web/public/global_config.json
+cp apps/display-web/public/global_config.example.json apps/display-web/public/global_config.json
+cp apps/config-web/public/global_config.example.json apps/config-web/public/global_config.json
+# Edit global_config.json in each app to set your bilregApiBase
+
+# Set up local dev server config (for Vite proxy and tokens)
 cp apps/kiosk-web/.env.example apps/kiosk-web/.env.local
 cp apps/display-web/.env.example apps/display-web/.env.local
 cp apps/config-web/.env.example apps/config-web/.env.local
-# Kiosk/Display: set VITE_BILREG_API_BASE and VITE_BILREG_TOKEN
-# Config: set VITE_BILREG_API_BASE only (interactive login; no write JWT)
+# Display: set VITE_BILREG_API_BASE in .env.local (used by Vite proxy)
 pnpm dev:kiosk
 # or
 pnpm dev:display
@@ -39,12 +45,16 @@ Kiosk: `http://localhost:5173/kiosk/loket-03` (mock: `loket-03`, `loket-07`).
 Display: `http://localhost:5174/display/lobby-poli-1` (mock: `lobby-poli-1`, `lobby-igd`).  
 Config: `http://localhost:5175/queue-config/`.
 
-## Environment
+## Environment & Configuration
 
-| Variable | Purpose |
+Applications are configured post-deployment via `public/global_config.json`.
+Local development uses `.env.local` for Vite proxy configuration and tokens.
+
+| Variable/Config | Purpose |
 |----------|---------|
-| `VITE_BILREG_API_BASE` | Bilreg API root including `/api` (e.g. `http://localhost:5000/api`) |
-| `VITE_BILREG_TOKEN` | JWT for kiosk/display REST + SignalR only (not for config-web writes) |
+| `global_config.json -> bilregApiBase` | Bilreg API root including `/api` (e.g. `http://localhost:5000/api`) |
+| `VITE_BILREG_API_BASE` | Local dev only: Vite proxy target |
+| `VITE_BILREG_TOKEN` | Local dev only: JWT for testing display REST + SignalR |
 | `VITE_DEVICE_CONFIG_PROVIDER` | Display: `api` (default) or `json` emergency/tests |
 | `VITE_PUBLIC_ORIGIN` | Config app: public origin for canonical `/display/{id}` URLs |
 

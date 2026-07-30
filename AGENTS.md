@@ -18,6 +18,7 @@ apps/config-web     Path `/queue-config/` device configuration (D0–D7)
 packages/shared-types
 packages/api-client
 packages/device-config
+packages/app-config
 packages/auth
 packages/signalr-client
 ```
