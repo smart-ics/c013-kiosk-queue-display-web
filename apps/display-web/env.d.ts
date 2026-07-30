@@ -1,7 +1,6 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_BILREG_API_BASE: string
   readonly VITE_DEVICE_CONFIG_PROVIDER?: string
 }
 

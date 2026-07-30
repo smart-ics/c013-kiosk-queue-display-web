@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@aq/api-client": "workspace:*",
+    "@aq/app-config": "workspace:*",
     "@aq/auth": "workspace:*",
     "@aq/shared-types": "workspace:*",
     "@tanstack/vue-query": "^5.92.1",

@@ -7,6 +7,7 @@ import {
   ApiDeviceConfigurationProvider,
   type IDeviceConfigurationProvider,
 } from '@aq/device-config'
+import { configService } from '@aq/app-config'
 
 let deviceConfigProvider: IDeviceConfigurationProvider | null = null
 let runtimeDeviceApi: ReturnType<typeof createRuntimeDeviceApi> | null = null
@@ -27,9 +28,9 @@ export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationPro
 
 export function getRuntimeDeviceApi() {
   if (runtimeDeviceApi) return runtimeDeviceApi
-  const baseUrl = import.meta.env.VITE_BILREG_API_BASE?.trim()
+  const baseUrl = configService.getConfig().bilregApiBase
   if (!baseUrl) {
-    throw new Error('VITE_BILREG_API_BASE is not configured')
+    throw new Error('bilregApiBase is not configured in global_config.json')
   }
   const client = new AdmissionQueueClient({
     baseUrl,
@@ -40,9 +41,9 @@ export function getRuntimeDeviceApi() {
 }
 
 export function getAdmissionQueueHubUrl(): string {
-  const baseUrl = import.meta.env.VITE_BILREG_API_BASE?.trim()
+  const baseUrl = configService.getConfig().bilregApiBase
   if (!baseUrl) {
-    throw new Error('VITE_BILREG_API_BASE is not configured')
+    throw new Error('bilregApiBase is not configured in global_config.json')
   }
   if (import.meta.env.DEV) {
     return '/hubs/admission-queue'
