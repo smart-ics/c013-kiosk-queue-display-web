@@ -34,7 +34,10 @@ export function useKioskSelfPrint(options: UseKioskSelfPrintOptions) {
   async function printRegistration(
     ctx: RegistrationPrintContext,
   ): Promise<RegistrationPrintResult> {
-    if (printPending.value) return { printed: false, error: 'Cetak sedang berlangsung.' }
+    if (printPending.value) {
+      printError.value = 'Cetak sedang berlangsung.'
+      return { printed: false, error: 'Cetak sedang berlangsung.' }
+    }
     printPending.value = true
     printError.value = null
     try {
@@ -73,7 +76,10 @@ export function useKioskSelfPrint(options: UseKioskSelfPrintOptions) {
       printSucceeded.value = false
       return { printed: false, error: printError.value }
     }
-    if (printPending.value) return { printed: false, error: 'Cetak sedang berlangsung.' }
+    if (printPending.value) {
+      printError.value = 'Cetak sedang berlangsung.'
+      return { printed: false, error: 'Cetak sedang berlangsung.' }
+    }
     printPending.value = true
     printError.value = null
     try {

@@ -48,6 +48,16 @@ describe('deriveBookingJaminan', () => {
     expect(deriveBookingJaminan(detail, [bpjsPolis]).tipeJaminanId).toBe(UMAT_TIPE_JAMINAN_ID)
   })
 
+  it('derives BPJS from a polis matched by polisId', () => {
+    const detail = {
+      ...booking,
+      coverageInfo: { asuransiName: 'BPJS', noPeserta: 'P1', noRujukan: 'REF1' },
+    }
+    const status = deriveBookingJaminan(detail, [bpjsPolis])
+    expect(status.tipeJaminanId).toBe('BPJS')
+    expect(status.noPeserta).toBe('P1')
+  })
+
   it('derives BPJS from a matching polis', () => {
     const detail = {
       ...booking,

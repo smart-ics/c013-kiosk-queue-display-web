@@ -72,7 +72,7 @@ function chooseJadwal(jadwal: JadwalItem) {
     <template v-if="!selectedPoli">
       <h2>Poli</h2>
       <div class="sp-grid">
-        <button v-for="poli in polis" :key="poli.id" type="button" class="sp-btn" @click="choosePoli(poli)">
+        <button v-for="poli in polis" :key="poli.id" type="button" class="sp-btn" :disabled="loading || pending" @click="choosePoli(poli)">
           {{ poli.name }}
         </button>
       </div>
@@ -81,7 +81,7 @@ function chooseJadwal(jadwal: JadwalItem) {
     <template v-else-if="!selectedDokter">
       <h2>Dokter — {{ selectedPoli.name }}</h2>
       <div class="sp-grid">
-        <button v-for="dokter in dokterList" :key="dokter.id" type="button" class="sp-btn" @click="chooseDokter(dokter)">
+        <button v-for="dokter in dokterList" :key="dokter.id" type="button" class="sp-btn" :disabled="loading || pending" @click="chooseDokter(dokter)">
           {{ dokter.name }}
         </button>
       </div>
@@ -100,7 +100,7 @@ function chooseJadwal(jadwal: JadwalItem) {
           :key="jadwal.jadwalId"
           type="button"
           class="sp-btn"
-          :disabled="jadwal.sisaKuota <= 0"
+          :disabled="jadwal.sisaKuota <= 0 || loading || pending"
           @click="chooseJadwal(jadwal)"
         >
           {{ jadwal.jamPraktek }}

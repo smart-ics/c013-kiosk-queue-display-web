@@ -14,6 +14,18 @@ describe('canTransition', () => {
     expect(canTransition('WALKIN_CONFIRM', 'REGISTRATION_SUCCESS')).toBe(true)
   })
 
+  it('allows walk-in back to search from select patient', () => {
+    expect(canTransition('WALKIN_SELECT_PATIENT', 'WALKIN_SEARCH')).toBe(true)
+  })
+
+  it('allows walk-in back to search from select service', () => {
+    expect(canTransition('WALKIN_SELECT_SERVICE', 'WALKIN_SEARCH')).toBe(true)
+  })
+
+  it('allows walk-in back to search from confirm', () => {
+    expect(canTransition('WALKIN_CONFIRM', 'WALKIN_SEARCH')).toBe(true)
+  })
+
   it('allows failure → assistance queue only', () => {
     expect(canTransition('FAILURE', 'ASSISTANCE_QUEUE')).toBe(true)
     expect(canTransition('FAILURE', 'HOME')).toBe(false)

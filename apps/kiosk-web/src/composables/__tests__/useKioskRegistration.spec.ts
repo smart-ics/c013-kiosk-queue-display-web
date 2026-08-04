@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
+import { ApiClientError } from '@aq/api-client'
 import type {
   BookingDetail,
   BookingSearchItem,
@@ -139,6 +140,45 @@ describe('useKioskRegistration booking flow', () => {
     expect(reg.errorContext.value?.code).toBe('BIOMETRIC_TIMEOUT')
   })
 
+  it('routes a booking lookup rejection to failure', async () => {
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => {
+        throw new ApiClientError('Failed to fetch', 0)
+      }),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    expect(reg.flow.value).toBe('FAILURE')
+    expect(reg.errorContext.value?.code).toBe('BACKEND_ERROR')
+  })
+
+  it('skips the jaminan group lookup for an Umum booking', async () => {
+    const deps = makeDeps({ getBookingDetail: vi.fn(async () => umumDetail) })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    expect(deps.getGroupJaminanMap).not.toHaveBeenCalled()
+    expect(reg.bookingEligibility.value?.needsEligibility).toBe(false)
+  })
+
+  it('stays on success and skips auto-home when printing rejects', async () => {
+    vi.useFakeTimers()
+    const deps = makeDeps({
+      getBookingDetail: vi.fn(async () => umumDetail),
+      printRegistration: vi.fn(async () => {
+        throw new Error('printer down')
+      }),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    await reg.confirmBooking()
+    expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
+    await vi.advanceTimersByTimeAsync(10_100)
+    expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
+  })
+
   it('falls back to booking-assistance on registration failure', async () => {
     const deps = makeDeps({
       getBookingDetail: vi.fn(async () => umumDetail),
@@ -170,6 +210,43 @@ describe('useKioskRegistration walk-in flow', () => {
     await reg.searchWalkinPatient('ANDI')
     expect(reg.flow.value).toBe('WALKIN_SELECT_PATIENT')
     expect(reg.patientMatches.value).toHaveLength(1)
+  })
+
+  it('routes a walk-in patient search rejection to failure', async () => {
+    const deps = makeDeps({
+      searchPasien: vi.fn(async () => {
+        throw new ApiClientError('Failed to fetch', 0)
+      }),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startWalkinFlow()
+    await reg.searchWalkinPatient('ANDI')
+    expect(reg.flow.value).toBe('FAILURE')
+    expect(reg.errorContext.value?.code).toBe('BACKEND_ERROR')
+  })
+
+  it('routes a polis lookup rejection to failure', async () => {
+    const deps = makeDeps({
+      listPolis: vi.fn(async () => {
+        throw new ApiClientError('Failed to fetch', 0)
+      }),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startWalkinFlow()
+    await reg.searchWalkinPatient('ANDI')
+    await reg.selectPatient(pasien)
+    expect(reg.flow.value).toBe('FAILURE')
+    expect(reg.errorContext.value?.code).toBe('BACKEND_ERROR')
+  })
+
+  it('skips the jaminan group lookup when a walk-in patient has no polis', async () => {
+    const deps = makeDeps({ listPolis: vi.fn(async () => []) })
+    const reg = useKioskRegistration(deps)
+    reg.startWalkinFlow()
+    await reg.searchWalkinPatient('ANDI')
+    await reg.selectPatient(pasien)
+    expect(deps.getGroupJaminanMap).not.toHaveBeenCalled()
+    expect(reg.walkinEligibility.value?.needsEligibility).toBe(false)
   })
 
   it('walks through patient → service → confirm → register', async () => {

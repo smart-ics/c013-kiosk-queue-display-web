@@ -15,6 +15,7 @@ import {
   computeNeedsEligibility,
   deriveBookingJaminan,
   deriveWalkinJaminan,
+  UMAT_TIPE_JAMINAN_ID,
 } from '../lib/eligibility'
 import {
   ASSISTANCE_RESET_MS,
@@ -198,30 +199,37 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     const trimmed = keyword.trim()
     if (!trimmed) return Promise.resolve()
     return withSubmit(async () => {
-      const tgl = await ensureBusinessDate()
-      const matches = await deps.searchBooking(tgl, trimmed)
-      if (matches.length === 0) {
-        setFailure('BOOKING_NOT_FOUND', 'Booking tidak ditemukan untuk kode tersebut.')
-        return
+      try {
+        const tgl = await ensureBusinessDate()
+        const matches = await deps.searchBooking(tgl, trimmed)
+        if (matches.length === 0) {
+          setFailure('BOOKING_NOT_FOUND', 'Booking tidak ditemukan untuk kode tersebut.')
+          return
+        }
+        if (matches.length > 1) {
+          setFailure('UNKNOWN_ERROR', 'Ditemukan lebih dari satu booking. Hubungi petugas.')
+          return
+        }
+        const booking = matches[0]
+        selectedBooking.value = booking
+        const detail = await deps.getBookingDetail(booking.bookingId)
+        const polisList = await deps.listPolis(detail.reg.pasienId)
+        const jaminan = deriveBookingJaminan(detail, polisList)
+        const group =
+          jaminan.tipeJaminanId === UMAT_TIPE_JAMINAN_ID
+            ? null
+            : await deps.getGroupJaminanMap(jaminan.tipeJaminanId)
+        bookingDetail.value = detail
+        bookingEligibility.value = {
+          tipeJaminanId: jaminan.tipeJaminanId,
+          tipeJaminanName: jaminan.tipeJaminanName,
+          noPeserta: jaminan.noPeserta,
+          needsEligibility: computeNeedsEligibility(jaminan.tipeJaminanId, group),
+        }
+        transition('BOOKING_CONFIRM')
+      } catch (error) {
+        setFailure(mapErrorToFailureCode(error), messageFromError(error))
       }
-      if (matches.length > 1) {
-        setFailure('UNKNOWN_ERROR', 'Ditemukan lebih dari satu booking. Hubungi petugas.')
-        return
-      }
-      const booking = matches[0]
-      selectedBooking.value = booking
-      const detail = await deps.getBookingDetail(booking.bookingId)
-      const polisList = await deps.listPolis(detail.reg.pasienId)
-      const jaminan = deriveBookingJaminan(detail, polisList)
-      const group = await deps.getGroupJaminanMap(jaminan.tipeJaminanId)
-      bookingDetail.value = detail
-      bookingEligibility.value = {
-        tipeJaminanId: jaminan.tipeJaminanId,
-        tipeJaminanName: jaminan.tipeJaminanName,
-        noPeserta: jaminan.noPeserta,
-        needsEligibility: computeNeedsEligibility(jaminan.tipeJaminanId, group),
-      }
-      transition('BOOKING_CONFIRM')
     })
   }
 
@@ -260,7 +268,9 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
           : await registerWalkinCommit()
       registrationResult.value = result
       transition('REGISTRATION_SUCCESS')
-      const printed = await deps.printRegistration(buildPrintContext(currentMode))
+      const printed = await deps
+        .printRegistration(buildPrintContext(currentMode))
+        .catch(() => ({ printed: false }))
       if (printed.printed) scheduleAutoHome(SUCCESS_RESET_MS)
     } catch (error) {
       setFailure(mapErrorToFailureCode(error), messageFromError(error))
@@ -320,32 +330,43 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     const trimmed = keyword.trim()
     if (!trimmed) return Promise.resolve()
     return withSubmit(async () => {
-      await ensureBusinessDate()
-      const matches = await deps.searchPasien(trimmed)
-      if (matches.length === 0) {
-        setFailure('BOOKING_NOT_FOUND', 'Pasien tidak ditemukan untuk keyword tersebut.')
-        return
+      try {
+        await ensureBusinessDate()
+        const matches = await deps.searchPasien(trimmed)
+        if (matches.length === 0) {
+          setFailure('BOOKING_NOT_FOUND', 'Pasien tidak ditemukan untuk keyword tersebut.')
+          return
+        }
+        patientMatches.value = matches
+        transition('WALKIN_SELECT_PATIENT')
+      } catch (error) {
+        setFailure(mapErrorToFailureCode(error), messageFromError(error))
       }
-      patientMatches.value = matches
-      transition('WALKIN_SELECT_PATIENT')
     })
   }
 
   function selectPatient(patient: PasienSearchItem): Promise<void> {
     touch()
     return withSubmit(async () => {
-      const polisList = await deps.listPolis(patient.pasienId)
-      const jaminan = deriveWalkinJaminan(polisList)
-      const group = await deps.getGroupJaminanMap(jaminan.tipeJaminanId)
-      selectedPatient.value = patient
-      walkinEligibility.value = {
-        tipeJaminanId: jaminan.tipeJaminanId,
-        tipeJaminanName: jaminan.tipeJaminanName,
-        noPeserta: jaminan.noPeserta,
-        needsEligibility: computeNeedsEligibility(jaminan.tipeJaminanId, group),
+      try {
+        const polisList = await deps.listPolis(patient.pasienId)
+        const jaminan = deriveWalkinJaminan(polisList)
+        const group =
+          jaminan.tipeJaminanId === UMAT_TIPE_JAMINAN_ID
+            ? null
+            : await deps.getGroupJaminanMap(jaminan.tipeJaminanId)
+        selectedPatient.value = patient
+        walkinEligibility.value = {
+          tipeJaminanId: jaminan.tipeJaminanId,
+          tipeJaminanName: jaminan.tipeJaminanName,
+          noPeserta: jaminan.noPeserta,
+          needsEligibility: computeNeedsEligibility(jaminan.tipeJaminanId, group),
+        }
+        walkinNoPeserta.value = ''
+        transition('WALKIN_SELECT_SERVICE')
+      } catch (error) {
+        setFailure(mapErrorToFailureCode(error), messageFromError(error))
       }
-      walkinNoPeserta.value = ''
-      transition('WALKIN_SELECT_SERVICE')
     })
   }
 
