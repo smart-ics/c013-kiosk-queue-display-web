@@ -1,7 +1,8 @@
 import { z } from 'zod'
 
-const appConfigSchema = z.object({
-  bilregApiBase: z.string().min(1, 'bilregApiBase must not be empty')
+export const appConfigSchema = z.object({
+  bilregApiBase: z.string().min(1, 'bilregApiBase must not be empty'),
+  jetliApiBase: z.string().optional(),
 })
 
 export type AppConfig = z.infer<typeof appConfigSchema>
