@@ -141,3 +141,34 @@ body {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.big-input {
+  margin-top: 1.5rem;
+  width: 100%;
+  font-size: 1.5rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 2px solid #c9d8e6;
+}
+
+.panel h2 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1.2rem;
+}
+
+.detail-list {
+  margin: 1.5rem 0 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1.5rem;
+}
+
+.detail-list dt {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.detail-list dd {
+  margin: 0;
+  color: var(--muted);
+}
