@@ -8,6 +8,8 @@ import {
   groupJaminanMapSchema,
   jadwalItemSchema,
   pasienSearchItemSchema,
+  patientContextSearchRequestSchema,
+  patientContextSearchResponseSchema,
   polisSchema,
   returnCreateWalkInSchema,
   serviceItemSchema,
@@ -19,6 +21,8 @@ import {
   type GroupJaminanMap,
   type JadwalItem,
   type PasienSearchItem,
+  type PatientContextSearchRequest,
+  type PatientContextSearchResponse,
   type Polis,
   type ReturnCreateWalkIn,
   type ServiceItem,
@@ -93,6 +97,17 @@ export function createHisApi(client: AdmissionQueueClient) {
         'v1/admission-queue/booking-assistance',
         parsed,
         admissionQueueIntakeResponseSchema,
+      )
+    },
+
+    patientContextSearch(
+      body: PatientContextSearchRequest,
+    ): Promise<PatientContextSearchResponse> {
+      const parsed = patientContextSearchRequestSchema.parse(body)
+      return client.postJson(
+        'api/v1/admisi-rajal/patient-context-search',
+        parsed,
+        patientContextSearchResponseSchema,
       )
     },
   }
