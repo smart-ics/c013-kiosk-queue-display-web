@@ -460,3 +460,60 @@ export const serviceSelectionSchema = z.object({
   jadwal: jadwalItemSchema,
 })
 export type ServiceSelection = z.infer<typeof serviceSelectionSchema>
+
+export const patientContextItemSchema = z.object({
+  kind: z.string(),
+  id: z.string(),
+  patientName: z.string(),
+  patientId: z.string(),
+  birthDate: z.string(),
+  gender: z.string(),
+  locality: z.string(),
+  maskedNik: z.string(),
+  maskedPhone: z.string().nullable(),
+  visitDate: z.string().nullable(),
+  visitTime: z.string().nullable(),
+  serviceName: z.string().nullable(),
+  doctorName: z.string().nullable(),
+  state: z.string(),
+  bookingId: z.string().nullable(),
+  registrationId: z.string().nullable(),
+  matchType: z.string(),
+  isExactMatch: z.boolean(),
+  rank: z.number(),
+  warnings: z.array(z.unknown()),
+})
+export type PatientContextItem = z.infer<typeof patientContextItemSchema>
+
+export const patientContextSearchRequestSchema = z.object({
+  keyword: z.string(),
+  businessDate: z.string(),
+  scope: z.string().default('All'),
+  limitPerType: z.number().int().default(10),
+  suggestedBookingId: z.string().default(''),
+  suggestedRegistrationId: z.string().default(''),
+  suggestedPatientId: z.string().default(''),
+})
+export type PatientContextSearchRequest = z.infer<typeof patientContextSearchRequestSchema>
+
+export const patientContextSearchResponseSchema = z.object({
+  businessDate: z.string(),
+  bookings: z.object({
+    items: z.array(z.unknown()),
+    total: z.number(),
+    hasMore: z.boolean(),
+  }),
+  registrations: z.object({
+    items: z.array(z.unknown()),
+    total: z.number(),
+    hasMore: z.boolean(),
+  }),
+  patients: z.object({
+    items: z.array(patientContextItemSchema),
+    total: z.number(),
+    hasMore: z.boolean(),
+  }),
+  bestMatch: patientContextItemSchema.nullable(),
+  canCreatePatient: z.boolean(),
+})
+export type PatientContextSearchResponse = z.infer<typeof patientContextSearchResponseSchema>
