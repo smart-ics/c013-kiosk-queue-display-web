@@ -53,6 +53,14 @@ function makeDeps(overrides: Partial<KioskRegistrationDeps> = {}): KioskRegistra
     listPolis: vi.fn(async () => [bpjsPolis]),
     getGroupJaminanMap: vi.fn(async () => group),
     searchPasien: vi.fn(async () => [pasien]),
+    searchPatientContext: vi.fn(async () => ({
+      businessDate: '2026-08-03',
+      bookings: { items: [], total: 0, hasMore: false },
+      registrations: { items: [], total: 0, hasMore: false },
+      patients: { items: [], total: 0, hasMore: false },
+      bestMatch: null,
+      canCreatePatient: true,
+    })),
     verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
     registerBooking: vi.fn(async () => ({ regId: 'R1', noAntrian: 12 })),
     registerWalkin: vi.fn(async () => ({ regId: 'R2', noAntrian: 13 })),
@@ -203,6 +211,94 @@ describe('useKioskRegistration booking flow', () => {
   })
 })
 
+describe('useKioskRegistration patient context cascade', () => {
+  const contextItem = {
+    kind: 'Patient',
+    id: 'P001',
+    patientName: 'Budi',
+    patientId: 'PT1',
+    birthDate: '1990-01-01',
+    gender: 'L',
+    locality: 'Jakarta',
+    maskedNik: '123456****',
+    maskedPhone: null,
+    visitDate: null,
+    visitTime: null,
+    serviceName: null,
+    doctorName: null,
+    state: 'Active',
+    bookingId: null,
+    registrationId: null,
+    matchType: 'Exact',
+    isExactMatch: true,
+    rank: 1,
+    warnings: [],
+  }
+
+  const contextResponse = {
+    businessDate: '2026-08-03',
+    bookings: { items: [], total: 0, hasMore: false },
+    registrations: { items: [], total: 0, hasMore: false },
+    patients: { items: [contextItem], total: 1, hasMore: false },
+    bestMatch: contextItem,
+    canCreatePatient: true,
+  }
+
+  it('cascades to patient context search when booking search returns empty', async () => {
+    const searchPatientContext = vi.fn(async () => contextResponse)
+    const reg = useKioskRegistration(
+      makeDeps({ searchBooking: vi.fn(async () => []), searchPatientContext }),
+    )
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('Budi')
+    expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
+    expect(reg.patientContextResult.value).toEqual(contextResponse)
+  })
+
+  it('goes to failure when patient context search returns nothing', async () => {
+    const emptyContext = {
+      businessDate: '2026-08-03',
+      bookings: { items: [], total: 0, hasMore: false },
+      registrations: { items: [], total: 0, hasMore: false },
+      patients: { items: [], total: 0, hasMore: false },
+      bestMatch: null,
+      canCreatePatient: true,
+    }
+    const searchPatientContext = vi.fn(async () => emptyContext)
+    const reg = useKioskRegistration(
+      makeDeps({ searchBooking: vi.fn(async () => []), searchPatientContext }),
+    )
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('XYZ')
+    expect(reg.flow.value).toBe('FAILURE')
+    expect(reg.errorContext.value?.code).toBe('BOOKING_NOT_FOUND')
+  })
+
+  it('confirmPatientContext maps to goshow walkin flow', async () => {
+    const searchPatientContext = vi.fn(async () => contextResponse)
+    const reg = useKioskRegistration(
+      makeDeps({ searchBooking: vi.fn(async () => []), searchPatientContext }),
+    )
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('Budi')
+    expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
+    await reg.confirmPatientContext(contextItem)
+    expect(reg.flow.value).toBe('WALKIN_SELECT_SERVICE')
+    expect(reg.selectedPatient.value?.pasienId).toBe('PT1')
+    expect(reg.selectedPatient.value?.pasienName).toBe('Budi')
+  })
+
+  it('cancelPatientContext returns to home', () => {
+    const reg = useKioskRegistration(
+      makeDeps({ searchPatientContext: vi.fn(async () => contextResponse) }),
+    )
+    reg.startBookingFlow()
+    reg.cancelPatientContext()
+    expect(reg.flow.value).toBe('HOME')
+    expect(reg.patientContextResult.value).toBeNull()
+  })
+})
+
 describe('useKioskRegistration walk-in flow', () => {
   it('always shows the patient picker even for a single match', async () => {
     const reg = useKioskRegistration(makeDeps())
@@ -319,14 +415,14 @@ describe('useKioskRegistration guards and reset', () => {
     expect(deps.searchBooking).toHaveBeenCalledTimes(1)
   })
 
-  it('returns to HOME after 60s idle while on a flow', async () => {
+  it('returns to HOME after 30s idle while on a flow', async () => {
     let nowMs = 1000
     vi.useFakeTimers()
     const reg = useKioskRegistration(makeDeps({ now: () => nowMs }))
     reg.startIdleReset()
     reg.startBookingFlow()
     expect(reg.flow.value).toBe('BOOKING_SEARCH')
-    nowMs = 2000 + 60_000
+    nowMs = 2000 + 30_000
     await vi.advanceTimersByTimeAsync(1100)
     expect(reg.flow.value).toBe('HOME')
   })
