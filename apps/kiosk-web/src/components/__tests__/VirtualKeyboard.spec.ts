@@ -3,19 +3,24 @@ import { mount } from '@vue/test-utils'
 import VirtualKeyboard from '../VirtualKeyboard.vue'
 
 describe('VirtualKeyboard', () => {
-  it('emits update:modelValue when a key is pressed', async () => {
+  it('emits update:modelValue when a qwerty key is pressed', async () => {
     const wrapper = mount(VirtualKeyboard, { props: { modelValue: '' } })
-    await wrapper.get('button:not([data-testid])').trigger('click')
+    await wrapper.get('[data-testid="kb-key-q"]').trigger('click')
     const emitted = wrapper.emitted('update:modelValue')
     expect(emitted).toBeDefined()
-    expect(emitted![0]).toEqual(['1'])
+    expect(emitted![0]).toEqual(['q'])
+  })
+
+  it('emits update:modelValue when a numpad key is pressed', async () => {
+    const wrapper = mount(VirtualKeyboard, { props: { modelValue: '' } })
+    await wrapper.get('[data-testid="kb-key-7"]').trigger('click')
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual(['7'])
   })
 
   it('appends character to existing value', async () => {
     const wrapper = mount(VirtualKeyboard, { props: { modelValue: 'AB' } })
-    const firstKey = wrapper.find('.kb-key:not(.kb-key--backspace):not(.kb-key--space)')
-    await firstKey.trigger('click')
-    expect(wrapper.emitted('update:modelValue')![0]).toEqual(['AB1'])
+    await wrapper.get('[data-testid="kb-key-a"]').trigger('click')
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual(['ABa'])
   })
 
   it('removes last character on backspace', async () => {
@@ -28,5 +33,11 @@ describe('VirtualKeyboard', () => {
     const wrapper = mount(VirtualKeyboard, { props: { modelValue: 'Hello' } })
     await wrapper.get('[data-testid="kb-space"]').trigger('click')
     expect(wrapper.emitted('update:modelValue')![0]).toEqual(['Hello '])
+  })
+
+  it('emits submit when enter key clicked on numpad', async () => {
+    const wrapper = mount(VirtualKeyboard, { props: { modelValue: 'ABC' } })
+    await wrapper.get('[data-testid="kb-enter"]').trigger('click')
+    expect(wrapper.emitted('submit')).toHaveLength(1)
   })
 })

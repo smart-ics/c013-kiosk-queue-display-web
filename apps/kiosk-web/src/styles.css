@@ -261,9 +261,10 @@ button {
    ---------------------------------------------------------------- */
 
 .kiosk-home {
-  min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .kiosk-header {
@@ -418,8 +419,94 @@ button {
   padding: 24px 48px 44px;
 }
 
+.kiosk-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.kiosk-ad {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #0f172a 100%);
+  color: #94a3b8;
+  overflow: hidden;
+  position: relative;
+}
+
+.kiosk-ad-media {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 32px;
+  text-align: center;
+}
+
+.kiosk-ad-media svg {
+  opacity: 0.4;
+  width: 80px;
+  height: 80px;
+}
+
+.kiosk-ad-media p {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.5;
+  color: #64748b;
+  max-width: 260px;
+}
+
+.kiosk-input-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 40px 20px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.queue-intake-link {
+  margin-top: 8px;
+  text-align: center;
+}
+
+.queue-intake-btn {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 24px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.queue-intake-btn:hover {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+  color: var(--brand-strong);
+}
+
 .welcome {
   text-align: center;
+}
+
+.kiosk-input-section .welcome-title {
+  font-size: 28px;
+  line-height: 34px;
+  margin-bottom: 4px;
+}
+
+.kiosk-input-section .welcome-sub {
+  font-size: 1rem;
+  margin-top: 4px;
 }
 
 .welcome-title {
@@ -703,26 +790,23 @@ button {
 .search-section {
   width: 100%;
   max-width: 720px;
-  margin: 0 auto;
 }
 
-.search-input-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 16px;
+.kiosk-input-section .search-section {
+  max-width: none;
 }
 
 .search-input {
-  flex: 1;
-  font-size: 24px;
-  padding: 18px 24px;
+  width: 100%;
+  font-size: 22px;
+  padding: 16px 22px;
   border: 2px solid #d1d5db;
-  border-radius: 16px;
+  border-radius: 14px;
   background: #fff;
   color: #1f2937;
   outline: none;
   transition: border-color 0.2s;
+  margin-bottom: 12px;
 }
 
 .search-input:focus {
@@ -733,37 +817,42 @@ button {
   color: #9ca3af;
 }
 
-.scan-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 12px 20px;
-  border: 2px solid #e5e7eb;
-  border-radius: 16px;
-  background: #fff;
-  color: #1d6fb8;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s;
-}
-
-.scan-btn:hover {
-  background: #eff6ff;
-}
-
 .primary-btn--search {
   width: 100%;
-  margin-top: 16px;
-  padding: 18px;
+  margin-top: 12px;
+  padding: 14px 24px;
   font-size: 20px;
+  background: var(--brand);
+  box-shadow: 0 6px 16px rgba(249, 115, 22, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 
-.search-alt-links {
-  text-align: center;
-  margin-top: 24px;
+.primary-btn--search:hover:not(:disabled) {
+  background: var(--brand-strong);
+  transform: translateY(-2px);
+}
+
+.primary-btn--search:disabled {
+  background: #e5e7eb;
+  color: #94a3b8;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.primary-btn--search:disabled:hover {
+  transform: none;
+}
+
+.primary-btn--search .btn-arrow {
+  flex: none;
+  transition: transform 150ms ease;
+}
+
+.primary-btn--search:not(:disabled):hover .btn-arrow {
+  transform: translateX(4px);
 }
 
 .link-btn {
@@ -783,26 +872,40 @@ button {
 /* ---- Virtual Keyboard ---- */
 .virtual-keyboard {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px;
+  gap: 12px;
+  padding: 10px;
   background: #f3f4f6;
-  border-radius: 16px;
+  border-radius: 14px;
+}
+
+.kb-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kb-side--qwerty {
+  flex: 3;
+}
+
+.kb-side--numpad {
+  flex: 2;
 }
 
 .kb-row {
   display: flex;
-  gap: 4px;
+  gap: 3px;
   justify-content: center;
 }
 
 .kb-key {
-  min-width: 48px;
-  height: 52px;
+  flex: 1;
+  min-width: 36px;
+  height: 46px;
   border: 1px solid #d1d5db;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: #1f2937;
   cursor: pointer;
@@ -817,25 +920,42 @@ button {
 }
 
 .kb-key--backspace {
-  min-width: 64px;
   background: #fee2e2;
   border-color: #fca5a5;
-  font-size: 22px;
+  font-size: 18px;
 }
 
 .kb-key--backspace:active {
   background: #fecaca;
 }
 
+.kb-key--enter {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.kb-key--enter:active {
+  background: var(--brand-strong);
+}
+
 .kb-key--space {
-  flex: 1;
-  max-width: 320px;
+  flex: unset;
+  flex: 6;
+  max-width: none;
   background: #e5e7eb;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .kb-key--space:active {
   background: #d1d5db;
+}
+
+.kb-key--num {
+  font-size: 18px;
+  font-weight: 700;
 }
 
 /* ---- Patient Context Cards ---- */

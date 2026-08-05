@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import KioskHeader from '../components/KioskHeader.vue'
 import VirtualKeyboard from '../components/VirtualKeyboard.vue'
 
-defineProps<{ intakeAvailable: boolean }>()
+defineProps<{ intakeAvailable: boolean; businessDate: string | null }>()
 const emit = defineEmits<{
   startSearch: [keyword: string]
-  scanBooking: []
-  startWalkin: []
   startIntake: []
 }>()
 
@@ -19,20 +17,57 @@ function submit() {
   if (!keyword.value.trim()) return
   emit('startSearch', keyword.value)
 }
+
+function onPhysicalKeydown(event: KeyboardEvent) {
+  if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    const activeEl = document.activeElement
+    if (activeEl !== searchInputRef.value && !(activeEl instanceof HTMLInputElement) && !(activeEl instanceof HTMLTextAreaElement)) {
+      searchInputRef.value?.focus()
+    }
+  }
+}
+
+onMounted(() => {
+  searchInputRef.value?.focus()
+  document.addEventListener('keydown', onPhysicalKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onPhysicalKeydown)
+})
 </script>
 
 <template>
   <div class="kiosk-home">
-    <KioskHeader :lang="lang" @toggle-lang="lang = $event" />
+    <KioskHeader :lang="lang" :business-date="businessDate" @toggle-lang="lang = $event" />
 
-    <main class="kiosk-main">
-      <div class="welcome">
-        <h1 class="welcome-title">Selamat datang di RS Sehat Sejahtera</h1>
-        <p class="welcome-sub">Masukkan data Anda untuk memulai</p>
-      </div>
+    <div class="kiosk-layout">
+      <aside class="kiosk-ad" data-testid="kiosk-ad-panel">
+        <div class="kiosk-ad-media">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="2" y="3" width="20" height="14" rx="2" />
+            <path d="M8 21h8" />
+            <path d="M12 17v4" />
+          </svg>
+          <p>Media &amp; Informasi Layanan RS</p>
+        </div>
+      </aside>
 
-      <div class="search-section">
-        <div class="search-input-row">
+      <section class="kiosk-input-section">
+        <div class="welcome">
+          <h1 class="welcome-title">Selamat datang di RS Sehat Sejahtera</h1>
+          <p class="welcome-sub">Masukkan data Anda untuk memulai</p>
+        </div>
+
+        <div class="search-section">
           <input
             ref="searchInputRef"
             v-model="keyword"
@@ -44,58 +79,47 @@ function submit() {
             autofocus
             @keyup.enter="submit"
           />
+
+          <VirtualKeyboard v-model="keyword" @submit="submit" />
+
           <button
             type="button"
-            class="scan-btn"
-            data-testid="scan-booking"
-            @click="emit('scanBooking')"
+            class="primary-btn primary-btn--search"
+            :disabled="!keyword.trim()"
+            data-testid="search-submit"
+            @click="submit"
           >
+            Lanjutkan
             <svg
-              width="28"
-              height="28"
+              class="btn-arrow"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              stroke-width="1.8"
+              stroke-width="2.5"
               stroke-linecap="round"
               stroke-linejoin="round"
               aria-hidden="true"
             >
-              <rect x="3.5" y="3.5" width="7" height="7" rx="1.2" />
-              <rect x="13.5" y="3.5" width="7" height="7" rx="1.2" />
-              <rect x="3.5" y="13.5" width="7" height="7" rx="1.2" />
-              <path d="M13.5 13.5h3.5v3.5h-3.5Z" />
-              <path d="M20.5 17v3.5" />
-              <path d="M17 20.5h3.5" />
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
             </svg>
-            Scan QR
           </button>
         </div>
 
-        <VirtualKeyboard v-model="keyword" />
-
-        <button
-          type="button"
-          class="primary-btn primary-btn--search"
-          :disabled="!keyword.trim()"
-          data-testid="search-submit"
-          @click="submit"
-        >
-          Lanjutkan
-        </button>
-      </div>
-
-      <div class="search-alt-links">
-        <button
-          type="button"
-          class="link-btn"
-          data-testid="start-walkin"
-          @click="emit('startWalkin')"
-        >
-          Daftar Tanpa Booking
-        </button>
-      </div>
-    </main>
+        <div class="queue-intake-link">
+          <button
+            type="button"
+            class="queue-intake-btn"
+            data-testid="start-intake"
+            @click="emit('startIntake')"
+          >
+            Ambil Antrian Admisi
+          </button>
+        </div>
+      </section>
+    </div>
 
     <footer class="kiosk-footer">
       <span class="footer-item">

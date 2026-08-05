@@ -90,6 +90,15 @@ const servicePointsQuery = useQuery({
   queryFn: async () => getAdmissionQueueApi().listServicePoints(true),
 })
 
+const businessDateQuery = useQuery({
+  queryKey: computed(() => ['business-date', props.stationId] as const),
+  enabled: computed(() => !!deviceConfig.value && !bootError.value),
+  queryFn: async () => getHisApi().getBusinessDate(),
+  staleTime: 5 * 60 * 1000,
+})
+
+const businessDate = computed(() => businessDateQuery.data.value?.businessDate ?? null)
+
 const offerings = computed(() => {
   if (!deviceConfig.value || !servicePointsQuery.data.value) return []
   return intersectOfferings(deviceConfig.value, servicePointsQuery.data.value)
@@ -183,16 +192,6 @@ function onHome() {
   registration.goHome()
 }
 
-function onStartBooking() {
-  onHome()
-  registration.startBookingFlow()
-}
-
-function onStartWalkin() {
-  onHome()
-  registration.startWalkinFlow()
-}
-
 function onStartIntake() {
   onHome()
   homeMode.value = 'intake'
@@ -208,13 +207,7 @@ async function onScanBooking() {
   }
 }
 
-function onScanBookingFromHome() {
-  onStartBooking()
-  void onScanBooking()
-}
-
 function onSearchFromHome(keyword: string) {
-  onStartBooking()
   void registration.submitBookingKeyword(keyword)
 }
 
@@ -404,10 +397,9 @@ const loadingMessage = computed(() => {
   <KioskHome
     v-else-if="homeMode === 'idle'"
     :intake-available="offerings.length > 0"
+    :business-date="businessDate"
     @start-search="onSearchFromHome"
-    @start-walkin="onStartWalkin"
     @start-intake="onStartIntake"
-    @scan-booking="onScanBookingFromHome"
   />
 
   <section v-else class="panel">
