@@ -6,10 +6,13 @@ import type {
   BookingSearchItem,
   GroupJaminanMap,
   PasienSearchItem,
+  PatientContextItem,
+  PatientContextSearchResponse,
   Polis,
   ReturnCreateWalkIn,
   ServiceSelection,
 } from '@aq/shared-types'
+import { getKodeBookingMjkn } from '../lib/qrCodeDecoder'
 import { canTransition, type KioskFlow } from '../lib/flow'
 import {
   computeNeedsEligibility,
@@ -65,6 +68,10 @@ export type KioskRegistrationDeps = {
   listPolis: (pasienId: string) => Promise<Polis[]>
   getGroupJaminanMap: (tipeJaminanId: string) => Promise<GroupJaminanMap | null>
   searchPasien: (keyword: string) => Promise<PasienSearchItem[]>
+  searchPatientContext: (body: {
+    keyword: string
+    businessDate: string
+  }) => Promise<PatientContextSearchResponse>
   verifyBiometric: () => Promise<BiometricVerdict>
   registerBooking: (ctx: BookingRegContext) => Promise<ReturnCreateWalkIn>
   registerWalkin: (ctx: WalkinRegContext) => Promise<ReturnCreateWalkIn>
@@ -103,6 +110,8 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   const registrationResult = ref<ReturnCreateWalkIn | null>(null)
   const assistanceTicket = ref<AdmissionQueueIntakeResponse | null>(null)
   const assistanceServicePointId = ref<string | null>(null)
+  const patientContextResult = ref<PatientContextSearchResponse | null>(null)
+  const selectedContextPatient = ref<PatientContextItem | null>(null)
   const errorContext = ref<FailureContext | null>(null)
   const biometricVerdict = ref<BiometricVerdict | null>(null)
 
@@ -158,6 +167,8 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     assistanceTicket.value = null
     assistanceServicePointId.value = null
     errorContext.value = null
+    patientContextResult.value = null
+    selectedContextPatient.value = null
     biometricVerdict.value = null
     submitting.value = false
     touch()
@@ -198,12 +209,13 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     touch()
     const trimmed = keyword.trim()
     if (!trimmed) return Promise.resolve()
+    const decoded = getKodeBookingMjkn(trimmed)
     return withSubmit(async () => {
       try {
         const tgl = await ensureBusinessDate()
-        const matches = await deps.searchBooking(tgl, trimmed)
+        const matches = await deps.searchBooking(tgl, decoded)
         if (matches.length === 0) {
-          setFailure('BOOKING_NOT_FOUND', 'Booking tidak ditemukan untuk kode tersebut.')
+          await searchPatientContextFor(decoded)
           return
         }
         if (matches.length > 1) {
@@ -231,6 +243,65 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         setFailure(mapErrorToFailureCode(error), messageFromError(error))
       }
     })
+  }
+
+  async function searchPatientContextFor(keyword: string): Promise<void> {
+    transition('PATIENT_CONTEXT_SEARCH')
+    try {
+      const tgl = await ensureBusinessDate()
+      const result = await deps.searchPatientContext({
+        keyword,
+        businessDate: tgl,
+      })
+      patientContextResult.value = result
+      if (result.bestMatch || result.patients.total > 0) {
+        transition('PATIENT_CONTEXT_CONFIRM')
+      } else {
+        setFailure('BOOKING_NOT_FOUND', 'Data pasien tidak ditemukan. Silakan coba lagi atau ambil antrian pendaftaran.')
+      }
+    } catch (error) {
+      setFailure(mapErrorToFailureCode(error), messageFromError(error))
+    }
+  }
+
+  function confirmPatientContext(item: PatientContextItem): Promise<void> {
+    touch()
+    return withSubmit(async () => {
+      try {
+        selectedContextPatient.value = item
+        const polisList = await deps.listPolis(item.patientId)
+        const jaminan = deriveWalkinJaminan(polisList)
+        const group =
+          jaminan.tipeJaminanId === UMAT_TIPE_JAMINAN_ID
+            ? null
+            : await deps.getGroupJaminanMap(jaminan.tipeJaminanId)
+        selectedPatient.value = {
+          pasienId: item.patientId,
+          pasienName: item.patientName,
+          nik: item.maskedNik,
+          noMR: item.id,
+          tglLahir: item.birthDate,
+        }
+        walkinEligibility.value = {
+          tipeJaminanId: jaminan.tipeJaminanId,
+          tipeJaminanName: jaminan.tipeJaminanName,
+          noPeserta: jaminan.noPeserta,
+          needsEligibility: computeNeedsEligibility(jaminan.tipeJaminanId, group),
+        }
+        walkinNoPeserta.value = ''
+        mode.value = 'walkin'
+        transition('WALKIN_SELECT_SERVICE')
+      } catch (error) {
+        setFailure(mapErrorToFailureCode(error), messageFromError(error))
+      }
+    })
+  }
+
+  function cancelPatientContext() {
+    touch()
+    patientContextResult.value = null
+    selectedContextPatient.value = null
+    goHome()
   }
 
   function confirmBooking(): Promise<void> {
@@ -472,6 +543,8 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     registrationResult,
     assistanceTicket,
     assistanceServicePointId,
+    patientContextResult,
+    selectedContextPatient,
     errorContext,
     biometricVerdict,
     startBookingFlow,
@@ -480,6 +553,8 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     dispose,
     submitBookingKeyword,
     confirmBooking,
+    confirmPatientContext,
+    cancelPatientContext,
     searchWalkinPatient,
     selectPatient,
     selectService,
