@@ -17,10 +17,12 @@ import { useKioskIntake } from '../composables/useKioskIntake'
 import { useKioskPrint } from '../composables/useKioskPrint'
 import { useKioskRegistration } from '../composables/useKioskRegistration'
 import { useKioskSelfPrint } from '../composables/useKioskSelfPrint'
+import type { PatientContextItem } from '@aq/shared-types'
 import BootErrorPage from './BootErrorPage.vue'
 import KioskHome from './KioskHome.vue'
 import BookingSearchStep from './steps/BookingSearchStep.vue'
 import BookingConfirmStep from './steps/BookingConfirmStep.vue'
+import PatientContextConfirmStep from './steps/PatientContextConfirmStep.vue'
 import WalkinSearchStep from './steps/WalkinSearchStep.vue'
 import WalkinPatientStep from './steps/WalkinPatientStep.vue'
 import WalkinServiceStep from './steps/WalkinServiceStep.vue'
@@ -133,6 +135,7 @@ const registration = useKioskRegistration({
   listPolis: (pasienId) => getHisApi().listPolis(pasienId),
   getGroupJaminanMap: (tipeJaminanId) => getJetliApi().getGroupJaminanMap(tipeJaminanId),
   searchPasien: (keyword) => getHisApi().searchPasien(keyword),
+  searchPatientContext: (body) => getHisApi().patientContextSearch(body),
   verifyBiometric: () => createBiometricClient({ port: printerProxyPort.value }).verify(),
   registerBooking: (ctx) => getHisApi().registerByBookingDirect(ctx),
   registerWalkin: (ctx) => getHisApi().registerWalkInDirect(ctx),
@@ -203,6 +206,29 @@ async function onScanBooking() {
   } else {
     scanError.value = result.error
   }
+}
+
+function onScanBookingFromHome() {
+  onStartBooking()
+  void onScanBooking()
+}
+
+function onSearchFromHome(keyword: string) {
+  onStartBooking()
+  void registration.submitBookingKeyword(keyword)
+}
+
+function onConfirmPatientContext(item: PatientContextItem) {
+  void registration.confirmPatientContext(item)
+}
+
+function onCancelPatientContext() {
+  registration.cancelPatientContext()
+}
+
+function onIntakeFromContext() {
+  registration.cancelPatientContext()
+  homeMode.value = 'intake'
 }
 
 function onReprintRegistration() {
@@ -284,6 +310,13 @@ const loadingMessage = computed(() => {
       @scan="onScanBooking"
       @back="onHome"
     />
+    <section
+      v-else-if="registration.flow.value === 'PATIENT_CONTEXT_SEARCH'"
+      class="panel"
+    >
+      <h1>Mencari Data</h1>
+      <p class="status">Mencari data pasien…</p>
+    </section>
     <BookingConfirmStep
       v-else-if="registration.flow.value === 'BOOKING_CONFIRM'"
       :booking="registration.bookingDetail.value!"
@@ -292,6 +325,15 @@ const loadingMessage = computed(() => {
       :error-message="null"
       @confirm="registration.confirmBooking"
       @back="onHome"
+    />
+    <PatientContextConfirmStep
+      v-else-if="registration.flow.value === 'PATIENT_CONTEXT_CONFIRM'"
+      :best-match="registration.patientContextResult.value?.bestMatch ?? null"
+      :patients="registration.patientContextResult.value?.patients.items ?? []"
+      :pending="registration.submitting.value"
+      @confirm="onConfirmPatientContext"
+      @intake="onIntakeFromContext"
+      @retry="onCancelPatientContext"
     />
     <BiometricStep
       v-else-if="registration.flow.value === 'BIOMETRIC_VERIFY'"
@@ -362,9 +404,10 @@ const loadingMessage = computed(() => {
   <KioskHome
     v-else-if="homeMode === 'idle'"
     :intake-available="offerings.length > 0"
-    @start-booking="onStartBooking"
+    @start-search="onSearchFromHome"
     @start-walkin="onStartWalkin"
     @start-intake="onStartIntake"
+    @scan-booking="onScanBookingFromHome"
   />
 
   <section v-else class="panel">

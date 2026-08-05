@@ -21,7 +21,6 @@ import {
   type GroupJaminanMap,
   type JadwalItem,
   type PasienSearchItem,
-  type PatientContextSearchRequest,
   type PatientContextSearchResponse,
   type Polis,
   type ReturnCreateWalkIn,
@@ -101,7 +100,7 @@ export function createHisApi(client: AdmissionQueueClient) {
     },
 
     patientContextSearch(
-      body: PatientContextSearchRequest,
+      body: z.input<typeof patientContextSearchRequestSchema>,
     ): Promise<PatientContextSearchResponse> {
       const parsed = patientContextSearchRequestSchema.parse(body)
       return client.postJson(
