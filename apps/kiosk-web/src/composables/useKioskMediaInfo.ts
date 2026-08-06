@@ -18,7 +18,10 @@ export function useKioskMediaInfo(options: KioskMediaInfoOptions) {
 
   const currentVideoUrl = computed(() => videoUrls.value[currentIndex.value] ?? null)
 
+  let loadToken = 0
+
   async function load() {
+    const myToken = ++loadToken
     const directoryUrl = toValue(options.directoryUrl)
     pending.value = true
     videoError.value = false
@@ -30,6 +33,7 @@ export function useKioskMediaInfo(options: KioskMediaInfoOptions) {
         urls = []
       }
     }
+    if (myToken !== loadToken) return
     videoUrls.value = urls.length > 0 ? urls : [options.fallbackVideoUrl]
     pending.value = false
   }

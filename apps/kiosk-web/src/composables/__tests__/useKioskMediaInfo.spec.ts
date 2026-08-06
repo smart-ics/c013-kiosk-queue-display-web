@@ -1,9 +1,13 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 import { useKioskMediaInfo } from '../useKioskMediaInfo'
 
 describe('useKioskMediaInfo', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('uses the playlist from the directory and starts at index 0', async () => {
     const loadList = vi.fn(async () => ['/kiosk/media/a.mp4', '/kiosk/media/b.mp4'])
     const media = useKioskMediaInfo({
@@ -109,5 +113,37 @@ describe('useKioskMediaInfo', () => {
 
     expect(media.videoUrls.value).toEqual(['/c.mp4'])
     expect(media.currentVideoUrl.value).toBe('/c.mp4')
+  })
+
+  it('ignores a stale directory response that resolves after a newer one', async () => {
+    let resolveFirst!: () => void
+    const first = new Promise<string[]>((resolve) => {
+      resolveFirst = () => resolve(['/old/a.mp4'])
+    })
+    const second = Promise.resolve(['/new/a.mp4'])
+    const directoryUrl = ref('/old/')
+    const loadList = vi.fn().mockReturnValueOnce(first).mockReturnValueOnce(second)
+    const media = useKioskMediaInfo({ directoryUrl, fallbackVideoUrl: '/x.mp4', loadList })
+
+    await flushPromises()
+    directoryUrl.value = '/new/'
+    await flushPromises()
+    resolveFirst()
+    await flushPromises()
+
+    expect(media.videoUrls.value).toEqual(['/new/a.mp4'])
+  })
+
+  it('uses the real directory loader when no loadList is injected', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('<a href="a.mp4">a.mp4</a>', { status: 200 })),
+    )
+    const media = useKioskMediaInfo({
+      directoryUrl: '/kiosk/media/',
+      fallbackVideoUrl: '/kiosk/adv-video.mp4',
+    })
+    await flushPromises()
+    expect(media.videoUrls.value).toEqual(['/kiosk/media/a.mp4'])
   })
 })
