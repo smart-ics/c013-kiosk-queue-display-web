@@ -14,6 +14,8 @@ const queryClient = new QueryClient({
   },
 })
 
+document.addEventListener('contextmenu', (e) => e.preventDefault())
+
 configService.initialize(import.meta.env.BASE_URL).then(() => {
   createApp(App).use(router).use(VueQueryPlugin, { queryClient }).mount('#app')
 }).catch((err) => {
