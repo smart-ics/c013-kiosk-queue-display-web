@@ -14,4 +14,17 @@ describe('appConfigSchema', () => {
     })
     expect(parsed.jetliApiBase).toBe('http://localhost:6000/api')
   })
+
+  it('accepts mediaInfoDir when provided', () => {
+    const parsed = appConfigSchema.parse({
+      bilregApiBase: 'http://localhost:5000/api',
+      mediaInfoDir: 'media',
+    })
+    expect(parsed.mediaInfoDir).toBe('media')
+  })
+
+  it('leaves mediaInfoDir undefined when omitted', () => {
+    const parsed = appConfigSchema.parse({ bilregApiBase: 'http://localhost:5000/api' })
+    expect(parsed.mediaInfoDir).toBeUndefined()
+  })
 })
