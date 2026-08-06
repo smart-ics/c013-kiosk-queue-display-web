@@ -10,6 +10,7 @@ import {
 } from '@aq/device-config'
 import { configService } from '@aq/app-config'
 import { createHisApi, createJetliApi, type HisApi, type JetliApi } from '@aq/api-client'
+import { getKioskToken } from './lib/kioskLogin'
 import { createServiceCatalog, type ServiceCatalog } from './lib/serviceCatalog'
 
 let deviceConfigProvider: IDeviceConfigurationProvider | null = null
@@ -24,7 +25,7 @@ export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationPro
   const runtime = createRuntimeDeviceApi(
     new AdmissionQueueClient({
       baseUrl,
-      auth: { getToken: () => 'kiosk-no-auth' },
+      auth: { getToken: getKioskToken },
     }),
   )
   deviceConfigProvider = new ApiKioskDeviceConfigurationProvider({
@@ -45,7 +46,7 @@ export function getAdmissionQueueApi(): AdmissionQueueApi {
   }
   const client = new AdmissionQueueClient({
     baseUrl,
-    auth: { getToken: () => 'kiosk-no-auth' },
+    auth: { getToken: getKioskToken },
   })
   admissionQueueApi = createAdmissionQueueApi(client)
   return admissionQueueApi
@@ -58,7 +59,7 @@ export function getHisApi(): HisApi {
   hisApi = createHisApi(
     new AdmissionQueueClient({
       baseUrl,
-      auth: { getToken: () => 'kiosk-no-auth' },
+      auth: { getToken: getKioskToken },
     }),
   )
   return hisApi
@@ -72,7 +73,7 @@ export function getJetliApi(): JetliApi {
   jetliApi = createJetliApi(
     new AdmissionQueueClient({
       baseUrl,
-      auth: { getToken: () => 'kiosk-no-auth' },
+      auth: { getToken: getKioskToken },
     }),
   )
   return jetliApi
