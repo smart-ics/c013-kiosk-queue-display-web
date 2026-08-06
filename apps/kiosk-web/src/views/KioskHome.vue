@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { configService } from '@aq/app-config'
 import KioskHeader from '../components/KioskHeader.vue'
 import VirtualKeyboard from '../components/VirtualKeyboard.vue'
+import { useKioskMediaInfo } from '../composables/useKioskMediaInfo'
+import { resolveMediaDirUrl } from '../lib/mediaDirectory'
 
 defineProps<{ intakeAvailable: boolean; businessDate: string | null }>()
 const emit = defineEmits<{
@@ -10,6 +13,15 @@ const emit = defineEmits<{
 }>()
 
 const lang = ref<'id' | 'en'>('id')
+const mediaInfoDir = configService.getConfig().mediaInfoDir
+const directoryUrl = mediaInfoDir?.trim()
+  ? resolveMediaDirUrl(import.meta.env.BASE_URL, mediaInfoDir.trim())
+  : null
+const fallbackVideoUrl = `${import.meta.env.BASE_URL}adv-video.mp4`
+const { videoUrls, currentVideoUrl, videoError, onVideoEnded, onVideoError } = useKioskMediaInfo({
+  directoryUrl,
+  fallbackVideoUrl,
+})
 const keyword = ref('')
 const searchInputRef = ref<HTMLInputElement | null>(null)
 
@@ -43,7 +55,21 @@ onUnmounted(() => {
 
     <div class="kiosk-layout">
       <aside class="kiosk-ad" data-testid="kiosk-ad-panel">
-        <div class="kiosk-ad-media">
+        <template v-if="!videoError && currentVideoUrl">
+          <video
+            :src="currentVideoUrl"
+            :loop="videoUrls.length === 1"
+            class="kiosk-ad-video"
+            autoplay
+            muted
+            playsinline
+            data-testid="media-video"
+            @ended="onVideoEnded"
+            @error="onVideoError"
+          />
+          <p class="kiosk-ad-caption">Media &amp; Informasi Layanan RS</p>
+        </template>
+        <div v-else class="kiosk-ad-media">
           <svg
             viewBox="0 0 24 24"
             fill="none"

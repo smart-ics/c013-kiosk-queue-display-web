@@ -1,6 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import KioskHome from '../KioskHome.vue'
+
+vi.mock('@aq/app-config', () => ({
+  configService: {
+    getConfig: () => ({ bilregApiBase: 'http://localhost:5000/api' }),
+  },
+}))
 
 describe('KioskHome', () => {
   it('renders search input with placeholder', () => {
@@ -40,5 +47,12 @@ describe('KioskHome', () => {
   it('renders split layout with ad panel', () => {
     const wrapper = mount(KioskHome, { props: { intakeAvailable: true, businessDate: null } })
     expect(wrapper.find('[data-testid="kiosk-ad-panel"]').exists()).toBe(true)
+  })
+
+  it('renders the fallback video source when no media directory is configured', async () => {
+    const wrapper = mount(KioskHome, { props: { intakeAvailable: true, businessDate: null } })
+    await nextTick()
+    const video = wrapper.get<HTMLVideoElement>('[data-testid="media-video"]')
+    expect(video.attributes('src')).toBe('/adv-video.mp4')
   })
 })

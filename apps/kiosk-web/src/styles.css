@@ -460,6 +460,24 @@ button {
   max-width: 260px;
 }
 
+.kiosk-ad-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.kiosk-ad-caption {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #e2e8f0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
 .kiosk-input-section {
   display: flex;
   flex-direction: column;
