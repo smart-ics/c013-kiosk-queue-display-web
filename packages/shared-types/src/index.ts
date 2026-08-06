@@ -379,11 +379,14 @@ export const bookingSearchItemSchema = z.object({
   tglBerobat: z.string(),
   jamPraktek: z.string(),
   noAntrian: z.number(),
-  extAppRef: z.object({
-    extAppName: z.string(),
-    reffId: z.string(),
-    checkInQr: z.string(),
-  }),
+  extAppRef: z
+    .object({
+      extAppName: z.string(),
+      reffId: z.string(),
+      checkInQr: z.string(),
+    })
+    .nullable()
+    .optional(),
 })
 export type BookingSearchItem = z.infer<typeof bookingSearchItemSchema>
 
@@ -415,6 +418,127 @@ export const groupJaminanMapSchema = z.object({
   groupJaminanName: z.string(),
 })
 export type GroupJaminanMap = z.infer<typeof groupJaminanMapSchema>
+
+export const layananHeaderSchema = z.object({
+  layananId: z.string(),
+  layananName: z.string(),
+})
+export type LayananHeader = z.infer<typeof layananHeaderSchema>
+
+export const diagnosaHeaderSchema = z.object({
+  icd10Id: z.string(),
+  icd10Name: z.string(),
+})
+export type DiagnosaHeader = z.infer<typeof diagnosaHeaderSchema>
+
+export const sepHeaderSchema = z.object({
+  sepId: z.string(),
+  sepNo: z.string(),
+  noRujukan: z.string(),
+  noPeserta: z.string(),
+  namaPeserta: z.string(),
+  sepDate: z.string(),
+})
+export type SepHeader = z.infer<typeof sepHeaderSchema>
+
+export const sepByPesertaItemSchema = sepHeaderSchema.extend({
+  layanan: layananHeaderSchema.nullable(),
+  diagnosa: diagnosaHeaderSchema.nullable(),
+})
+export type SepByPesertaItem = z.infer<typeof sepByPesertaItemSchema>
+
+export const responseSepByNoPesertaSchema = z.array(sepByPesertaItemSchema)
+export type ResponseSepByNoPeserta = z.infer<typeof responseSepByNoPesertaSchema>
+
+export const responseSepByRegSchema = sepByPesertaItemSchema.nullable()
+export type ResponseSepByReg = z.infer<typeof responseSepByRegSchema>
+
+export const responseFingerprintSchema = z.object({
+  id: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .pipe(z.enum(['0', '1', 'x'])),
+  status: z.string(),
+})
+export type ResponseFingerprint = z.infer<typeof responseFingerprintSchema>
+
+export const pesertaBpjsSchema = z.object({
+  noPeserta: z.string(),
+  nama: z.string(),
+  hakKelas: z.object({ kode: z.string(), nama: z.string() }),
+  status: z.object({ kode: z.string(), info: z.string() }),
+  jenisPeserta: z.object({ kode: z.string(), nama: z.string() }),
+  provider: z.object({ kode: z.string(), nama: z.string() }),
+  prbInfo: z.unknown().nullable().optional(),
+  tglTat: z.string(),
+  tglLahir: z.string(),
+})
+export type PesertaBpjs = z.infer<typeof pesertaBpjsSchema>
+
+// Assumed shapes (ADR-002 open items): rujukan/SKDP payloads vary by provider.
+// Keep them permissive until confirmed against the live Jetli API.
+export const rujukanSchema = z.object({}).catchall(z.unknown())
+export const skdpSchema = z.object({}).catchall(z.unknown())
+
+export const rujukanSkpdResponseSchema = z.object({
+  peserta: pesertaBpjsSchema,
+  rujukan: rujukanSchema.nullable(),
+  listSkdp: z.array(skdpSchema),
+})
+export type RujukanSkpdResponse = z.infer<typeof rujukanSkpdResponseSchema>
+
+export const sepCreateBodySchema = z
+  .object({
+    sepId: z.string().optional(),
+    noPeserta: z.string().optional(),
+    sepDate: z.string().optional(),
+    noRujukan: z.string().optional(),
+    pasienId: z.string().optional(),
+    kelasRawatId: z.string().optional(),
+    diagnosaId: z.string().optional(),
+    tujuanKunjunganId: z.string().optional(),
+    flagProcedureId: z.string().optional(),
+    assesmentPelayananId: z.string().optional(),
+    penunjangId: z.string().optional(),
+    katarak: z.string().optional(),
+    catatan: z.string().optional(),
+    kll: z.string().optional(),
+    tglKLL: z.string().optional(),
+    noLaporanPolisi: z.string().optional(),
+    keteranganKLL: z.string().optional(),
+    propIdKll: z.string().optional(),
+    kabIdKll: z.string().optional(),
+    kecIdKll: z.string().optional(),
+    userId: z.string().optional(),
+  })
+  .passthrough()
+export type SepCreateBody = z.infer<typeof sepCreateBodySchema>
+
+export const sepUploadBodySchema = z
+  .object({
+    sepId: z.string(),
+    regId: z.string(),
+  })
+  .passthrough()
+export type SepUploadBody = z.infer<typeof sepUploadBodySchema>
+
+export const responseCreateSepSchema = z.object({
+  sepId: z.string(),
+  sepNo: z.string(),
+  regId: z.string().optional(),
+})
+
+export const responseCreateSepUnionSchema = z.union([responseCreateSepSchema, z.string()])
+export type ResponseCreateSep = z.infer<typeof responseCreateSepUnionSchema>
+
+export const responseUploadSepSchema = z.object({
+  sepId: z.string(),
+  sepNo: z.string(),
+  regId: z.string().optional(),
+})
+
+export const responseUploadSepUnionSchema = z.union([responseUploadSepSchema, z.string()])
+export type ResponseUploadSep = z.infer<typeof responseUploadSepUnionSchema>
 
 export const businessDateSchema = z.object({
   businessDate: z.string(),

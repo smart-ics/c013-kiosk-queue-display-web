@@ -11,7 +11,15 @@ import {
   patientContextSearchRequestSchema,
   patientContextSearchResponseSchema,
   polisSchema,
+  responseCreateSepUnionSchema,
+  responseFingerprintSchema,
+  responseSepByNoPesertaSchema,
+  responseSepByRegSchema,
+  responseUploadSepUnionSchema,
   returnCreateWalkInSchema,
+  rujukanSkpdResponseSchema,
+  sepCreateBodySchema,
+  sepUploadBodySchema,
   serviceItemSchema,
   type AdmissionQueueIntakeResponse,
   type BookingAssistanceBody,
@@ -23,7 +31,15 @@ import {
   type PasienSearchItem,
   type PatientContextSearchResponse,
   type Polis,
+  type ResponseCreateSep,
+  type ResponseFingerprint,
+  type ResponseSepByNoPeserta,
+  type ResponseSepByReg,
+  type ResponseUploadSep,
   type ReturnCreateWalkIn,
+  type RujukanSkpdResponse,
+  type SepCreateBody,
+  type SepUploadBody,
   type ServiceItem,
 } from '@aq/shared-types'
 import type { AdmissionQueueClient } from './http'
@@ -116,6 +132,41 @@ export function createJetliApi(client: AdmissionQueueClient) {
   return {
     getGroupJaminanMap(tipeJaminanId: string): Promise<GroupJaminanMap | null> {
       return client.getJson('grupJaminan/map', nullableGroupJaminanSchema, { tipeJaminanId })
+    },
+
+    getSepByNoPeserta(noPeserta: string): Promise<ResponseSepByNoPeserta> {
+      return client.getJson(
+        `Sep/peserta/${encodeURIComponent(noPeserta)}`,
+        responseSepByNoPesertaSchema,
+      )
+    },
+
+    getSepByReg(regId: string): Promise<ResponseSepByReg> {
+      return client.getJson(`Sep/reg/${encodeURIComponent(regId)}`, responseSepByRegSchema)
+    },
+
+    getFingerprintStatus(noPeserta: string): Promise<ResponseFingerprint> {
+      return client.getJson(
+        `Sep/finger/peserta/${encodeURIComponent(noPeserta)}`,
+        responseFingerprintSchema,
+      )
+    },
+
+    getRujukanSkpd(noPeserta: string): Promise<RujukanSkpdResponse> {
+      return client.getJson(
+        `Sep/rujukan/${encodeURIComponent(noPeserta)}/peserta`,
+        rujukanSkpdResponseSchema,
+      )
+    },
+
+    createSep(body: SepCreateBody): Promise<ResponseCreateSep> {
+      const parsed = sepCreateBodySchema.parse(body)
+      return client.postJson('Sep', parsed, responseCreateSepUnionSchema)
+    },
+
+    uploadSep(body: SepUploadBody): Promise<ResponseUploadSep> {
+      const parsed = sepUploadBodySchema.parse(body)
+      return client.patchJson('Sep/upload', parsed, responseUploadSepUnionSchema)
     },
   }
 }

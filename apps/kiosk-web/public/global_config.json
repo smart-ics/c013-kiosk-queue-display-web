@@ -1,3 +1,4 @@
 {
-  "bilregApiBase": "http://dev.smart-ics.com:8888/bilregapi/api"
+  "bilregApiBase": "http://dev.smart-ics.com:8888/bilregapi/api",
+  "jetliApiBase": "http://dev.smart-ics.com:8089/JetliAPi/api"
 }

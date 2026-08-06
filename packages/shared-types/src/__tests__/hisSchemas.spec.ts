@@ -3,8 +3,25 @@ import {
   bookingAssistanceBodySchema,
   bookingDetailSchema,
   bookingSearchItemSchema,
+  responseCreateSepUnionSchema,
+  responseFingerprintSchema,
+  responseSepByNoPesertaSchema,
+  responseSepByRegSchema,
+  responseUploadSepUnionSchema,
   returnCreateWalkInSchema,
+  rujukanSkpdResponseSchema,
 } from '../index'
+
+const sepItem = {
+  sepId: '01KFHYG1K5YZ5PZY2Y3SA5QJB3',
+  sepNo: '1104R0040322V000230',
+  noRujukan: '0122R0030823V000098',
+  noPeserta: '0001234567890',
+  namaPeserta: 'John Doe',
+  sepDate: '2026-08-06',
+  layanan: { layananId: 'RJ001', layananName: 'Poli Umum' },
+  diagnosa: { icd10Id: 'E11.8', icd10Name: 'Type 2 DM' },
+}
 
 const bookingItem = {
   bookingId: 'BK1',
@@ -45,5 +62,70 @@ describe('hisSchemas', () => {
       userId: 'hidokkiosk',
     })
     expect(parsed.bookingId).toBeUndefined()
+  })
+
+  it('parses a SEP item with layanan and diagnosa', () => {
+    const parsed = responseSepByNoPesertaSchema.parse([sepItem])
+    expect(parsed[0]?.layanan?.layananName).toBe('Poli Umum')
+    expect(parsed[0]?.diagnosa?.icd10Name).toBe('Type 2 DM')
+  })
+
+  it('parses a nullable SEP by reg, null when no SEP exists', () => {
+    expect(responseSepByRegSchema.parse(null)).toBeNull()
+    const parsed = responseSepByRegSchema.parse(sepItem)
+    expect(parsed?.sepNo).toBe('1104R0040322V000230')
+  })
+
+  it('parses fingerprint status and normalizes id to lowercase', () => {
+    const parsed = responseFingerprintSchema.parse({ id: '1', status: 'Finger print tidak sesuai' })
+    expect(parsed.id).toBe('1')
+  })
+
+  it('parses rujukan/SKDP response with nullable rujukan', () => {
+    const parsed = rujukanSkpdResponseSchema.parse({
+      peserta: {
+        noPeserta: '0001234567890',
+        nama: 'John Doe',
+        hakKelas: { kode: 'K1', nama: 'Kelas 1' },
+        status: { kode: '1', info: 'AKTIF' },
+        jenisPeserta: { kode: 'PNS', nama: 'PNS' },
+        provider: { kode: 'P1', nama: 'RS A' },
+        prbInfo: null,
+        tglTat: '2026-08-06',
+        tglLahir: '1990-01-01',
+      },
+      rujukan: { noRujukan: '0122R0030823V000098', tglRujukan: '2026-08-01' },
+      listSkdp: [{ noSkdp: 'SKDP1', tglMulai: '2026-08-01' }],
+    })
+    expect(parsed.peserta.noPeserta).toBe('0001234567890')
+    expect(parsed.rujukan?.noRujukan).toBe('0122R0030823V000098')
+    expect(parsed.listSkdp).toHaveLength(1)
+  })
+
+  it('accepts a plain string business-error payload on SEP create', () => {
+    expect(responseCreateSepUnionSchema.parse('Biometrik tidak ditemukan')).toBe(
+      'Biometrik tidak ditemukan',
+    )
+    expect(
+      responseCreateSepUnionSchema.parse({
+        sepId: '01KFHYG1K5YZ5PZY2Y3SA5QJB3',
+        sepNo: '-',
+      }),
+    ).toEqual({ sepId: '01KFHYG1K5YZ5PZY2Y3SA5QJB3', sepNo: '-' })
+  })
+
+  it('accepts SEP upload response with optional regId', () => {
+    expect(
+      responseUploadSepUnionSchema.parse({
+        sepId: '01KFHYG1K5YZ5PZY2Y3SA5QJB3',
+        sepNo: '1104R0040322V000230',
+        regId: 'RG12345678',
+      }),
+    ).toEqual({
+      sepId: '01KFHYG1K5YZ5PZY2Y3SA5QJB3',
+      sepNo: '1104R0040322V000230',
+      regId: 'RG12345678',
+    })
+    expect(responseUploadSepUnionSchema.parse('FAILED')).toBe('FAILED')
   })
 })
