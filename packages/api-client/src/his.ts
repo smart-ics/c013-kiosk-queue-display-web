@@ -120,7 +120,7 @@ export function createHisApi(client: AdmissionQueueClient) {
     ): Promise<PatientContextSearchResponse> {
       const parsed = patientContextSearchRequestSchema.parse(body)
       return client.postJson(
-        'api/v1/admisi-rajal/patient-context-search',
+        'v1/admisi-rajal/patient-context-search',
         parsed,
         patientContextSearchResponseSchema,
       )

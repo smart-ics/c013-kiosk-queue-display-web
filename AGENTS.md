@@ -109,7 +109,15 @@ Post-deploy runtime config lives in each app's `public/global_config.json`
 
 ## Conventions
 
-- Vue 3 + Vite + TypeScript + Zod + TanStack Query
-- Prefer declarative patterns (`computed`, `watch`, query hooks)
+Vue 3 + Vite + TypeScript + Zod + TanStack Query.
+
+### Vue conventions
+
+- `<script setup lang="ts">` + Composition API in every SFC — never Options API
+- Type-based `defineProps<...>` / `defineEmits<...>`; use `withDefaults` for prop defaults
+- `ref()` for state; `reactive()` only for grouped form objects. `computed` for derived values, `watch` over `watchEffect`
+- Filter/sort/group lists via `computed`, not methods, in `v-for`; always provide a stable `:key`
+- PascalCase component filenames and registration
+- Props are read-only — communicate upward via `emit`, never mutate
 - No comments unless explaining non-obvious intent
 - Format with Prettier on modified files only

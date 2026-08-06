@@ -37,7 +37,7 @@ function disambiguator(item: PatientContextItem): string {
           <dt>Gender</dt>
           <dd>{{ bestMatch.gender }}</dd>
         </div>
-        <div>
+        <div v-if="bestMatch.locality">
           <dt>Lokasi</dt>
           <dd>{{ bestMatch.locality }}</dd>
         </div>
