@@ -23,8 +23,6 @@ import KioskHome from './KioskHome.vue'
 import BookingSearchStep from './steps/BookingSearchStep.vue'
 import BookingConfirmStep from './steps/BookingConfirmStep.vue'
 import PatientContextConfirmStep from './steps/PatientContextConfirmStep.vue'
-import WalkinSearchStep from './steps/WalkinSearchStep.vue'
-import WalkinPatientStep from './steps/WalkinPatientStep.vue'
 import WalkinServiceStep from './steps/WalkinServiceStep.vue'
 import WalkinConfirmStep from './steps/WalkinConfirmStep.vue'
 import BiometricStep from './steps/BiometricStep.vue'
@@ -143,7 +141,6 @@ const registration = useKioskRegistration({
   getBookingDetail: (bookingId) => getHisApi().getBookingDetail(bookingId),
   listPolis: (pasienId) => getHisApi().listPolis(pasienId),
   getGroupJaminanMap: (tipeJaminanId) => getJetliApi().getGroupJaminanMap(tipeJaminanId),
-  searchPasien: (keyword) => getHisApi().searchPasien(keyword),
   searchPatientContext: (body) => getHisApi().patientContextSearch(body),
   verifyBiometric: () => createBiometricClient({ port: printerProxyPort.value }).verify(),
   registerBooking: (ctx) => getHisApi().registerByBookingDirect(ctx),
@@ -333,26 +330,12 @@ const loadingMessage = computed(() => {
       :pending="registration.submitting.value"
       :error-message="null"
     />
-    <WalkinSearchStep
-      v-else-if="registration.flow.value === 'WALKIN_SEARCH'"
-      :pending="registration.submitting.value"
-      :error-message="null"
-      @submit="registration.searchWalkinPatient"
-      @back="onHome"
-    />
-    <WalkinPatientStep
-      v-else-if="registration.flow.value === 'WALKIN_SELECT_PATIENT'"
-      :patients="registration.patientMatches.value"
-      :pending="registration.submitting.value"
-      @select="registration.selectPatient"
-      @back="registration.startWalkinFlow"
-    />
     <WalkinServiceStep
       v-else-if="registration.flow.value === 'WALKIN_SELECT_SERVICE'"
       :catalog="catalog"
       :pending="registration.submitting.value"
       @select="registration.selectService"
-      @back="registration.startWalkinFlow"
+      @back="onHome"
     />
     <WalkinConfirmStep
       v-else-if="registration.flow.value === 'WALKIN_CONFIRM'"
@@ -363,7 +346,7 @@ const loadingMessage = computed(() => {
       :error-message="null"
       @confirm="registration.confirmWalkin"
       @update-no-peserta="registration.setWalkinNoPeserta"
-      @back="registration.startWalkinFlow"
+      @back="onHome"
     />
     <RegistrationSuccessStep
       v-else-if="registration.flow.value === 'REGISTRATION_SUCCESS'"

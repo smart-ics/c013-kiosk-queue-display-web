@@ -67,7 +67,6 @@ export type KioskRegistrationDeps = {
   getBookingDetail: (bookingId: string) => Promise<BookingDetail>
   listPolis: (pasienId: string) => Promise<Polis[]>
   getGroupJaminanMap: (tipeJaminanId: string) => Promise<GroupJaminanMap | null>
-  searchPasien: (keyword: string) => Promise<PasienSearchItem[]>
   searchPatientContext: (body: {
     keyword: string
     businessDate: string
@@ -101,7 +100,6 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   const bookingDetail = ref<BookingDetail | null>(null)
   const bookingEligibility = ref<EligibilityStatus | null>(null)
 
-  const patientMatches = ref<PasienSearchItem[]>([])
   const selectedPatient = ref<PasienSearchItem | null>(null)
   const walkinEligibility = ref<EligibilityStatus | null>(null)
   const walkinNoPeserta = ref('')
@@ -158,7 +156,6 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     selectedBooking.value = null
     bookingDetail.value = null
     bookingEligibility.value = null
-    patientMatches.value = []
     selectedPatient.value = null
     walkinEligibility.value = null
     walkinNoPeserta.value = ''
@@ -196,13 +193,6 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     mode.value = 'booking'
     errorContext.value = null
     transition('BOOKING_SEARCH')
-  }
-
-  function startWalkinFlow() {
-    touch()
-    mode.value = 'walkin'
-    errorContext.value = null
-    transition('WALKIN_SEARCH')
   }
 
   function submitBookingKeyword(keyword: string): Promise<void> {
@@ -396,51 +386,6 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     }
   }
 
-  function searchWalkinPatient(keyword: string): Promise<void> {
-    touch()
-    const trimmed = keyword.trim()
-    if (!trimmed) return Promise.resolve()
-    return withSubmit(async () => {
-      try {
-        await ensureBusinessDate()
-        const matches = await deps.searchPasien(trimmed)
-        if (matches.length === 0) {
-          setFailure('BOOKING_NOT_FOUND', 'Pasien tidak ditemukan untuk keyword tersebut.')
-          return
-        }
-        patientMatches.value = matches
-        transition('WALKIN_SELECT_PATIENT')
-      } catch (error) {
-        setFailure(mapErrorToFailureCode(error), messageFromError(error))
-      }
-    })
-  }
-
-  function selectPatient(patient: PasienSearchItem): Promise<void> {
-    touch()
-    return withSubmit(async () => {
-      try {
-        const polisList = await deps.listPolis(patient.pasienId)
-        const jaminan = deriveWalkinJaminan(polisList)
-        const group =
-          jaminan.tipeJaminanId === UMAT_TIPE_JAMINAN_ID
-            ? null
-            : await deps.getGroupJaminanMap(jaminan.tipeJaminanId)
-        selectedPatient.value = patient
-        walkinEligibility.value = {
-          tipeJaminanId: jaminan.tipeJaminanId,
-          tipeJaminanName: jaminan.tipeJaminanName,
-          noPeserta: jaminan.noPeserta,
-          needsEligibility: computeNeedsEligibility(jaminan.tipeJaminanId, group),
-        }
-        walkinNoPeserta.value = ''
-        transition('WALKIN_SELECT_SERVICE')
-      } catch (error) {
-        setFailure(mapErrorToFailureCode(error), messageFromError(error))
-      }
-    })
-  }
-
   function selectService(service: ServiceSelection) {
     touch()
     selectedService.value = service
@@ -535,7 +480,6 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     selectedBooking,
     bookingDetail,
     bookingEligibility,
-    patientMatches,
     selectedPatient,
     walkinEligibility,
     walkinNoPeserta,
@@ -548,15 +492,12 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     errorContext,
     biometricVerdict,
     startBookingFlow,
-    startWalkinFlow,
     goHome,
     dispose,
     submitBookingKeyword,
     confirmBooking,
     confirmPatientContext,
     cancelPatientContext,
-    searchWalkinPatient,
-    selectPatient,
     selectService,
     setWalkinNoPeserta,
     confirmWalkin,

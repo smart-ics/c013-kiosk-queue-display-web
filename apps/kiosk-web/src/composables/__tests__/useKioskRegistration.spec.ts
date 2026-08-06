@@ -5,7 +5,6 @@ import type {
   BookingDetail,
   BookingSearchItem,
   GroupJaminanMap,
-  PasienSearchItem,
   Polis,
 } from '@aq/shared-types'
 import { useKioskRegistration, type KioskRegistrationDeps } from '../useKioskRegistration'
@@ -42,7 +41,38 @@ const bpjsPolis: Polis = {
 }
 
 const group: GroupJaminanMap = { tipeJaminanId: 'BPJS', groupJaminanId: 'G1', groupJaminanName: 'BPJS' }
-const pasien: PasienSearchItem = { pasienId: 'PT1', pasienName: 'Andi' }
+
+const contextItem = {
+  kind: 'Patient',
+  id: 'P001',
+  patientName: 'Budi',
+  patientId: 'PT1',
+  birthDate: '1990-01-01',
+  gender: 'L',
+  locality: 'Jakarta',
+  maskedNik: '123456****',
+  maskedPhone: null,
+  visitDate: null,
+  visitTime: null,
+  serviceName: null,
+  doctorName: null,
+  state: 'Active',
+  bookingId: null,
+  registrationId: null,
+  matchType: 'Exact',
+  isExactMatch: true,
+  rank: 1,
+  warnings: [],
+}
+
+const contextResponse = {
+  businessDate: '2026-08-03',
+  bookings: { items: [], total: 0, hasMore: false },
+  registrations: { items: [], total: 0, hasMore: false },
+  patients: { items: [contextItem], total: 1, hasMore: false },
+  bestMatch: contextItem,
+  canCreatePatient: true,
+}
 
 function makeDeps(overrides: Partial<KioskRegistrationDeps> = {}): KioskRegistrationDeps {
   return {
@@ -52,7 +82,6 @@ function makeDeps(overrides: Partial<KioskRegistrationDeps> = {}): KioskRegistra
     getBookingDetail: vi.fn(async () => bpjsDetail),
     listPolis: vi.fn(async () => [bpjsPolis]),
     getGroupJaminanMap: vi.fn(async () => group),
-    searchPasien: vi.fn(async () => [pasien]),
     searchPatientContext: vi.fn(async () => ({
       businessDate: '2026-08-03',
       bookings: { items: [], total: 0, hasMore: false },
@@ -212,38 +241,6 @@ describe('useKioskRegistration booking flow', () => {
 })
 
 describe('useKioskRegistration patient context cascade', () => {
-  const contextItem = {
-    kind: 'Patient',
-    id: 'P001',
-    patientName: 'Budi',
-    patientId: 'PT1',
-    birthDate: '1990-01-01',
-    gender: 'L',
-    locality: 'Jakarta',
-    maskedNik: '123456****',
-    maskedPhone: null,
-    visitDate: null,
-    visitTime: null,
-    serviceName: null,
-    doctorName: null,
-    state: 'Active',
-    bookingId: null,
-    registrationId: null,
-    matchType: 'Exact',
-    isExactMatch: true,
-    rank: 1,
-    warnings: [],
-  }
-
-  const contextResponse = {
-    businessDate: '2026-08-03',
-    bookings: { items: [], total: 0, hasMore: false },
-    registrations: { items: [], total: 0, hasMore: false },
-    patients: { items: [contextItem], total: 1, hasMore: false },
-    bestMatch: contextItem,
-    canCreatePatient: true,
-  }
-
   it('cascades to patient context search when booking search returns empty', async () => {
     const searchPatientContext = vi.fn(async () => contextResponse)
     const reg = useKioskRegistration(
@@ -299,58 +296,50 @@ describe('useKioskRegistration patient context cascade', () => {
   })
 })
 
-describe('useKioskRegistration walk-in flow', () => {
-  it('always shows the patient picker even for a single match', async () => {
-    const reg = useKioskRegistration(makeDeps())
-    reg.startWalkinFlow()
-    await reg.searchWalkinPatient('ANDI')
-    expect(reg.flow.value).toBe('WALKIN_SELECT_PATIENT')
-    expect(reg.patientMatches.value).toHaveLength(1)
-  })
-
-  it('routes a walk-in patient search rejection to failure', async () => {
-    const deps = makeDeps({
-      searchPasien: vi.fn(async () => {
-        throw new ApiClientError('Failed to fetch', 0)
-      }),
+describe('useKioskRegistration goshow walk-in flow', () => {
+  function makeContextDeps(overrides: Partial<KioskRegistrationDeps> = {}): KioskRegistrationDeps {
+    return makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => contextResponse),
+      ...overrides,
     })
-    const reg = useKioskRegistration(deps)
-    reg.startWalkinFlow()
-    await reg.searchWalkinPatient('ANDI')
-    expect(reg.flow.value).toBe('FAILURE')
-    expect(reg.errorContext.value?.code).toBe('BACKEND_ERROR')
-  })
+  }
+
+  async function reachContextConfirm(reg: ReturnType<typeof useKioskRegistration>) {
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('Budi')
+    expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
+  }
 
   it('routes a polis lookup rejection to failure', async () => {
-    const deps = makeDeps({
-      listPolis: vi.fn(async () => {
-        throw new ApiClientError('Failed to fetch', 0)
+    const reg = useKioskRegistration(
+      makeContextDeps({
+        listPolis: vi.fn(async () => {
+          throw new ApiClientError('Failed to fetch', 0)
+        }),
       }),
-    })
-    const reg = useKioskRegistration(deps)
-    reg.startWalkinFlow()
-    await reg.searchWalkinPatient('ANDI')
-    await reg.selectPatient(pasien)
+    )
+    await reachContextConfirm(reg)
+    await reg.confirmPatientContext(contextItem)
     expect(reg.flow.value).toBe('FAILURE')
     expect(reg.errorContext.value?.code).toBe('BACKEND_ERROR')
   })
 
   it('skips the jaminan group lookup when a walk-in patient has no polis', async () => {
-    const deps = makeDeps({ listPolis: vi.fn(async () => []) })
+    const deps = makeContextDeps({ listPolis: vi.fn(async () => []) })
     const reg = useKioskRegistration(deps)
-    reg.startWalkinFlow()
-    await reg.searchWalkinPatient('ANDI')
-    await reg.selectPatient(pasien)
+    await reachContextConfirm(reg)
+    await reg.confirmPatientContext(contextItem)
+    expect(reg.flow.value).toBe('WALKIN_SELECT_SERVICE')
     expect(deps.getGroupJaminanMap).not.toHaveBeenCalled()
     expect(reg.walkinEligibility.value?.needsEligibility).toBe(false)
   })
 
-  it('walks through patient → service → confirm → register', async () => {
-    const deps = makeDeps()
+  it('walks through goshow patient → service → confirm → register', async () => {
+    const deps = makeContextDeps()
     const reg = useKioskRegistration(deps)
-    reg.startWalkinFlow()
-    await reg.searchWalkinPatient('ANDI')
-    await reg.selectPatient(pasien)
+    await reachContextConfirm(reg)
+    await reg.confirmPatientContext(contextItem)
     expect(reg.flow.value).toBe('WALKIN_SELECT_SERVICE')
     expect(reg.walkinEligibility.value?.needsEligibility).toBe(true)
     reg.selectService({
@@ -374,16 +363,15 @@ describe('useKioskRegistration walk-in flow', () => {
   })
 
   it('falls back to intake on walk-in failure', async () => {
-    const deps = makeDeps({
+    const deps = makeContextDeps({
       listPolis: vi.fn(async () => []),
       registerWalkin: vi.fn(async () => {
         throw new Error('full')
       }),
     })
     const reg = useKioskRegistration(deps)
-    reg.startWalkinFlow()
-    await reg.searchWalkinPatient('ANDI')
-    await reg.selectPatient(pasien)
+    await reachContextConfirm(reg)
+    await reg.confirmPatientContext(contextItem)
     expect(reg.walkinEligibility.value?.needsEligibility).toBe(false)
     reg.selectService({
       poli: { id: 'PO1', name: 'Poli Jantung' },
