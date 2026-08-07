@@ -1,8 +1,8 @@
 export type DeviceListStatus = 'loading' | 'ok' | 'error'
 
-export type DeviceListState = {
+export type DeviceListState<T = string> = {
   status: DeviceListStatus
-  items: string[]
+  items: T[]
   error: string | null
 }
 
@@ -11,10 +11,10 @@ export type DeviceListFetcher = {
   cancel: () => void
 }
 
-export function createListFetcher(
-  fetchImpl: () => Promise<string[]>,
+export function createListFetcher<T = string>(
+  fetchImpl: () => Promise<T[]>,
   fallbackMsg: string,
-  onUpdate: (state: DeviceListState) => void,
+  onUpdate: (state: DeviceListState<T>) => void,
 ): DeviceListFetcher {
   let loadId = 0
 

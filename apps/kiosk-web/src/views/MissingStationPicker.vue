@@ -3,22 +3,27 @@ import { computed } from 'vue'
 import { useStationList } from '../composables/useStationList'
 import BootErrorPage from './BootErrorPage.vue'
 
-const { status, stationIds, error } = useStationList()
+const { status, stations, error } = useStationList()
 
-const empty = computed(() => status.value === 'ok' && stationIds.value.length === 0)
+const empty = computed(() => status.value === 'ok' && stations.value.length === 0)
 </script>
 
 <template>
-  <BootErrorPage
-    v-if="status === 'error'"
-    title="Kiosk — Boot gagal"
-    :message="error!"
-  />
+  <BootErrorPage v-if="status === 'error'" title="Kiosk — Boot gagal" :message="error!" />
 
   <section v-else class="picker-panel">
     <div class="picker-header">
       <div class="icon-glow-wrapper">
-        <svg class="header-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          class="header-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
           <line x1="8" y1="21" x2="16" y2="21"></line>
           <line x1="12" y1="17" x2="12" y2="21"></line>
@@ -34,42 +39,69 @@ const empty = computed(() => status.value === 'ok' && stationIds.value.length ==
     </div>
 
     <div v-else-if="empty" class="empty-state">
-      <svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <svg
+        class="empty-icon"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.75"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="12" y1="8" x2="12" y2="12"></line>
         <line x1="12" y1="16" x2="12.01" y2="16"></line>
       </svg>
       <h2>Tidak Ada Station Terdaftar</h2>
       <p>
-        Tidak ada entry station kiosk yang terdaftar.
-        Pastikan Anda telah menambahkan station kiosk terlebih dahulu.
+        Tidak ada entry station kiosk yang terdaftar. Pastikan Anda telah menambahkan station kiosk
+        terlebih dahulu.
       </p>
     </div>
 
     <div v-else class="list-wrapper">
       <ul class="picker-list-enhanced">
         <li
-          v-for="(id, index) in stationIds"
-          :key="id"
+          v-for="(station, index) in stations"
+          :key="station.stationId"
           class="picker-item-wrapper"
           :style="{ animationDelay: `${index * 75}ms` }"
         >
-          <RouterLink :to="`/${id}`" class="picker-link-card">
+          <RouterLink :to="`/${station.stationId}`" class="picker-link-card">
             <div class="card-left">
               <div class="screen-icon-bg">
-                <svg class="item-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  class="item-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <rect x="2" y="4" width="20" height="12" rx="2"></rect>
                   <path d="M12 16v4"></path>
                   <path d="M8 20h8"></path>
                 </svg>
               </div>
               <div class="screen-info">
-                <span class="screen-name">{{ id }}</span>
-                <span class="screen-sub">Kiosk Station</span>
+                <span class="screen-name">{{ station.displayName }}</span>
+                <span v-if="station.locationName" class="screen-sub">{{ station.locationName }}</span>
               </div>
             </div>
             <div class="card-right">
-              <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                class="arrow-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <polyline points="9 18 15 12 9 6"></polyline>
               </svg>
             </div>
@@ -97,13 +129,13 @@ const empty = computed(() => status.value === 'ok' && stationIds.value.length ==
 .picker-panel {
   margin: 6rem auto auto;
   width: min(600px, calc(100% - 2rem));
-  background: rgba(18, 38, 61, 0.55);
+  background: rgba(18, 38, 61, 1);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 1.5rem;
   padding: 3rem 2.5rem;
-  box-shadow: 
+  box-shadow:
     0 4px 30px rgba(0, 0, 0, 0.2),
     0 24px 70px rgba(0, 0, 0, 0.4),
     inset 0 0 20px rgba(255, 255, 255, 0.02);
@@ -302,7 +334,7 @@ const empty = computed(() => status.value === 'ok' && stationIds.value.length ==
 .picker-link-card:hover {
   background: var(--accent-glow-bg);
   border-color: var(--accent-glow-border);
-  box-shadow: 
+  box-shadow:
     0 10px 20px rgba(0, 0, 0, 0.15),
     0 0 0 1px rgba(29, 111, 184, 0.15),
     inset 0 0 12px rgba(29, 111, 184, 0.05);
@@ -347,7 +379,8 @@ const empty = computed(() => status.value === 'ok' && stationIds.value.length ==
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {

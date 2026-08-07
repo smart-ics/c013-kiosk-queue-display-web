@@ -32,7 +32,11 @@ export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationPro
     getKioskBootConfig: (stationId) => runtime.getPublicKioskBootConfig(stationId),
     listKiosks: () =>
       runtime.listPublicKiosks().then((kiosks) =>
-        kiosks.filter((k) => k.active).map((k) => ({ stationId: k.stationId })),
+        kiosks.filter((k) => k.active).map((k) => ({
+          stationId: k.stationId,
+          displayName: k.displayName,
+          locationName: k.locationName,
+        })),
       ),
   })
   return deviceConfigProvider

@@ -1,38 +1,41 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getAdmissionQueueHubUrl } from '@/infrastructure'
+import { configService } from '@aq/app-config'
 
 const ORIGINAL_DEV = import.meta.env.DEV
-const ORIGINAL_BASE = import.meta.env.VITE_BILREG_API_BASE
+
+beforeEach(() => {
+  vi.spyOn(configService, 'getConfig').mockReturnValue({
+    bilregApiBase: 'http://dev.smart-ics.com:8888/bilregapi/api',
+  })
+})
 
 afterEach(() => {
   ;(import.meta.env as Record<string, string | boolean>).DEV = ORIGINAL_DEV
-  ;(import.meta.env as Record<string, string | boolean>).VITE_BILREG_API_BASE = ORIGINAL_BASE
   vi.restoreAllMocks()
 })
 
 describe('getAdmissionQueueHubUrl', () => {
   it('returns a same-origin relative path in dev so the Vite proxy avoids CORS preflight', () => {
     ;(import.meta.env as Record<string, string | boolean>).DEV = true
-    ;(import.meta.env as Record<string, string | boolean>).VITE_BILREG_API_BASE =
-      'http://dev.smart-ics.com:8888/bilregapi/api'
 
     expect(getAdmissionQueueHubUrl()).toBe('/hubs/admission-queue')
   })
 
   it('returns the absolute hub URL in production builds (backend CORS is authoritative)', () => {
     ;(import.meta.env as Record<string, string | boolean>).DEV = false
-    ;(import.meta.env as Record<string, string | boolean>).VITE_BILREG_API_BASE =
-      'http://dev.smart-ics.com:8888/bilregapi/api'
 
     expect(getAdmissionQueueHubUrl()).toBe(
       'http://dev.smart-ics.com:8888/bilregapi/hubs/admission-queue',
     )
   })
 
-  it('throws when VITE_BILREG_API_BASE is missing', () => {
+  it('throws when bilregApiBase is missing', () => {
     ;(import.meta.env as Record<string, string | boolean>).DEV = false
-    ;(import.meta.env as Record<string, string | boolean>).VITE_BILREG_API_BASE = ''
+    vi.spyOn(configService, 'getConfig').mockReturnValue({
+      bilregApiBase: '',
+    })
 
-    expect(() => getAdmissionQueueHubUrl()).toThrow('VITE_BILREG_API_BASE is not configured')
+    expect(() => getAdmissionQueueHubUrl()).toThrow('bilregApiBase is not configured in global_config.json')
   })
 })

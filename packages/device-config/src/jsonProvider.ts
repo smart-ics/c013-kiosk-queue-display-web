@@ -54,10 +54,14 @@ export class JsonDeviceConfigurationProvider implements IDeviceConfigurationProv
       .sort((a, b) => a.localeCompare(b))
   }
 
-  async listKioskStationIds(): Promise<string[]> {
+  async listKioskStationIds(): Promise<{ stationId: string; displayName: string; locationName?: string | null }[]> {
     return Object.entries(this.catalog)
       .filter(([, raw]) => raw?.role === 'kiosk')
-      .map(([id]) => id)
-      .sort((a, b) => a.localeCompare(b))
+      .map(([id, raw]) => ({
+        stationId: id,
+        displayName: raw.displayName || id,
+        locationName: raw.locationName || null,
+      }))
+      .sort((a, b) => a.stationId.localeCompare(b.stationId))
   }
 }
