@@ -271,6 +271,38 @@ describe('useKioskRegistration patient context cascade', () => {
     expect(reg.errorContext.value?.code).toBe('BOOKING_NOT_FOUND')
   })
 
+  it('calls intake instead of bookingAssistance when error code is BOOKING_NOT_FOUND', async () => {
+    const emptyContext = {
+      businessDate: '2026-08-03',
+      bookings: { items: [], total: 0, hasMore: false },
+      registrations: { items: [], total: 0, hasMore: false },
+      patients: { items: [], total: 0, hasMore: false },
+      bestMatch: null,
+      canCreatePatient: true,
+    }
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => emptyContext),
+      bookingAssistance: vi.fn(),
+      intake: vi.fn(async () => ({
+        antrianId: 'A123',
+        queueLabel: 'A-010',
+        noUrut: 10,
+        createdAt: '2026-08-03T08:00:00',
+      })),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('XYZ')
+    expect(reg.flow.value).toBe('FAILURE')
+    expect(reg.errorContext.value?.code).toBe('BOOKING_NOT_FOUND')
+
+    await reg.confirmAssistance('BPJS')
+    expect(reg.flow.value).toBe('ASSISTANCE_QUEUE')
+    expect(deps.intake).toHaveBeenCalledWith('BPJS')
+    expect(deps.bookingAssistance).not.toHaveBeenCalled()
+  })
+
   it('confirmPatientContext maps to goshow walkin flow', async () => {
     const searchPatientContext = vi.fn(async () => contextResponse)
     const reg = useKioskRegistration(

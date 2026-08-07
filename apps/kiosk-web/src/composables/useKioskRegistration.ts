@@ -412,7 +412,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     return withSubmit(async () => {
       try {
         const ticket =
-          mode.value === 'booking'
+          mode.value === 'booking' && errorContext.value?.code !== 'BOOKING_NOT_FOUND'
             ? await deps.bookingAssistance({
                 bookingId: selectedBooking.value?.bookingId,
                 servicePointId,
