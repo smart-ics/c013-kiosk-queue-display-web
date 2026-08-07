@@ -200,6 +200,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     const trimmed = keyword.trim()
     if (!trimmed) return Promise.resolve()
     const decoded = getKodeBookingMjkn(trimmed)
+    mode.value = 'booking'
     return withSubmit(async () => {
       try {
         const tgl = await ensureBusinessDate()
