@@ -10,6 +10,7 @@ import {
 import {
   getDeviceConfigProvider,
   getRuntimeDeviceApi,
+  getHisApi,
 } from '../infrastructure'
 import { filterSnapshotByLoketIds } from '../lib/snapshot'
 import { validateDisplayDeviceConfig } from '../lib/boot'
@@ -35,7 +36,6 @@ const queryClient = useQueryClient()
 
 // Live Clock & Date
 const currentTime = ref('')
-const currentDate = ref('')
 
 function updateClock() {
   const now = new Date()
@@ -45,13 +45,39 @@ function updateClock() {
     second: '2-digit',
     hour12: false,
   })
-  currentDate.value = now.toLocaleDateString('id-ID', {
+}
+
+const businessDateQuery = useQuery({
+  queryKey: computed(() => ['business-date', props.screenId] as const),
+  enabled: computed(() => !!deviceConfig.value && !bootError.value),
+  queryFn: async () => getHisApi().getBusinessDate(),
+  staleTime: 5 * 60 * 1000,
+})
+
+const businessDate = computed(() => businessDateQuery.data.value?.businessDate ?? null)
+
+const currentDate = computed(() => {
+  if (businessDate.value) {
+    const [y, m, d] = businessDate.value.split('-')
+    try {
+      return new Intl.DateTimeFormat('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date(Number(y), Number(m) - 1, Number(d)))
+    } catch {
+      // fallback
+    }
+  }
+  const now = new Date()
+  return now.toLocaleDateString('id-ID', {
     weekday: 'long',
     day: '2-digit',
     month: 'long',
     year: 'numeric',
   })
-}
+})
 
 // Advertising Panel - Wellness Tips Slideshow
 const activeTipIndex = ref(0)

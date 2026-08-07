@@ -2,6 +2,8 @@ import {
   AdmissionQueueClient,
   buildAdmissionQueueHubUrl,
   createRuntimeDeviceApi,
+  createHisApi,
+  type HisApi,
 } from '@aq/api-client'
 import {
   ApiDeviceConfigurationProvider,
@@ -11,6 +13,7 @@ import { configService } from '@aq/app-config'
 
 let deviceConfigProvider: IDeviceConfigurationProvider | null = null
 let runtimeDeviceApi: ReturnType<typeof createRuntimeDeviceApi> | null = null
+let hisApi: HisApi | null = null
 
 export async function getDeviceConfigProvider(): Promise<IDeviceConfigurationProvider> {
   if (deviceConfigProvider) return deviceConfigProvider
@@ -40,6 +43,21 @@ export function getRuntimeDeviceApi() {
   return runtimeDeviceApi
 }
 
+export function getHisApi(): HisApi {
+  if (hisApi) return hisApi
+  const baseUrl = configService.getConfig().bilregApiBase
+  if (!baseUrl) {
+    throw new Error('bilregApiBase is not configured in global_config.json')
+  }
+  hisApi = createHisApi(
+    new AdmissionQueueClient({
+      baseUrl,
+      auth: { getToken: () => null },
+    }),
+  )
+  return hisApi
+}
+
 export function getAdmissionQueueHubUrl(): string {
   const baseUrl = configService.getConfig().bilregApiBase
   if (!baseUrl) {
@@ -54,4 +72,5 @@ export function getAdmissionQueueHubUrl(): string {
 export function __resetInfrastructureForTests() {
   deviceConfigProvider = null
   runtimeDeviceApi = null
+  hisApi = null
 }
