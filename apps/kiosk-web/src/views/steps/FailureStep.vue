@@ -7,7 +7,10 @@ defineProps<{
   offerings: AdmissionServicePoint[]
   pending: boolean
 }>()
-defineEmits<{ selectServicePoint: [servicePointId: string] }>()
+defineEmits<{
+  selectServicePoint: [servicePointId: string]
+  back: []
+}>()
 </script>
 
 <template>
@@ -30,5 +33,17 @@ defineEmits<{ selectServicePoint: [servicePointId: string] }>()
       </button>
     </div>
     <p v-if="pending" class="status">Mengambil nomor antrian…</p>
+
+    <div class="actions">
+      <button
+        type="button"
+        class="secondary-btn"
+        :disabled="pending"
+        data-testid="failure-back"
+        @click="$emit('back')"
+      >
+        Kembali ke Beranda
+      </button>
+    </div>
   </section>
 </template>

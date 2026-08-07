@@ -363,6 +363,7 @@ const loadingMessage = computed(() => {
       :offerings="offerings"
       :pending="registration.submitting.value"
       @select-service-point="registration.confirmAssistance"
+      @back="onHome"
     />
     <AssistanceQueueStep
       v-else-if="registration.flow.value === 'ASSISTANCE_QUEUE'"

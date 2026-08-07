@@ -20,4 +20,16 @@ describe('FailureStep', () => {
     await wrapper.get('[data-testid="assist-REG"]').trigger('click')
     expect(wrapper.emitted('selectServicePoint')?.[0]).toEqual(['REG'])
   })
+
+  it('emits back when the back button is clicked', async () => {
+    const wrapper = mount(FailureStep, {
+      props: {
+        errorContext: { code: 'DUPLICATE_REGISTRATION', message: 'Sudah terdaftar.' },
+        offerings,
+        pending: false,
+      },
+    })
+    await wrapper.get('[data-testid="failure-back"]').trigger('click')
+    expect(wrapper.emitted('back')).toBeTruthy()
+  })
 })
