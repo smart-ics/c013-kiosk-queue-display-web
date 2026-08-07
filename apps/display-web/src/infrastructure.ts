@@ -10,7 +10,7 @@ import {
   type IDeviceConfigurationProvider,
 } from '@aq/device-config'
 import { configService } from '@aq/app-config'
-import { createEnvAuthTokenProvider } from '@aq/auth'
+
 
 let deviceConfigProvider: IDeviceConfigurationProvider | null = null
 let runtimeDeviceApi: ReturnType<typeof createRuntimeDeviceApi> | null = null
@@ -38,7 +38,7 @@ export function getRuntimeDeviceApi() {
   }
   const client = new AdmissionQueueClient({
     baseUrl,
-    auth: createEnvAuthTokenProvider(import.meta.env),
+    auth: { getToken: () => null },
   })
   runtimeDeviceApi = createRuntimeDeviceApi(client)
   return runtimeDeviceApi
@@ -53,7 +53,7 @@ export function getHisApi(): HisApi {
   hisApi = createHisApi(
     new AdmissionQueueClient({
       baseUrl,
-      auth: createEnvAuthTokenProvider(import.meta.env),
+      auth: { getToken: () => null },
     }),
   )
   return hisApi
