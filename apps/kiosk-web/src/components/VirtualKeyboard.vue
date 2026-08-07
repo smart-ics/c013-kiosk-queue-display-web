@@ -1,7 +1,13 @@
 <script setup lang="ts">
-const props = defineProps<{
-  modelValue: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: string
+    disabled?: boolean
+  }>(),
+  {
+    disabled: false,
+  }
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -9,9 +15,9 @@ const emit = defineEmits<{
 }>()
 
 const QWERTY_ROWS = [
-  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
-  ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
+  ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+  ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+  ['Z', 'X', 'C', 'V', 'B', 'N', 'M'],
 ]
 
 const NUMPAD_ROWS = [
@@ -40,6 +46,7 @@ function backspace() {
           type="button"
           class="kb-key"
           :data-testid="`kb-key-${key}`"
+          :disabled="disabled"
           @click="append(key)"
         >
           {{ key }}
@@ -49,6 +56,7 @@ function backspace() {
           type="button"
           class="kb-key kb-key--backspace"
           data-testid="kb-backspace"
+          :disabled="disabled"
           @click="backspace"
         >
           &#9003;
@@ -59,6 +67,7 @@ function backspace() {
           type="button"
           class="kb-key kb-key--space"
           data-testid="kb-space"
+          :disabled="disabled"
           @click="append(' ')"
         >
           Spasi
@@ -74,6 +83,7 @@ function backspace() {
           type="button"
           class="kb-key kb-key--num"
           :data-testid="`kb-key-${key}`"
+          :disabled="disabled"
           @click="append(key)"
         >
           {{ key }}
@@ -83,6 +93,7 @@ function backspace() {
           type="button"
           class="kb-key kb-key--enter"
           data-testid="kb-enter"
+          :disabled="disabled"
           @click="emit('submit')"
         >
           &#8629;
@@ -91,3 +102,4 @@ function backspace() {
     </div>
   </div>
 </template>
+

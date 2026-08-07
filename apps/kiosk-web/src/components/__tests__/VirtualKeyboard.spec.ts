@@ -5,10 +5,10 @@ import VirtualKeyboard from '../VirtualKeyboard.vue'
 describe('VirtualKeyboard', () => {
   it('emits update:modelValue when a qwerty key is pressed', async () => {
     const wrapper = mount(VirtualKeyboard, { props: { modelValue: '' } })
-    await wrapper.get('[data-testid="kb-key-q"]').trigger('click')
+    await wrapper.get('[data-testid="kb-key-Q"]').trigger('click')
     const emitted = wrapper.emitted('update:modelValue')
     expect(emitted).toBeDefined()
-    expect(emitted![0]).toEqual(['q'])
+    expect(emitted![0]).toEqual(['Q'])
   })
 
   it('emits update:modelValue when a numpad key is pressed', async () => {
@@ -19,8 +19,8 @@ describe('VirtualKeyboard', () => {
 
   it('appends character to existing value', async () => {
     const wrapper = mount(VirtualKeyboard, { props: { modelValue: 'AB' } })
-    await wrapper.get('[data-testid="kb-key-a"]').trigger('click')
-    expect(wrapper.emitted('update:modelValue')![0]).toEqual(['ABa'])
+    await wrapper.get('[data-testid="kb-key-A"]').trigger('click')
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual(['ABA'])
   })
 
   it('removes last character on backspace', async () => {
@@ -41,3 +41,4 @@ describe('VirtualKeyboard', () => {
     expect(wrapper.emitted('submit')).toHaveLength(1)
   })
 })
+

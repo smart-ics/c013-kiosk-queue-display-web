@@ -1,12 +1,22 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { configService } from '@aq/app-config'
 import KioskHeader from '../components/KioskHeader.vue'
 import VirtualKeyboard from '../components/VirtualKeyboard.vue'
 import { useKioskMediaInfo } from '../composables/useKioskMediaInfo'
 import { resolveMediaDirUrl } from '../lib/mediaDirectory'
 
-defineProps<{ intakeAvailable: boolean; businessDate: string | null }>()
+const props = withDefaults(
+  defineProps<{
+    intakeAvailable: boolean
+    businessDate: string | null
+    pending?: boolean
+  }>(),
+  {
+    pending: false,
+  }
+)
+
 const emit = defineEmits<{
   startSearch: [keyword: string]
   startIntake: []
@@ -25,12 +35,20 @@ const { videoUrls, currentVideoUrl, videoError, onVideoEnded, onVideoError } = u
 const keyword = ref('')
 const searchInputRef = ref<HTMLInputElement | null>(null)
 
+watch(keyword, (newVal) => {
+  const upper = newVal.toUpperCase()
+  if (newVal !== upper) {
+    keyword.value = upper
+  }
+})
+
 function submit() {
-  if (!keyword.value.trim()) return
+  if (props.pending || !keyword.value.trim()) return
   emit('startSearch', keyword.value)
 }
 
 function onPhysicalKeydown(event: KeyboardEvent) {
+  if (props.pending) return
   if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
     const activeEl = document.activeElement
     if (activeEl !== searchInputRef.value && !(activeEl instanceof HTMLInputElement) && !(activeEl instanceof HTMLTextAreaElement)) {
@@ -50,7 +68,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="kiosk-home">
+  <div :class="{ 'interaction-disabled': pending }" class="kiosk-home">
     <KioskHeader :lang="lang" :business-date="businessDate" @toggle-lang="lang = $event" />
 
     <div class="kiosk-layout">
@@ -102,35 +120,41 @@ onUnmounted(() => {
             inputmode="none"
             placeholder="Kode booking, nomor rujukan, nomor BPJS, nomor rekam medis, atau nama"
             data-testid="search-keyword"
+            :disabled="pending"
             autofocus
             @keyup.enter="submit"
           />
 
-          <VirtualKeyboard v-model="keyword" @submit="submit" />
+          <VirtualKeyboard v-model="keyword" :disabled="pending" @submit="submit" />
 
           <button
             type="button"
             class="primary-btn primary-btn--search"
-            :disabled="!keyword.trim()"
+            :disabled="pending || !keyword.trim()"
             data-testid="search-submit"
             @click="submit"
           >
-            Lanjutkan
-            <svg
-              class="btn-arrow"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M5 12h14" />
-              <path d="m12 5 7 7-7 7" />
-            </svg>
+            <template v-if="pending">
+              Mohon tunggu...
+            </template>
+            <template v-else>
+              Lanjutkan Registrasi
+              <svg
+                class="btn-arrow"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M5 12h14" />
+                <path d="m12 5 7 7-7 7" />
+              </svg>
+            </template>
           </button>
         </div>
 
@@ -139,6 +163,7 @@ onUnmounted(() => {
             type="button"
             class="queue-intake-btn"
             data-testid="start-intake"
+            :disabled="pending"
             @click="emit('startIntake')"
           >
             Ambil Antrian Admisi

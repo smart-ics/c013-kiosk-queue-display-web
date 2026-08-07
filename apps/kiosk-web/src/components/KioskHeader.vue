@@ -103,8 +103,8 @@ const isoTime = computed(() => now.value.toISOString())
       </div>
       <button type="button" class="help-btn" data-testid="help-btn" @click="emit('help')">
         <svg
-          width="22"
-          height="22"
+          width="18"
+          height="18"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

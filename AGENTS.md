@@ -107,6 +107,18 @@ Post-deploy runtime config lives in each app's `public/global_config.json`
 (see `bilregApiBase`, optional `jetliApiBase`). Local dev proxy config uses `.env.local`
 (`VITE_BILREG_API_BASE` for display SignalR proxy). No static JWT is embedded at build time.
 
+### Fullscreen & Kiosk Deployment
+
+Both client apps (`kiosk-web` and `display-web`) do not request fullscreen programmatically inside Vue code due to browser security restrictions on auto-fullscreen without user interaction. Fullscreen must be handled at the OS/Browser launch level:
+
+- **Chrome Kiosk Mode Command:**
+  ```text
+  chrome.exe --kiosk --edge-kiosk-type=fullscreen --no-first-run --clear-token-caches http://<host>/kiosk/{stationId}
+  chrome.exe --kiosk --edge-kiosk-type=fullscreen --no-first-run --clear-token-caches http://<host>/display/{screenId}
+  ```
+- **Automated Helper Script:** An interactive script is available at [scripts/create-kiosk-shortcut.bat](file:///E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/scripts/create-kiosk-shortcut.bat) to auto-generate these shortcuts on the Windows Desktop.
+
+
 ## Conventions
 
 Vue 3 + Vite + TypeScript + Zod + TanStack Query.
