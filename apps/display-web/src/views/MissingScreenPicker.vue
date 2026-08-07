@@ -84,17 +84,12 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
 /* Container Panel */
 .picker-panel {
   margin: 6rem auto auto;
-  width: min(600px, calc(100% - 2rem));
-  background: rgba(18, 38, 61, 0.55);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: min(580px, calc(100% - 2rem));
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
   border-radius: 1.5rem;
   padding: 3rem 2.5rem;
-  box-shadow: 
-    0 4px 30px rgba(0, 0, 0, 0.2),
-    0 24px 70px rgba(0, 0, 0, 0.4),
-    inset 0 0 20px rgba(255, 255, 255, 0.02);
+  box-shadow: var(--shadow-card);
   text-align: center;
   animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -112,9 +107,9 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
   width: 5.5rem;
   height: 5.5rem;
   border-radius: 1.25rem;
-  background: radial-gradient(circle, rgba(61, 214, 140, 0.15) 0%, rgba(61, 214, 140, 0) 70%);
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.1) 0%, rgba(249, 115, 22, 0) 70%);
   margin-bottom: 1.25rem;
-  color: var(--accent);
+  color: var(--brand);
 }
 
 .icon-glow-wrapper::after {
@@ -123,23 +118,23 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
   width: 3.5rem;
   height: 3.5rem;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--brand);
   filter: blur(25px);
-  opacity: 0.35;
+  opacity: 0.15;
   z-index: -1;
 }
 
 .header-icon {
   width: 2.75rem;
   height: 2.75rem;
-  stroke: var(--accent);
-  filter: drop-shadow(0 2px 8px rgba(61, 214, 140, 0.4));
+  stroke: var(--brand);
+  filter: drop-shadow(0 2px 8px rgba(249, 115, 22, 0.2));
   animation: float 4s ease-in-out infinite;
 }
 
 .picker-panel h1 {
   font-size: 1.85rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text);
   margin: 0 0 0.75rem;
   letter-spacing: -0.02em;
@@ -148,7 +143,7 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
 .subtitle {
   font-size: 0.95rem;
   line-height: 1.5;
-  color: var(--muted);
+  color: var(--text-secondary);
   max-width: 420px;
   margin: 0 auto;
 }
@@ -160,45 +155,37 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
   align-items: center;
   padding: 2rem 0;
   gap: 1.25rem;
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 .spinner {
   width: 2.5rem;
   height: 2.5rem;
-  border: 3px solid rgba(61, 214, 140, 0.1);
-  border-top-color: var(--accent);
+  border: 3px solid rgba(249, 115, 22, 0.1);
+  border-top-color: var(--brand);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-  box-shadow: 0 0 15px rgba(61, 214, 140, 0.15);
+  box-shadow: 0 0 15px rgba(249, 115, 22, 0.05);
 }
 
 /* Empty State */
 .empty-state {
   padding: 2rem 0;
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 .empty-icon {
   width: 3.5rem;
   height: 3.5rem;
-  stroke: var(--warn);
+  stroke: var(--danger);
   margin-bottom: 1.25rem;
-  filter: drop-shadow(0 2px 10px rgba(245, 165, 36, 0.2));
+  filter: drop-shadow(0 2px 10px rgba(180, 35, 24, 0.1));
 }
 
 .empty-state h2 {
   font-size: 1.3rem;
   color: var(--text);
   margin: 0 0 0.5rem;
-}
-
-.empty-state code {
-  background: rgba(255, 255, 255, 0.08);
-  padding: 0.2rem 0.4rem;
-  border-radius: 0.25rem;
-  font-size: 0.9em;
-  color: var(--warn);
 }
 
 /* List & Cards */
@@ -225,8 +212,8 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.25rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
   border-radius: 1rem;
   text-decoration: none;
   transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -245,8 +232,8 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--muted);
+  background: var(--bg);
+  color: var(--text-tertiary);
   transition: all 0.25s ease;
 }
 
@@ -263,19 +250,19 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
 
 .screen-name {
   font-size: 1.15rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
   transition: color 0.25s ease;
 }
 
 .screen-sub {
   font-size: 0.8rem;
-  color: var(--muted);
+  color: var(--text-tertiary);
   margin-top: 0.15rem;
 }
 
 .card-right {
-  color: var(--muted);
+  color: var(--text-tertiary);
   opacity: 0.6;
   transition: all 0.25s ease;
   transform: translateX(0);
@@ -288,18 +275,17 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
 
 /* Hover States & Interactions */
 .picker-link-card:hover {
-  background: rgba(61, 214, 140, 0.08);
-  border-color: rgba(61, 214, 140, 0.25);
+  background: var(--brand-soft);
+  border-color: var(--brand);
   box-shadow: 
-    0 10px 20px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(61, 214, 140, 0.15),
-    inset 0 0 12px rgba(61, 214, 140, 0.05);
+    0 10px 20px rgba(249, 115, 22, 0.04),
+    0 0 0 1px rgba(249, 115, 22, 0.1);
   transform: translateY(-2px);
 }
 
 .picker-link-card:hover .screen-icon-bg {
-  background: rgba(61, 214, 140, 0.15);
-  color: var(--accent);
+  background: var(--brand);
+  color: #ffffff;
 }
 
 .picker-link-card:hover .item-icon {
@@ -307,12 +293,12 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
 }
 
 .picker-link-card:hover .screen-name {
-  color: var(--accent);
+  color: var(--brand-strong);
 }
 
 .picker-link-card:hover .card-right {
   opacity: 1;
-  color: var(--accent);
+  color: var(--brand);
   transform: translateX(4px);
 }
 
