@@ -10,16 +10,17 @@ function base64ToUtf8(base64: string): string {
 }
 
 export function getKodeBookingMjkn(qrCode: string): string {
-  if (qrCode.length < 30) {
+  const sanitized = qrCode.replace(/\s+/g, '')
+  if (sanitized.length < 30) {
     return qrCode
   }
-  if (!isBase64String(qrCode)) {
+  if (!isBase64String(sanitized)) {
     return qrCode
   }
   try {
-    const json = base64ToUtf8(qrCode)
+    const json = base64ToUtf8(sanitized)
     const parsed = JSON.parse(json) as Record<string, unknown>
-    const kodeBooking = parsed?.kodeBooking
+    const kodeBooking = parsed?.kodeBooking ?? parsed?.kodebooking
     if (kodeBooking === undefined || kodeBooking === null) {
       throw new Error('kodeBooking not found')
     }

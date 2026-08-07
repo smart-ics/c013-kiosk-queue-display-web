@@ -831,7 +831,6 @@ button {
   outline: none;
   transition: border-color 0.2s;
   margin-bottom: 12px;
-  text-transform: uppercase;
 }
 
 .search-input:focus {

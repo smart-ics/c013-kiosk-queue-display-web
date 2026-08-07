@@ -27,4 +27,17 @@ describe('getKodeBookingMjkn', () => {
     const encoded = btoa('not-json-data!!!')
     expect(getKodeBookingMjkn(encoded)).toBe(encoded)
   })
+
+  it('extracts kodeBooking from base64 even when it contains spaces and newlines', () => {
+    const payload = JSON.stringify({ kodeBooking: 'AN123456' })
+    const encoded = btoa(payload)
+    const formatted = encoded.slice(0, 10) + '\n  ' + encoded.slice(10, 20) + ' ' + encoded.slice(20)
+    expect(getKodeBookingMjkn(formatted)).toBe('AN123456')
+  })
+
+  it('extracts kodeBooking from lowercase field name', () => {
+    const payload = JSON.stringify({ kodebooking: 'AN123456' })
+    const encoded = btoa(payload)
+    expect(getKodeBookingMjkn(encoded)).toBe('AN123456')
+  })
 })

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { configService } from '@aq/app-config'
 import KioskHeader from '../components/KioskHeader.vue'
 import VirtualKeyboard from '../components/VirtualKeyboard.vue'
 import { useKioskMediaInfo } from '../composables/useKioskMediaInfo'
 import { resolveMediaDirUrl } from '../lib/mediaDirectory'
+import { getKodeBookingMjkn } from '../lib/qrCodeDecoder'
 
 const props = withDefaults(
   defineProps<{
@@ -35,16 +36,10 @@ const { videoUrls, currentVideoUrl, videoError, onVideoEnded, onVideoError } = u
 const keyword = ref('')
 const searchInputRef = ref<HTMLInputElement | null>(null)
 
-watch(keyword, (newVal) => {
-  const upper = newVal.toUpperCase()
-  if (newVal !== upper) {
-    keyword.value = upper
-  }
-})
-
 function submit() {
   if (props.pending || !keyword.value.trim()) return
-  emit('startSearch', keyword.value)
+  const decoded = getKodeBookingMjkn(keyword.value.trim())
+  emit('startSearch', decoded)
 }
 
 function onPhysicalKeydown(event: KeyboardEvent) {
