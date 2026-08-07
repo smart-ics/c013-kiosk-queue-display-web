@@ -135,6 +135,7 @@ onUnmounted(() => {
             @click="submit"
           >
             <template v-if="pending">
+              <span class="spinner" aria-hidden="true"></span>
               Mohon tunggu...
             </template>
             <template v-else>

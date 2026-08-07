@@ -381,6 +381,7 @@ const loadingMessage = computed(() => {
     v-else-if="homeMode === 'idle'"
     :intake-available="offerings.length > 0"
     :business-date="businessDate"
+    :pending="registration.submitting.value"
     @start-search="onSearchFromHome"
     @start-intake="onStartIntake"
   />
