@@ -4,9 +4,15 @@ import { getDeviceConfigProvider } from '../infrastructure'
 
 export type KioskStationListStatus = DeviceListStatus
 
+export interface KioskStationInfo {
+  stationId: string
+  displayName: string
+  locationName?: string | null
+}
+
 export interface KioskStationListState {
   status: Ref<KioskStationListStatus>
-  stationIds: Ref<string[]>
+  stations: Ref<KioskStationInfo[]>
   error: Ref<string | null>
   refresh: () => void
 }
@@ -14,13 +20,13 @@ export interface KioskStationListState {
 const FALLBACK_ERROR = 'Gagal memuat daftar kiosk station.'
 
 export function useStationList(opts?: {
-  fetchImpl?: () => Promise<string[]>
+  fetchImpl?: () => Promise<KioskStationInfo[]>
 }): KioskStationListState {
   const status = ref<KioskStationListStatus>('loading')
-  const stationIds = ref<string[]>([])
+  const stations = ref<KioskStationInfo[]>([])
   const error = ref<string | null>(null)
 
-  const defaultFetch = async (): Promise<string[]> => {
+  const defaultFetch = async (): Promise<KioskStationInfo[]> => {
     const provider = await getDeviceConfigProvider()
     return provider.listKioskStationIds()
   }
@@ -29,7 +35,7 @@ export function useStationList(opts?: {
 
   const fetcher = createListFetcher(fetchImpl, FALLBACK_ERROR, (s) => {
     status.value = s.status
-    stationIds.value = s.items
+    stations.value = s.items
     error.value = s.error
   })
 
@@ -41,7 +47,7 @@ export function useStationList(opts?: {
 
   return {
     status,
-    stationIds,
+    stations,
     error,
     refresh: () => fetcher.run(),
   }

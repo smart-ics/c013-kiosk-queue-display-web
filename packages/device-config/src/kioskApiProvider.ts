@@ -7,7 +7,7 @@ import {
 
 export type ApiKioskDeviceConfigurationProviderOptions = {
   getKioskBootConfig: (stationId: string) => Promise<KioskBootConfig>
-  listKiosks?: () => Promise<{ stationId: string }[]>
+  listKiosks?: () => Promise<{ stationId: string; displayName?: string; locationName?: string | null }[]>
 }
 
 export class ApiKioskDeviceConfigurationProvider implements IDeviceConfigurationProvider {
@@ -51,10 +51,14 @@ export class ApiKioskDeviceConfigurationProvider implements IDeviceConfiguration
     return []
   }
 
-  async listKioskStationIds(): Promise<string[]> {
+  async listKioskStationIds(): Promise<{ stationId: string; displayName: string; locationName?: string | null }[]> {
     if (this.options.listKiosks) {
       const kiosks = await this.options.listKiosks()
-      return kiosks.map((k) => k.stationId)
+      return kiosks.map((k) => ({
+        stationId: k.stationId,
+        displayName: k.displayName || k.stationId,
+        locationName: k.locationName || null,
+      }))
     }
     return []
   }

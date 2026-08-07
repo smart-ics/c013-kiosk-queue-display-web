@@ -23,3 +23,9 @@ export {
   type ConfigurationApi,
   type RuntimeDeviceApi,
 } from './configuration'
+export {
+  createHisApi,
+  createJetliApi,
+  type HisApi,
+  type JetliApi,
+} from './his'

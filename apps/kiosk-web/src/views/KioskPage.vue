@@ -1,16 +1,34 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import type { DeviceConfig } from '@aq/shared-types'
+import { DeviceConfigInvalidError, DeviceConfigNotFoundError } from '@aq/device-config'
 import {
-  DeviceConfigInvalidError,
-  DeviceConfigNotFoundError,
-} from '@aq/device-config'
-import { getAdmissionQueueApi, getDeviceConfigProvider } from '../infrastructure'
+  getAdmissionQueueApi,
+  getDeviceConfigProvider,
+  getHisApi,
+  getJetliApi,
+  getServiceCatalog,
+} from '../infrastructure'
 import { intersectOfferings } from '../lib/offerings'
+import { createBiometricClient } from '../lib/biometric'
+import { scanQrFromCamera } from '../lib/qrScanner'
 import { useKioskIntake } from '../composables/useKioskIntake'
 import { useKioskPrint } from '../composables/useKioskPrint'
+import { useKioskRegistration } from '../composables/useKioskRegistration'
+import { useKioskSelfPrint } from '../composables/useKioskSelfPrint'
+import type { PatientContextItem } from '@aq/shared-types'
 import BootErrorPage from './BootErrorPage.vue'
+import KioskHome from './KioskHome.vue'
+import BookingSearchStep from './steps/BookingSearchStep.vue'
+import BookingConfirmStep from './steps/BookingConfirmStep.vue'
+import PatientContextConfirmStep from './steps/PatientContextConfirmStep.vue'
+import WalkinServiceStep from './steps/WalkinServiceStep.vue'
+import WalkinConfirmStep from './steps/WalkinConfirmStep.vue'
+import BiometricStep from './steps/BiometricStep.vue'
+import RegistrationSuccessStep from './steps/RegistrationSuccessStep.vue'
+import FailureStep from './steps/FailureStep.vue'
+import AssistanceQueueStep from './steps/AssistanceQueueStep.vue'
 
 const props = defineProps<{
   stationId: string
@@ -18,6 +36,8 @@ const props = defineProps<{
 
 const bootError = ref<string | null>(null)
 const deviceConfig = ref<DeviceConfig | null>(null)
+const homeMode = ref<'idle' | 'intake'>('idle')
+const scanError = ref<string | null>(null)
 const stationIdRef = computed(() => props.stationId)
 const printerProxyPort = computed(() => deviceConfig.value?.printerProxyPort)
 
@@ -68,6 +88,15 @@ const servicePointsQuery = useQuery({
   queryFn: async () => getAdmissionQueueApi().listServicePoints(true),
 })
 
+const businessDateQuery = useQuery({
+  queryKey: computed(() => ['business-date', props.stationId] as const),
+  enabled: computed(() => !!deviceConfig.value && !bootError.value),
+  queryFn: async () => getHisApi().getBusinessDate(),
+  staleTime: 5 * 60 * 1000,
+})
+
+const businessDate = computed(() => businessDateQuery.data.value?.businessDate ?? null)
+
 const offerings = computed(() => {
   if (!deviceConfig.value || !servicePointsQuery.data.value) return []
   return intersectOfferings(deviceConfig.value, servicePointsQuery.data.value)
@@ -98,10 +127,48 @@ const {
   printerProxyPort,
 })
 
+const catalog = getServiceCatalog()
+
+const selfPrint = useKioskSelfPrint({
+  stationId: stationIdRef,
+  printerProxyPort,
+})
+
+const registration = useKioskRegistration({
+  stationId: stationIdRef,
+  getBusinessDate: () => getHisApi().getBusinessDate().then((d) => d.businessDate),
+  searchBooking: (tglBerobat, keyword) => getHisApi().searchBooking(tglBerobat, keyword),
+  getBookingDetail: (bookingId) => getHisApi().getBookingDetail(bookingId),
+  listPolis: (pasienId) => getHisApi().listPolis(pasienId),
+  getGroupJaminanMap: (tipeJaminanId) => getJetliApi().getGroupJaminanMap(tipeJaminanId),
+  searchPatientContext: (body) => getHisApi().patientContextSearch(body),
+  verifyBiometric: () => createBiometricClient({ port: printerProxyPort.value }).verify(),
+  registerBooking: (ctx) => getHisApi().registerByBookingDirect(ctx),
+  registerWalkin: (ctx) => getHisApi().registerWalkInDirect(ctx),
+  bookingAssistance: (body) => getHisApi().bookingAssistance(body),
+  intake: (servicePointId) => getAdmissionQueueApi().intake({ servicePointId }),
+  printRegistration: selfPrint.printRegistration,
+  printQueueTicket: selfPrint.printQueueTicket,
+  offeringsName: (servicePointId) =>
+    offerings.value.find((sp) => sp.servicePointId === servicePointId)?.displayName,
+})
+
 watch(result, (next, prev) => {
   if (next && next !== prev) {
     void printCommittedLabel(lastAttemptServicePointId.value ?? undefined)
   }
+})
+
+const assistanceTitle = computed(() =>
+  registration.mode.value === 'booking'
+    ? 'Nomor Antrian Bantuan'
+    : 'Nomor Antrian Pendaftaran',
+)
+
+const assistanceServicePointName = computed(() => {
+  const id = registration.assistanceServicePointId.value
+  if (!id) return undefined
+  return offerings.value.find((sp) => sp.servicePointId === id)?.displayName
 })
 
 function onResetToSelection() {
@@ -112,6 +179,63 @@ function onResetToSelection() {
 function onReprint() {
   void printCommittedLabel(lastAttemptServicePointId.value ?? undefined)
 }
+
+function onHome() {
+  scanError.value = null
+  resetToSelection()
+  resetPrintState()
+  selfPrint.resetPrintState()
+  homeMode.value = 'idle'
+  registration.goHome()
+}
+
+function onStartIntake() {
+  onHome()
+  homeMode.value = 'intake'
+}
+
+async function onScanBooking() {
+  scanError.value = null
+  const result = await scanQrFromCamera()
+  if ('detected' in result) {
+    void registration.submitBookingKeyword(result.detected)
+  } else {
+    scanError.value = result.error
+  }
+}
+
+function onSearchFromHome(keyword: string) {
+  void registration.submitBookingKeyword(keyword)
+}
+
+function onConfirmPatientContext(item: PatientContextItem) {
+  void registration.confirmPatientContext(item)
+}
+
+function onCancelPatientContext() {
+  registration.cancelPatientContext()
+}
+
+function onIntakeFromContext() {
+  registration.cancelPatientContext()
+  homeMode.value = 'intake'
+}
+
+function onReprintRegistration() {
+  void registration.reprintRegistration()
+}
+
+function onReprintAssistance() {
+  void registration.reprintQueueTicket()
+}
+
+onMounted(() => {
+  registration.startIdleReset()
+})
+
+onUnmounted(() => {
+  registration.dispose()
+})
 
 const loadingMessage = computed(() => {
   if (bootError.value) return null
@@ -161,8 +285,107 @@ const loadingMessage = computed(() => {
       <button type="button" class="secondary-btn" :disabled="printPending" @click="onResetToSelection">
         Ambil nomor lain
       </button>
+      <button type="button" class="secondary-btn" @click="onHome">
+        Kembali ke menu
+      </button>
     </div>
   </section>
+
+  <template v-else-if="registration.flow.value !== 'HOME'">
+    <BookingSearchStep
+      v-if="registration.flow.value === 'BOOKING_SEARCH'"
+      :pending="registration.submitting.value"
+      :error-message="scanError"
+      @submit="registration.submitBookingKeyword"
+      @scan="onScanBooking"
+      @back="onHome"
+    />
+    <section
+      v-else-if="registration.flow.value === 'PATIENT_CONTEXT_SEARCH'"
+      class="panel"
+    >
+      <h1>Mencari Data</h1>
+      <p class="status">Mencari data pasien…</p>
+    </section>
+    <BookingConfirmStep
+      v-else-if="registration.flow.value === 'BOOKING_CONFIRM'"
+      :booking="registration.bookingDetail.value!"
+      :eligibility="registration.bookingEligibility.value!"
+      :pending="registration.submitting.value"
+      :error-message="null"
+      @confirm="registration.confirmBooking"
+      @back="onHome"
+    />
+    <PatientContextConfirmStep
+      v-else-if="registration.flow.value === 'PATIENT_CONTEXT_CONFIRM'"
+      :best-match="registration.patientContextResult.value?.bestMatch ?? null"
+      :patients="registration.patientContextResult.value?.patients.items ?? []"
+      :pending="registration.submitting.value"
+      @confirm="onConfirmPatientContext"
+      @intake="onIntakeFromContext"
+      @retry="onCancelPatientContext"
+    />
+    <BiometricStep
+      v-else-if="registration.flow.value === 'BIOMETRIC_VERIFY'"
+      :pending="registration.submitting.value"
+      :error-message="null"
+    />
+    <WalkinServiceStep
+      v-else-if="registration.flow.value === 'WALKIN_SELECT_SERVICE'"
+      :catalog="catalog"
+      :pending="registration.submitting.value"
+      @select="registration.selectService"
+      @back="onHome"
+    />
+    <WalkinConfirmStep
+      v-else-if="registration.flow.value === 'WALKIN_CONFIRM'"
+      :patient="registration.selectedPatient.value!"
+      :service="registration.selectedService.value!"
+      :eligibility="registration.walkinEligibility.value!"
+      :pending="registration.submitting.value"
+      :error-message="null"
+      @confirm="registration.confirmWalkin"
+      @update-no-peserta="registration.setWalkinNoPeserta"
+      @back="onHome"
+    />
+    <RegistrationSuccessStep
+      v-else-if="registration.flow.value === 'REGISTRATION_SUCCESS'"
+      :result="registration.registrationResult.value!"
+      :print-pending="selfPrint.printPending.value"
+      :print-succeeded="selfPrint.printSucceeded.value"
+      :print-error="selfPrint.printError.value"
+      @reprint="onReprintRegistration"
+      @finish="onHome"
+    />
+    <FailureStep
+      v-else-if="registration.flow.value === 'FAILURE'"
+      :error-context="registration.errorContext.value!"
+      :offerings="offerings"
+      :pending="registration.submitting.value"
+      @select-service-point="registration.confirmAssistance"
+      @back="onHome"
+    />
+    <AssistanceQueueStep
+      v-else-if="registration.flow.value === 'ASSISTANCE_QUEUE'"
+      :ticket="registration.assistanceTicket.value!"
+      :title="assistanceTitle"
+      :service-point-name="assistanceServicePointName"
+      :print-pending="selfPrint.printPending.value"
+      :print-succeeded="selfPrint.printSucceeded.value"
+      :print-error="selfPrint.printError.value"
+      @reprint="onReprintAssistance"
+      @finish="onHome"
+    />
+  </template>
+
+  <KioskHome
+    v-else-if="homeMode === 'idle'"
+    :intake-available="offerings.length > 0"
+    :business-date="businessDate"
+    :pending="registration.submitting.value"
+    @start-search="onSearchFromHome"
+    @start-intake="onStartIntake"
+  />
 
   <section v-else class="panel">
     <h1>Ambil Nomor Antrian</h1>
@@ -205,6 +428,12 @@ const loadingMessage = computed(() => {
         @click="retryLast"
       >
         Coba lagi
+      </button>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="secondary-btn" @click="onHome">
+        Kembali ke menu
       </button>
     </div>
 

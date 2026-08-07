@@ -268,8 +268,12 @@ http://<host-or-ip>/display/lobby-poli-1
 Chrome kiosk shortcut:
 
 ```text
-chrome.exe --kiosk --edge-kiosk-type=fullscreen http://192.168.10.5/kiosk/loket-03
+chrome.exe --kiosk --edge-kiosk-type=fullscreen --no-first-run --clear-token-caches http://192.168.10.5/kiosk/loket-03
 ```
+
+> [!NOTE]
+> Terkait pembuatan shortcut di atas, tersedia skrip pembantu otomatis [create-kiosk-shortcut.bat](file:///E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/scripts/create-kiosk-shortcut.bat) untuk mendeteksi browser secara otomatis dan men-generate shortcut ke Desktop Windows.
+
 
 | Concern | Guidance |
 |---------|----------|

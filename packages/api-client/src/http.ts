@@ -32,7 +32,11 @@ export class AdmissionQueueClient {
     this.fetchImpl = options.fetchImpl ?? fetch.bind(globalThis)
   }
 
-  async getJson<T>(path: string, schema: z.ZodType<T>, query?: Record<string, string | boolean | number>): Promise<T> {
+  async getJson<T>(
+    path: string,
+    schema: z.ZodType<T, any, any>,
+    query?: Record<string, string | boolean | number>,
+  ): Promise<T> {
     const url = new URL(`${this.baseUrl}/${path.replace(/^\//, '')}`)
     if (query) {
       for (const [key, value] of Object.entries(query)) {
@@ -75,6 +79,19 @@ export class AdmissionQueueClient {
       url,
       {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+      schema,
+    )
+  }
+
+  async patchJson<T>(path: string, body: unknown, schema: z.ZodType<T>): Promise<T> {
+    const url = `${this.baseUrl}/${path.replace(/^\//, '')}`
+    return this.request(
+      url,
+      {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       },

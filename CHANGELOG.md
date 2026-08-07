@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.0] - 2026-08-07
+
+### Added
+
+- **Kiosk self-registration**: Added booking check-in, go-show walk-in, and booking-assistance fallback flows.
+- **BPJS biometric verification**: Conditional BPJS biometric check during registration flows.
+- **Self-print composable**: Support for printing registration receipts and queue tickets via local print proxy.
+- **HIS/JETLI API clients**: Implemented `createHisApi` and `createJetliApi` in `@aq/api-client`.
+- **Jetli config**: Added `jetliApiBase` in `@aq/app-config`.
+
 ## [0.1.0] - 2026-07-30
 
 ### Added

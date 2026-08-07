@@ -3,7 +3,7 @@ import type { DeviceConfig } from '@aq/shared-types'
 export interface IDeviceConfigurationProvider {
   getConfig(deviceId: string): Promise<DeviceConfig>
   listDisplayScreenIds(): Promise<string[]>
-  listKioskStationIds(): Promise<string[]>
+  listKioskStationIds(): Promise<{ stationId: string; displayName: string; locationName?: string | null }[]>
 }
 
 export class DeviceConfigNotFoundError extends Error {

@@ -64,7 +64,7 @@ export class ApiDeviceConfigurationProvider implements IDeviceConfigurationProvi
     return displays.map((d) => d.deviceId)
   }
 
-  async listKioskStationIds(): Promise<string[]> {
+  async listKioskStationIds(): Promise<{ stationId: string; displayName: string; locationName?: string | null }[]> {
     if (!this.options.listKiosks) {
       throw new DeviceConfigInvalidError(
         '*',
@@ -72,6 +72,10 @@ export class ApiDeviceConfigurationProvider implements IDeviceConfigurationProvi
       )
     }
     const kiosks = await this.options.listKiosks()
-    return kiosks.map((k) => k.deviceId)
+    return kiosks.map((k) => ({
+      stationId: k.deviceId,
+      displayName: k.deviceId,
+      locationName: null,
+    }))
   }
 }

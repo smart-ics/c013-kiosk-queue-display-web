@@ -1,19 +1,71 @@
-# Task 1 Report: Fix `listPublicKiosks` → `getPublicJson`
+# Task 1 Report: `@aq/app-config` — optional `jetliApiBase` + schema test
 
-## What I implemented
+## Status: DONE
 
-Changed `listPublicKiosks()` in `packages/api-client/src/configuration.ts:338` from calling `client.getJson` (auth-required) to `client.getPublicJson` (no auth), matching its sibling `listPublicDisplays()`. The function name has "Public" in it so it was clearly a bug.
+## What I changed
 
-## What I tested
+- `packages/app-config/src/index.ts`: Exported `appConfigSchema` and added optional `jetliApiBase` field (exact code from brief Step 3). `AppConfig` stays derived via `z.infer`; `ConfigService`/`configService` unchanged.
+- `packages/app-config/package.json`: Written exactly as the brief Step 4 (added `scripts.test: "vitest run --passWithNoTests"`, added `vitest: ^3.2.4` devDependency, kept `typescript: ^5.2.2`).
+- `packages/app-config/src/index.spec.ts`: Created (verbatim from brief Step 1) with 2 tests.
+- `pnpm-lock.yaml`: Updated by `pnpm install` (adds `vitest` import spec for the app-config importer only).
 
-- Ran `pnpm typecheck` from `packages/api-client/` — passed with no errors.
+## Ordering note
 
-## Files changed
+The brief's Step 2 (run failing test) requires vitest to be installed, but Step 4 (add vitest) comes after it. vitest did not exist anywhere reachable by `@aq/app-config` before Step 4. I therefore applied the Step 4 package.json first, ran `pnpm install`, then ran the failing test (Step 2) — which produced the intended failure (`appConfigSchema` not exported), then applied Step 3 (schema change), then ran the passing test (Step 5). TDD intent preserved; only the physical ordering of Step 2 vs Step 4 was swapped.
 
-- `packages/api-client/src/configuration.ts` — one-line change: `getJson` → `getPublicJson`
+## Fail step output
 
-## Self-review findings
+Command: `pnpm --filter @aq/app-config exec vitest run src/index.spec.ts`
 
-- The fix is correct and minimal. Both `getJson` and `getPublicJson` have the same signature (url + schema + optional params), so no type issues.
-- The sibling `listPublicDisplays()` on line 330 already uses `getPublicJson` — consistency verified.
-- No callers of `listPublicKiosks` needed updating; the return type is identical.
+```
+ RUN  v3.2.7  E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/packages/app-config
+
+ ❯ src/index.spec.ts (2 tests | 2 failed) 32ms
+   × appConfigSchema > accepts bilregApiBase without jetliApiBase 17ms
+     → Cannot read properties of undefined (reading 'safeParse')
+   × appConfigSchema > accepts jetliApiBase when provided 3ms
+     → Cannot read properties of undefined (reading 'parse')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/index.spec.ts > appConfigSchema > accepts bilregApiBase without jetliApiBase
+TypeError: Cannot read properties of undefined (reading 'safeParse')
+ ❯ src/index.spec.ts:6:36
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  09:09:04
+   Duration  6.46s (transform 3.34s, setup 0ms, collect 3.70s, tests 32ms, environment 0ms, prepare 1.49s)
+```
+
+Failure cause: `appConfigSchema` was not exported from `./index` (the schema is declared but not exported), so it was `undefined` at runtime.
+
+## Pass step output
+
+Command: `pnpm --filter @aq/app-config test`
+
+```
+> @aq/app-config@0.0.0 test E:\PROJECT\ICS\FE\c013-kiosk-queue-display-web\packages\app-config
+> vitest run --passWithNoTests
+
+ RUN  v3.2.7  E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/packages/app-config
+
+ ✓ src/index.spec.ts (2 tests) 9ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  09:09:46
+   Duration  1.17s (transform 174ms, setup 0ms, collect 227ms, tests 9ms, environment 0ms, prepare 316ms)
+```
+
+## Commit
+
+`017038e0a26235c639f9c05e8c95120b403b6eff` — `feat(app-config): optional jetliApiBase for BPJS integration`
+
+Files in commit: `packages/app-config/package.json`, `packages/app-config/src/index.ts`, `packages/app-config/src/index.spec.ts`, `pnpm-lock.yaml`.
+
+## Concerns
+
+- Ordering deviation (Step 2 vs Step 4 swapped) as described above — necessary because vitest wasn't installed.
+- `pnpm install` emitted a warning about 2 deprecated subdependencies (`glob@10.5.0`, `whatwg-encoding@3.1.1`) — pre-existing, not introduced by this change.
+- Untracked docs/ADR files and `.superpowers/sdd/*` modifications were left unstaged, as instructed.

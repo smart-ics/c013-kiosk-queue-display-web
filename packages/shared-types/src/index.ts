@@ -352,3 +352,292 @@ export const configurationAuditPageSchema = z.object({
   totalCount: z.number().int(),
 })
 export type ConfigurationAuditPage = z.infer<typeof configurationAuditPageSchema>
+
+export const returnCreateWalkInSchema = z.object({
+  regId: z.string(),
+  noAntrian: z.number(),
+})
+export type ReturnCreateWalkIn = z.infer<typeof returnCreateWalkInSchema>
+
+export const bookingSearchItemSchema = z.object({
+  bookingId: z.string(),
+  bookingDate: z.string(),
+  reg: z.object({
+    regId: z.string(),
+    pasienId: z.string(),
+    pasienName: z.string(),
+  }),
+  layanan: z.object({
+    layananId: z.string(),
+    layananName: z.string(),
+  }),
+  dokter: z.object({
+    ppaId: z.string(),
+    ppaName: z.string(),
+    isDefault: z.boolean(),
+  }),
+  tglBerobat: z.string(),
+  jamPraktek: z.string(),
+  noAntrian: z.number(),
+  extAppRef: z
+    .object({
+      extAppName: z.string(),
+      reffId: z.string(),
+      checkInQr: z.string(),
+    })
+    .nullable()
+    .optional(),
+})
+export type BookingSearchItem = z.infer<typeof bookingSearchItemSchema>
+
+export const coverageInfoSchema = z.object({
+  asuransiName: z.string(),
+  noPeserta: z.string(),
+  noRujukan: z.string(),
+})
+export type CoverageInfo = z.infer<typeof coverageInfoSchema>
+
+export const bookingDetailSchema = bookingSearchItemSchema.extend({
+  coverageInfo: coverageInfoSchema,
+})
+export type BookingDetail = z.infer<typeof bookingDetailSchema>
+
+export const polisSchema = z.object({
+  polisId: z.string(),
+  noPolis: z.string(),
+  atasName: z.string(),
+  pasien: z.object({ pasienId: z.string() }),
+  tipeJaminan: z.object({ tipeJaminanId: z.string(), tipeJaminanName: z.string() }),
+  tglExpired: z.string().nullable(),
+})
+export type Polis = z.infer<typeof polisSchema>
+
+export const groupJaminanMapSchema = z.object({
+  tipeJaminanId: z.string(),
+  groupJaminanId: z.string(),
+  groupJaminanName: z.string(),
+})
+export type GroupJaminanMap = z.infer<typeof groupJaminanMapSchema>
+
+export const layananHeaderSchema = z.object({
+  layananId: z.string(),
+  layananName: z.string(),
+})
+export type LayananHeader = z.infer<typeof layananHeaderSchema>
+
+export const diagnosaHeaderSchema = z.object({
+  icd10Id: z.string(),
+  icd10Name: z.string(),
+})
+export type DiagnosaHeader = z.infer<typeof diagnosaHeaderSchema>
+
+export const sepHeaderSchema = z.object({
+  sepId: z.string(),
+  sepNo: z.string(),
+  noRujukan: z.string(),
+  noPeserta: z.string(),
+  namaPeserta: z.string(),
+  sepDate: z.string(),
+})
+export type SepHeader = z.infer<typeof sepHeaderSchema>
+
+export const sepByPesertaItemSchema = sepHeaderSchema.extend({
+  layanan: layananHeaderSchema.nullable(),
+  diagnosa: diagnosaHeaderSchema.nullable(),
+})
+export type SepByPesertaItem = z.infer<typeof sepByPesertaItemSchema>
+
+export const responseSepByNoPesertaSchema = z.array(sepByPesertaItemSchema)
+export type ResponseSepByNoPeserta = z.infer<typeof responseSepByNoPesertaSchema>
+
+export const responseSepByRegSchema = sepByPesertaItemSchema.nullable()
+export type ResponseSepByReg = z.infer<typeof responseSepByRegSchema>
+
+export const responseFingerprintSchema = z.object({
+  id: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .pipe(z.enum(['0', '1', 'x'])),
+  status: z.string(),
+})
+export type ResponseFingerprint = z.infer<typeof responseFingerprintSchema>
+
+export const pesertaBpjsSchema = z.object({
+  noPeserta: z.string(),
+  nama: z.string(),
+  hakKelas: z.object({ kode: z.string(), nama: z.string() }),
+  status: z.object({ kode: z.string(), info: z.string() }),
+  jenisPeserta: z.object({ kode: z.string(), nama: z.string() }),
+  provider: z.object({ kode: z.string(), nama: z.string() }),
+  prbInfo: z.unknown().nullable().optional(),
+  tglTat: z.string(),
+  tglLahir: z.string(),
+})
+export type PesertaBpjs = z.infer<typeof pesertaBpjsSchema>
+
+// Assumed shapes (ADR-002 open items): rujukan/SKDP payloads vary by provider.
+// Keep them permissive until confirmed against the live Jetli API.
+export const rujukanSchema = z.object({}).catchall(z.unknown())
+export const skdpSchema = z.object({}).catchall(z.unknown())
+
+export const rujukanSkpdResponseSchema = z.object({
+  peserta: pesertaBpjsSchema,
+  rujukan: rujukanSchema.nullable(),
+  listSkdp: z.array(skdpSchema),
+})
+export type RujukanSkpdResponse = z.infer<typeof rujukanSkpdResponseSchema>
+
+export const sepCreateBodySchema = z
+  .object({
+    sepId: z.string().optional(),
+    noPeserta: z.string().optional(),
+    sepDate: z.string().optional(),
+    noRujukan: z.string().optional(),
+    pasienId: z.string().optional(),
+    kelasRawatId: z.string().optional(),
+    diagnosaId: z.string().optional(),
+    tujuanKunjunganId: z.string().optional(),
+    flagProcedureId: z.string().optional(),
+    assesmentPelayananId: z.string().optional(),
+    penunjangId: z.string().optional(),
+    katarak: z.string().optional(),
+    catatan: z.string().optional(),
+    kll: z.string().optional(),
+    tglKLL: z.string().optional(),
+    noLaporanPolisi: z.string().optional(),
+    keteranganKLL: z.string().optional(),
+    propIdKll: z.string().optional(),
+    kabIdKll: z.string().optional(),
+    kecIdKll: z.string().optional(),
+    userId: z.string().optional(),
+  })
+  .passthrough()
+export type SepCreateBody = z.infer<typeof sepCreateBodySchema>
+
+export const sepUploadBodySchema = z
+  .object({
+    sepId: z.string(),
+    regId: z.string(),
+  })
+  .passthrough()
+export type SepUploadBody = z.infer<typeof sepUploadBodySchema>
+
+export const responseCreateSepSchema = z.object({
+  sepId: z.string(),
+  sepNo: z.string(),
+  regId: z.string().optional(),
+})
+
+export const responseCreateSepUnionSchema = z.union([responseCreateSepSchema, z.string()])
+export type ResponseCreateSep = z.infer<typeof responseCreateSepUnionSchema>
+
+export const responseUploadSepSchema = z.object({
+  sepId: z.string(),
+  sepNo: z.string(),
+  regId: z.string().optional(),
+})
+
+export const responseUploadSepUnionSchema = z.union([responseUploadSepSchema, z.string()])
+export type ResponseUploadSep = z.infer<typeof responseUploadSepUnionSchema>
+
+export const businessDateSchema = z.object({
+  businessDate: z.string(),
+})
+export type BusinessDate = z.infer<typeof businessDateSchema>
+
+// Assumed shape (ADR-001 open item): fields the picker needs. Confirm against HIS.
+export const pasienSearchItemSchema = z.object({
+  pasienId: z.string(),
+  pasienName: z.string(),
+  noMR: z.string().nullable().optional(),
+  nik: z.string().nullable().optional(),
+  tglLahir: z.string().nullable().optional(),
+})
+export type PasienSearchItem = z.infer<typeof pasienSearchItemSchema>
+
+export const bookingAssistanceBodySchema = z.object({
+  bookingId: z.string().optional(),
+  servicePointId: z.string().min(1),
+  kioskId: z.string().min(1),
+  userId: z.string().min(1),
+})
+export type BookingAssistanceBody = z.infer<typeof bookingAssistanceBodySchema>
+
+// Assumed shapes (ADR-006 open items): service catalog wire shape. Confirm against HIS.
+export const serviceItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+export type ServiceItem = z.infer<typeof serviceItemSchema>
+
+export const jadwalItemSchema = z.object({
+  jadwalId: z.string(),
+  ppaId: z.string(),
+  jamPraktek: z.string(),
+  sisaKuota: z.number().int(),
+})
+export type JadwalItem = z.infer<typeof jadwalItemSchema>
+
+export const serviceSelectionSchema = z.object({
+  poli: serviceItemSchema,
+  dokter: serviceItemSchema,
+  jadwal: jadwalItemSchema,
+})
+export type ServiceSelection = z.infer<typeof serviceSelectionSchema>
+
+export const patientContextItemSchema = z.object({
+  kind: z.string(),
+  id: z.string(),
+  patientName: z.string(),
+  patientId: z.string(),
+  birthDate: z.string(),
+  gender: z.string(),
+  locality: z.string().nullable(),
+  maskedNik: z.string().nullable(),
+  maskedPhone: z.string().nullable(),
+  visitDate: z.string().nullable(),
+  visitTime: z.string().nullable(),
+  serviceName: z.string().nullable(),
+  doctorName: z.string().nullable(),
+  state: z.string(),
+  bookingId: z.string().nullable(),
+  registrationId: z.string().nullable(),
+  matchType: z.string(),
+  isExactMatch: z.boolean(),
+  rank: z.number(),
+  warnings: z.array(z.unknown()),
+})
+export type PatientContextItem = z.infer<typeof patientContextItemSchema>
+
+export const patientContextSearchRequestSchema = z.object({
+  keyword: z.string(),
+  businessDate: z.string(),
+  scope: z.string().default('All'),
+  limitPerType: z.number().int().default(10),
+  suggestedBookingId: z.string().default(''),
+  suggestedRegistrationId: z.string().default(''),
+  suggestedPatientId: z.string().default(''),
+})
+export type PatientContextSearchRequest = z.infer<typeof patientContextSearchRequestSchema>
+
+export const patientContextSearchResponseSchema = z.object({
+  businessDate: z.string(),
+  bookings: z.object({
+    items: z.array(z.unknown()),
+    total: z.number(),
+    hasMore: z.boolean(),
+  }),
+  registrations: z.object({
+    items: z.array(z.unknown()),
+    total: z.number(),
+    hasMore: z.boolean(),
+  }),
+  patients: z.object({
+    items: z.array(patientContextItemSchema),
+    total: z.number(),
+    hasMore: z.boolean(),
+  }),
+  bestMatch: patientContextItemSchema.nullable(),
+  canCreatePatient: z.boolean(),
+})
+export type PatientContextSearchResponse = z.infer<typeof patientContextSearchResponseSchema>
