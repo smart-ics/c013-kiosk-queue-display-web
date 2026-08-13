@@ -18,6 +18,18 @@ describe('intersectOfferings', () => {
     expect(intersectOfferings(config, points).map((p) => p.servicePointId)).toEqual(['REG'])
   })
 
+  it('follows the servicePointIds order from config, not the API order', () => {
+    const config: DeviceConfig = {
+      deviceId: 'loket-03',
+      role: 'kiosk',
+      servicePointIds: ['BPJS', 'REG'],
+    }
+    expect(intersectOfferings(config, points).map((p) => p.servicePointId)).toEqual([
+      'BPJS',
+      'REG',
+    ])
+  })
+
   it('returns empty when allow-list missing', () => {
     const config: DeviceConfig = { deviceId: 'loket-03', role: 'kiosk' }
     expect(intersectOfferings(config, points)).toEqual([])

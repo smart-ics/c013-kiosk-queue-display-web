@@ -1,3 +1,7 @@
 {
-  "bilregApiBase": "http://dev.smart-ics.com:8888/bilregapi/api"
+  "bilregApiBase": "http://dev.smart-ics.com:8888/bilregapi/api",
+  "branding": {
+    "name": "RS Sehat Waluyo",
+    "subTag": "Sistem Antrian Admission"
+  }
 }

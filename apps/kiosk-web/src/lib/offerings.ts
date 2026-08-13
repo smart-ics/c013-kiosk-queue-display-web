@@ -4,9 +4,10 @@ export function intersectOfferings(
   config: DeviceConfig,
   servicePoints: AdmissionServicePoint[],
 ): AdmissionServicePoint[] {
-  const allow = new Set(config.servicePointIds ?? [])
-  if (allow.size === 0) return []
-  return servicePoints.filter(
-    (sp) => allow.has(sp.servicePointId) && sp.status === 'Active',
-  )
+  const ids = config.servicePointIds ?? []
+  if (ids.length === 0) return []
+  const byId = new Map(servicePoints.map((sp) => [sp.servicePointId, sp]))
+  return ids
+    .map((id) => byId.get(id))
+    .filter((sp): sp is AdmissionServicePoint => !!sp && sp.status === 'Active')
 }

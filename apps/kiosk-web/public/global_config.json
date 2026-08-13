@@ -1,5 +1,11 @@
 {
   "bilregApiBase": "http://dev.smart-ics.com:8888/bilregapi/api",
   "jetliApiBase": "http://dev.smart-ics.com:8089/JetliAPi/api",
-  "mediaInfoDir": "media"
+  "mediaInfoDir": "media",
+  "branding": {
+    "name": "RS Sehat Sejahtera",
+    "taglineId": "Melayani dengan hati, sehat untuk negeri",
+    "taglineEn": "Serving with heart, healthy for the nation",
+    "timeZoneLabel": "WIB"
+  }
 }

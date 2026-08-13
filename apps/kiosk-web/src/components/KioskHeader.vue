@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { brandingService } from '../lib/branding'
 
 const props = defineProps<{ lang: 'id' | 'en'; businessDate?: string | null }>()
 const emit = defineEmits<{ toggleLang: [lang: 'id' | 'en']; help: [] }>()
+
+const branding = brandingService.getBranding()
 
 const now = ref(new Date())
 let timer: ReturnType<typeof setInterval> | undefined
@@ -18,9 +21,7 @@ onUnmounted(() => {
 })
 
 const tagline = computed(() =>
-  props.lang === 'en'
-    ? 'Serving with heart, healthy for the nation'
-    : 'Melayani dengan hati, sehat untuk negeri',
+  props.lang === 'en' ? branding.taglineEn : branding.taglineId,
 )
 
 const helpLabel = computed(() => (props.lang === 'en' ? 'Help' : 'Bantuan'))
@@ -67,7 +68,7 @@ const isoTime = computed(() => now.value.toISOString())
         />
       </svg>
       <div class="brand-text">
-        <p class="brand-name">RS Sehat Sejahtera</p>
+        <p class="brand-name">{{ branding.name }}</p>
         <p class="brand-tagline">{{ tagline }}</p>
       </div>
     </div>
@@ -75,7 +76,7 @@ const isoTime = computed(() => now.value.toISOString())
     <div class="clock">
       <p class="clock-time">
         <time :datetime="isoTime">{{ timeText }}</time>
-        <span class="clock-tz"> WIB</span>
+        <span class="clock-tz"> {{ branding.timeZoneLabel }}</span>
       </p>
       <p class="clock-date">{{ dateText }}</p>
     </div>
