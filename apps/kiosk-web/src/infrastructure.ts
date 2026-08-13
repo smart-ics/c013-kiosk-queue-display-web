@@ -71,9 +71,8 @@ export function getHisApi(): HisApi {
 
 export function getJetliApi(): JetliApi {
   if (jetliApi) return jetliApi
-  const cfg = configService.getConfig()
-  const baseUrl = cfg.jetliApiBase ?? cfg.bilregApiBase
-  if (!baseUrl) throw new Error('bilregApiBase is not configured in global_config.json')
+  const baseUrl = configService.getConfig().jetliApiBase
+  if (!baseUrl) throw new Error('jetliApiBase is not configured in global_config.json')
   jetliApi = createJetliApi(
     new AdmissionQueueClient({
       baseUrl,

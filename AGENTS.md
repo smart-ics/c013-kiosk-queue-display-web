@@ -116,7 +116,9 @@ Both client apps (`kiosk-web` and `display-web`) do not request fullscreen progr
   chrome.exe --kiosk --edge-kiosk-type=fullscreen --no-first-run --clear-token-caches http://<host>/kiosk/{stationId}
   chrome.exe --kiosk --edge-kiosk-type=fullscreen --no-first-run --clear-token-caches http://<host>/display/{screenId}
   ```
-- **Automated Helper Script:** An interactive script is available at [scripts/create-kiosk-shortcut.bat](file:///E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/scripts/create-kiosk-shortcut.bat) to auto-generate these shortcuts on the Windows Desktop.
+- **Automated Helper Scripts:** Interactive scripts are available to auto-generate these shortcuts on the Windows Desktop:
+  - For Kiosk: [scripts/create-kiosk-shortcut.bat](file:///E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/scripts/create-kiosk-shortcut.bat)
+  - For Queue Display: [scripts/create-display-shortcut.bat](file:///E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/scripts/create-display-shortcut.bat)
 
 
 ## Conventions

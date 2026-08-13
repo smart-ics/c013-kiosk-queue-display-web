@@ -58,7 +58,7 @@ const nullableGroupJaminanSchema = groupJaminanMapSchema.nullable()
 export function createHisApi(client: AdmissionQueueClient) {
   return {
     getBusinessDate(): Promise<BusinessDate> {
-      return client.getJson('system/business-date', businessDateSchema)
+      return client.getPublicJson('system/business-date', businessDateSchema)
     },
 
     searchBooking(tglBerobat: string, keyword: string): Promise<BookingSearchItem[]> {

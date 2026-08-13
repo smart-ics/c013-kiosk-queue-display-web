@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { VueQueryPlugin, QueryClient } from '@tanstack/vue-query'
 import { configService } from '@aq/app-config'
 import App from './App.vue'
+import { brandingService } from './lib/branding'
 import { kioskLogin } from './lib/kioskLogin'
 import { router } from './router'
 import './styles.css'
@@ -18,6 +19,8 @@ const queryClient = new QueryClient({
 document.addEventListener('contextmenu', (e) => e.preventDefault())
 
 configService.initialize(import.meta.env.BASE_URL).then(() => {
+  return brandingService.initialize(import.meta.env.BASE_URL)
+}).then(() => {
   return kioskLogin()
 }).then(() => {
   createApp(App).use(router).use(VueQueryPlugin, { queryClient }).mount('#app')

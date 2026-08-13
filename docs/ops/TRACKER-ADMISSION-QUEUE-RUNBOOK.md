@@ -272,7 +272,9 @@ chrome.exe --kiosk --edge-kiosk-type=fullscreen --no-first-run --clear-token-cac
 ```
 
 > [!NOTE]
-> Terkait pembuatan shortcut di atas, tersedia skrip pembantu otomatis [create-kiosk-shortcut.bat](file:///E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/scripts/create-kiosk-shortcut.bat) untuk mendeteksi browser secara otomatis dan men-generate shortcut ke Desktop Windows.
+> Terkait pembuatan shortcut di atas, tersedia skrip pembantu otomatis untuk mendeteksi browser secara otomatis dan men-generate shortcut ke Desktop Windows:
+> - Kiosk Intake: [create-kiosk-shortcut.bat](file:///E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/scripts/create-kiosk-shortcut.bat)
+> - Queue Display: [create-display-shortcut.bat](file:///E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/scripts/create-display-shortcut.bat)
 
 
 | Concern | Guidance |

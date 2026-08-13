@@ -84,7 +84,9 @@ Buat `web.config` yang sama (disesuaikan path rewrite target) di folder `display
 chrome.exe --kiosk --edge-kiosk-type=fullscreen --no-first-run --clear-token-caches http://192.168.10.5/kiosk/loket-03
 ```
 
-Tersedia skrip pembantu interaktif [create-kiosk-shortcut.bat](file:///E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/scripts/create-kiosk-shortcut.bat) untuk mengotomatiskan pembuatan shortcut ini.
+Tersedia skrip pembantu interaktif untuk mengotomatiskan pembuatan shortcut ini:
+- Untuk Kiosk: [create-kiosk-shortcut.bat](file:///E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/scripts/create-kiosk-shortcut.bat)
+- Untuk Queue Display: [create-display-shortcut.bat](file:///E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/scripts/create-display-shortcut.bat)
 
 
 Menambah kiosk atau display baru = menambah shortcut baru dengan path ID baru. Tidak ada rebuild, tidak ada deployment ulang.
