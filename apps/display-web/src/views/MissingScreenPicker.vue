@@ -109,7 +109,7 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
   border-radius: 1.25rem;
   background: radial-gradient(circle, rgba(249, 115, 22, 0.1) 0%, rgba(249, 115, 22, 0) 70%);
   margin-bottom: 1.25rem;
-  color: var(--brand);
+  color: var(--brand-orange);
 }
 
 .icon-glow-wrapper::after {
@@ -118,7 +118,7 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
   width: 3.5rem;
   height: 3.5rem;
   border-radius: 50%;
-  background: var(--brand);
+  background: var(--brand-orange);
   filter: blur(25px);
   opacity: 0.15;
   z-index: -1;
@@ -127,7 +127,7 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
 .header-icon {
   width: 2.75rem;
   height: 2.75rem;
-  stroke: var(--brand);
+  stroke: var(--brand-orange);
   filter: drop-shadow(0 2px 8px rgba(249, 115, 22, 0.2));
   animation: float 4s ease-in-out infinite;
 }
@@ -162,7 +162,7 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
   width: 2.5rem;
   height: 2.5rem;
   border: 3px solid rgba(249, 115, 22, 0.1);
-  border-top-color: var(--brand);
+  border-top-color: var(--brand-orange);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   box-shadow: 0 0 15px rgba(249, 115, 22, 0.05);
@@ -275,8 +275,8 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
 
 /* Hover States & Interactions */
 .picker-link-card:hover {
-  background: var(--brand-soft);
-  border-color: var(--brand);
+  background: var(--brand-orange-soft);
+  border-color: var(--brand-orange);
   box-shadow: 
     0 10px 20px rgba(249, 115, 22, 0.04),
     0 0 0 1px rgba(249, 115, 22, 0.1);
@@ -284,7 +284,7 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
 }
 
 .picker-link-card:hover .screen-icon-bg {
-  background: var(--brand);
+  background: var(--brand-orange);
   color: #ffffff;
 }
 
@@ -293,12 +293,12 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
 }
 
 .picker-link-card:hover .screen-name {
-  color: var(--brand-strong);
+  color: var(--brand-orange-dark);
 }
 
 .picker-link-card:hover .card-right {
   opacity: 1;
-  color: var(--brand);
+  color: var(--brand-orange);
   transform: translateX(4px);
 }
 
