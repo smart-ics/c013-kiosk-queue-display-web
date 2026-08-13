@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.1] - 2026-08-13
+
+### Added
+
+- **Display screen redesign**: Queue display now uses a light wellness theme with a latest-call hero card, active-loket grid, live clock/date (from HIS business date), wellness tips slideshow, and statistics.
+- **Configurable branding**: Hospital name, tagline, and timezone label can be set per app via `global_config.json` (with sensible defaults) for both kiosk and display.
+- **Queue display shortcut script**: New helper script to auto-generate a fullscreen shortcut for the queue display on the Windows Desktop.
+
+### Changed
+
+- **Service point order**: Kiosk service-point listing now follows the order set in the kiosk device configuration instead of the API order.
+- **Jetli API config**: Kiosk now requires `jetliApiBase` to be set; it no longer silently falls back to the Bilreg API address.
+
 ## [0.2.0] - 2026-08-07
 
 ### Added
