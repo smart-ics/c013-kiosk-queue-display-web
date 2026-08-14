@@ -190,6 +190,7 @@
   },
   "active": "497434a0ad7c63dd",
   "lastOpenFiles": [
+    "apps/kiosk-web/public/logo.jpg",
     "apps/kiosk-web/src/composables/__tests__/inspect.spec.ts",
     "docs/architecture/KioskWinform.exe.config",
     "docs/architecture/HiDokKioskWinform.exe (8).config",

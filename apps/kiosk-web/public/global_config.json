@@ -8,10 +8,15 @@
     { "layananId": "00111", "karcisId": "21", "name": "Layanan VCT" }
   ],
   "mappingJmnLayananKarcis": [
-    { "tipeJaminanId": "00000", "layananId": "00025", "karcisId": "25", "name": "Umum - Layanan CST" }
+    {
+      "tipeJaminanId": "00000",
+      "layananId": "00025",
+      "karcisId": "25",
+      "name": "Umum - Layanan CST"
+    }
   ],
   "branding": {
-    "name": "RS Sehat Sejahtera",
+    "name": "RS Mekarsari",
     "taglineId": "Melayani dengan hati, sehat untuk negeri",
     "taglineEn": "Serving with heart, healthy for the nation",
     "timeZoneLabel": "WIB"

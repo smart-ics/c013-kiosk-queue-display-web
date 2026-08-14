@@ -83,7 +83,6 @@ onUnmounted(() => {
             @ended="onVideoEnded"
             @error="onVideoError"
           />
-          <p class="kiosk-ad-caption">Media &amp; Informasi Layanan RS</p>
         </template>
         <div v-else class="kiosk-ad-media">
           <svg
@@ -99,7 +98,6 @@ onUnmounted(() => {
             <path d="M8 21h8" />
             <path d="M12 17v4" />
           </svg>
-          <p>Media &amp; Informasi Layanan RS</p>
         </div>
       </aside>
 
