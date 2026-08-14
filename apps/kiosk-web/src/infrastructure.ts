@@ -86,8 +86,8 @@ export function getServiceCatalog(): ServiceCatalog {
   const his = getHisApi()
   return createServiceCatalog({
     getBusinessDate: async () => (await his.getBusinessDate()).businessDate,
-    listPoli: (businessDate) => his.listPoli(businessDate),
-    listDokter: (businessDate, poliId) => his.listDokter(businessDate, poliId),
+    listPoli: () => his.listPoli(),
+    listDokter: (poliId) => his.listDokter(poliId),
     listJadwal: (businessDate, ppaId) => his.listJadwal(businessDate, ppaId),
   })
 }

@@ -19,8 +19,8 @@ describe('createServiceCatalog', () => {
     expect(await catalog.listDokter('PO1')).toHaveLength(1)
     expect(await catalog.listJadwal('DP1')).toHaveLength(1)
 
-    expect(listPoli).toHaveBeenCalledWith('2026-08-03')
-    expect(listDokter).toHaveBeenCalledWith('2026-08-03', 'PO1')
+    expect(listPoli).toHaveBeenCalledTimes(1)
+    expect(listDokter).toHaveBeenCalledWith('PO1')
     expect(listJadwal).toHaveBeenCalledWith('2026-08-03', 'DP1')
   })
 })

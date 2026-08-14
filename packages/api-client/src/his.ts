@@ -83,15 +83,12 @@ export function createHisApi(client: AdmissionQueueClient) {
       return client.getJson(`Pasien/search/${encodeURIComponent(keyword)}`, pasienArraySchema)
     },
 
-    listPoli(businessDate: string): Promise<ServiceItem[]> {
-      return client.getJson('Poli', serviceItemsSchema, { tglBerobat: businessDate })
+    listPoli(): Promise<ServiceItem[]> {
+      return client.getJson('layanan', serviceItemsSchema)
     },
 
-    listDokter(businessDate: string, poliId: string): Promise<ServiceItem[]> {
-      return client.getJson('Poli/dokter', serviceItemsSchema, {
-        tglBerobat: businessDate,
-        poliId,
-      })
+    listDokter(poliId: string): Promise<ServiceItem[]> {
+      return client.getJson(`ppa/dokter/${encodeURIComponent(poliId)}`, serviceItemsSchema)
     },
 
     listJadwal(businessDate: string, ppaId: string): Promise<JadwalItem[]> {
