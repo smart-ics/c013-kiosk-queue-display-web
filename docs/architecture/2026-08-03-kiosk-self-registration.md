@@ -210,11 +210,11 @@ sequenceDiagram
     Bilreg-->>Kiosk: List Polis (Ambil yang pertama/active)
     
     Note over Kiosk, Pasien: Flow Pemilihan Poli, Dokter & Jadwal
-    Kiosk->>Bilreg: GET /api/Poli?tglBerobat=:tglBerobat
-    Bilreg-->>Kiosk: ServiceItem[] (Poli)
+    Kiosk->>Bilreg: GET /api/layanan
+    Bilreg-->>Kiosk: ServiceItem[] (Layanan)
     Pasien->>Kiosk: Pilih Poli
     
-    Kiosk->>Bilreg: GET /api/Poli/dokter?tglBerobat=:tglBerobat&poliId=:poliId
+    Kiosk->>Bilreg: GET /api/ppa/dokter/:layananId
     Bilreg-->>Kiosk: ServiceItem[] (Dokter)
     Pasien->>Kiosk: Pilih Dokter
     
@@ -435,11 +435,10 @@ Kiosk berpindah layar berdasarkan perubahan state `flow` yang diatur oleh `useKi
   ```
 * **Response**: `AdmissionQueueIntakeResponse` (berisi nomor antrian bantuan loket)
 
-### 4.6 Daftar Poliklinik (Poli)
+### 4.6 Daftar Poliklinik (Layanan)
 * **HTTP Method**: `GET`
-* **Path**: `/api/Poli`
-* **Query Parameters**:
-  * `tglBerobat`: `yyyy-mm-dd` (tanggal operasional aktif)
+* **Path**: `/api/layanan`
+* **Query Parameters**: None
 * **Response Schema**: `z.array(serviceItemSchema)`
   ```json
   [
@@ -448,12 +447,10 @@ Kiosk berpindah layar berdasarkan perubahan state `flow` yang diatur oleh `useKi
   ]
   ```
 
-### 4.7 Daftar Dokter per Poli
+### 4.7 Daftar Dokter per Poliklinik
 * **HTTP Method**: `GET`
-* **Path**: `/api/Poli/dokter`
-* **Query Parameters**:
-  * `tglBerobat`: `yyyy-mm-dd`
-  * `poliId`: ID Poliklinik terpilih
+* **Path**: `/api/ppa/dokter/{layananId}`
+* **Query Parameters**: None (Layanan ID diekstrak dari path)
 * **Response Schema**: `z.array(serviceItemSchema)`
   ```json
   [
