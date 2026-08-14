@@ -90,9 +90,13 @@ function makeDeps(overrides: Partial<KioskRegistrationDeps> = {}): KioskRegistra
       bestMatch: null,
       canCreatePatient: true,
     })),
+    appConfig: { bilregApiBase: '', kioskDefaultKarcisId: 'K-TEST' },
     verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
     registerBooking: vi.fn(async () => ({ regId: 'R1', noAntrian: 12 })),
     registerWalkin: vi.fn(async () => ({ regId: 'R2', noAntrian: 13 })),
+    createSep: vi.fn(async () => ({ sepId: 'sep-1', sepNo: '0112R', noPeserta: '123', namaPeserta: 'A' })),
+    uploadSep: vi.fn(async () => ({ sepId: 'sep-1', sepNo: '0112R', noPeserta: '123', namaPeserta: 'A' })),
+    setDataEligibility: vi.fn(async () => 'OK'),
     bookingAssistance: vi.fn(async () => ({
       antrianId: 'B1',
       noUrut: 1,
@@ -144,10 +148,12 @@ describe('useKioskRegistration booking flow', () => {
     expect(reg.registrationResult.value?.noAntrian).toBe(12)
     expect(deps.registerBooking).toHaveBeenCalledWith({
       bookingId: 'BK1',
-      pasienId: 'PT1',
-      tipeJaminanId: '00000',
-      noPeserta: null,
       userId: 'hidokkiosk',
+      karcisId: 'K-TEST',
+      caraMasukDkId: '00001',
+      rujukanId: 'REF1',
+      tipeJaminanId: '00000',
+      pesertaJaminanId: '',
     })
   })
 
@@ -384,13 +390,15 @@ describe('useKioskRegistration goshow walk-in flow', () => {
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
     expect(deps.registerWalkin).toHaveBeenCalledWith({
       pasienId: 'PT1',
-      poliId: 'PO1',
-      ppaId: 'DP1',
-      jadwalId: 'J1',
-      tglBerobat: '2026-08-03',
-      tipeJaminanId: 'BPJS',
-      noPeserta: '000123456',
       userId: 'hidokkiosk',
+      tipeJaminanId: 'BPJS',
+      caraMasukDkId: '00002',
+      rujukanId: '',
+      dokterId: 'DP1',
+      layananId: 'PO1',
+      jamPraktek: '08:00',
+      karcisId: 'K-TEST',
+      pesertaJaminanId: '000123456',
     })
   })
 

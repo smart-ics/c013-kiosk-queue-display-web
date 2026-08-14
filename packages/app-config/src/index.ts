@@ -4,6 +4,7 @@ export const appConfigSchema = z.object({
   bilregApiBase: z.string().min(1, 'bilregApiBase must not be empty'),
   jetliApiBase: z.string().optional(),
   mediaInfoDir: z.string().optional(),
+  kioskDefaultKarcisId: z.string().optional(),
 })
 
 export type AppConfig = z.infer<typeof appConfigSchema>

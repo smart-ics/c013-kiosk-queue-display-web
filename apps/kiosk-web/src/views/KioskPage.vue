@@ -10,6 +10,7 @@ import {
   getJetliApi,
   getServiceCatalog,
 } from '../infrastructure'
+import { configService } from '@aq/app-config'
 import { intersectOfferings } from '../lib/offerings'
 import { createBiometricClient } from '../lib/biometric'
 import { scanQrFromCamera } from '../lib/qrScanner'
@@ -142,9 +143,13 @@ const registration = useKioskRegistration({
   listPolis: (pasienId) => getHisApi().listPolis(pasienId),
   getGroupJaminanMap: (tipeJaminanId) => getJetliApi().getGroupJaminanMap(tipeJaminanId),
   searchPatientContext: (body) => getHisApi().patientContextSearch(body),
+  appConfig: configService.getConfig(),
   verifyBiometric: () => createBiometricClient({ port: printerProxyPort.value }).verify(),
   registerBooking: (ctx) => getHisApi().registerByBookingDirect(ctx),
   registerWalkin: (ctx) => getHisApi().registerWalkInDirect(ctx),
+  createSep: (body) => getJetliApi().createSep(body),
+  uploadSep: (body) => getJetliApi().uploadSep(body),
+  setDataEligibility: (body) => getHisApi().setDataEligibility(body),
   bookingAssistance: (body) => getHisApi().bookingAssistance(body),
   intake: (servicePointId) => getAdmissionQueueApi().intake({ servicePointId }),
   printRegistration: selfPrint.printRegistration,

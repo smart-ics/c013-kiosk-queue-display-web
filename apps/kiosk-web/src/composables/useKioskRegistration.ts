@@ -11,7 +11,15 @@ import type {
   Polis,
   ReturnCreateWalkIn,
   ServiceSelection,
+  PayloadDirectRegisterRajalByBooking,
+  PayloadDirectRegisterRajalWalkIn,
+  PayloadSetDataEligibility,
+  ResponseCreateSep,
+  ResponseUploadSep,
+  SepCreateBody,
+  SepUploadBody,
 } from '@aq/shared-types'
+import type { AppConfig } from '@aq/app-config'
 import { getKodeBookingMjkn } from '../lib/qrCodeDecoder'
 import { canTransition, type KioskFlow } from '../lib/flow'
 import {
@@ -41,24 +49,7 @@ export type EligibilityStatus = {
 
 export type FailureContext = { code: FailureCode; message: string }
 
-export type BookingRegContext = {
-  bookingId: string
-  pasienId: string
-  tipeJaminanId: string
-  noPeserta: string | null
-  userId: string
-}
 
-export type WalkinRegContext = {
-  pasienId: string
-  poliId: string
-  ppaId: string
-  jadwalId: string
-  tglBerobat: string
-  tipeJaminanId: string
-  noPeserta: string | null
-  userId: string
-}
 
 export type KioskRegistrationDeps = {
   stationId: Ref<string>
@@ -71,9 +62,13 @@ export type KioskRegistrationDeps = {
     keyword: string
     businessDate: string
   }) => Promise<PatientContextSearchResponse>
+  appConfig: AppConfig
   verifyBiometric: () => Promise<BiometricVerdict>
-  registerBooking: (ctx: BookingRegContext) => Promise<ReturnCreateWalkIn>
-  registerWalkin: (ctx: WalkinRegContext) => Promise<ReturnCreateWalkIn>
+  registerBooking: (ctx: PayloadDirectRegisterRajalByBooking) => Promise<ReturnCreateWalkIn>
+  registerWalkin: (ctx: PayloadDirectRegisterRajalWalkIn) => Promise<ReturnCreateWalkIn>
+  createSep: (body: SepCreateBody) => Promise<ResponseCreateSep>
+  uploadSep: (body: SepUploadBody) => Promise<ResponseUploadSep>
+  setDataEligibility: (body: PayloadSetDataEligibility) => Promise<string>
   bookingAssistance: (body: BookingAssistanceBody) => Promise<AdmissionQueueIntakeResponse>
   intake: (servicePointId: string) => Promise<AdmissionQueueIntakeResponse>
   printRegistration: (ctx: RegistrationPrintContext) => Promise<RegistrationPrintResult>
@@ -329,6 +324,48 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
           ? await registerBookingCommit()
           : await registerWalkinCommit()
       registrationResult.value = result
+
+      const eligibility = currentMode === 'booking' ? bookingEligibility.value : walkinEligibility.value
+      if (eligibility?.tipeJaminanId !== '00000' && eligibility?.needsEligibility) {
+        const patientId = currentMode === 'booking' ? bookingDetail.value!.reg.pasienId : selectedPatient.value!.pasienId
+        const noPeserta = eligibility.noPeserta ?? ""
+        const sepPayload: SepCreateBody = {
+          sepId: "",
+          noPeserta,
+          sepDate: businessDate.value ?? "",
+          noRujukan: currentMode === 'booking' ? (bookingDetail.value?.extAppRef?.reffId ?? "") : "",
+          pasienId: patientId,
+          kelasRawatId: "3", // default or derived from skdp
+          tujuanKunjunganId: "0",
+          flagProcedureId: "",
+          assesmentPelayananId: "",
+          penunjangId: "",
+          katarak: "0",
+          catatan: "Kiosk Self Registration",
+          kll: "0",
+          tglKLL: "",
+          noLaporanPolisi: "",
+          keteranganKLL: "",
+          propIdKll: "",
+          kabIdKll: "",
+          kecIdKll: "",
+          diagnosaId: "Z00.0", // default or derived from skdp
+          userId: KIOSK_USER_ID
+        }
+        
+        const sepRes = await deps.createSep(sepPayload)
+        if (typeof sepRes === 'string') {
+          throw new Error(`Gagal membuat SEP: ${sepRes}`)
+        }
+        await deps.uploadSep({ sepId: sepRes.sepId, regId: result.regId })
+        await deps.setDataEligibility({
+          regId: result.regId,
+          sjpNo: sepRes.sepNo,
+          pesertaJaminanId: noPeserta,
+          sjpId: sepRes.sepId
+        })
+      }
+
       transition('REGISTRATION_SUCCESS')
       const printed = await deps
         .printRegistration(buildPrintContext(currentMode))
@@ -342,12 +379,20 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   async function registerBookingCommit(): Promise<ReturnCreateWalkIn> {
     const detail = bookingDetail.value
     if (!detail) throw new Error('Booking detail missing')
+    
+    const defaultKarcisId = deps.appConfig.kioskDefaultKarcisId ?? ""
+    const tipeJaminan = bookingEligibility.value?.tipeJaminanId ?? '00000'
+    const isBpjs = tipeJaminan !== '00000'
+    const noPeserta = bookingEligibility.value?.noPeserta ?? ""
+
     return deps.registerBooking({
       bookingId: detail.bookingId,
-      pasienId: detail.reg.pasienId,
-      tipeJaminanId: bookingEligibility.value?.tipeJaminanId ?? '00000',
-      noPeserta: bookingEligibility.value?.noPeserta ?? null,
       userId: KIOSK_USER_ID,
+      karcisId: defaultKarcisId,
+      caraMasukDkId: isBpjs ? '00002' : '00001',
+      rujukanId: detail.extAppRef?.reffId ?? "",
+      tipeJaminanId: tipeJaminan,
+      pesertaJaminanId: noPeserta,
     })
   }
 
@@ -355,15 +400,24 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     const patient = selectedPatient.value
     const service = selectedService.value
     if (!patient || !service) throw new Error('Walk-in selection incomplete')
+
+    const defaultKarcisId = deps.appConfig.kioskDefaultKarcisId ?? ""
+    const tipeJaminan = walkinEligibility.value?.tipeJaminanId ?? '00000'
+    const isBpjs = tipeJaminan !== '00000'
+    const noPeserta = walkinNoPeserta.value || walkinEligibility.value?.noPeserta || ""
+    const jamPraktek = service.jadwal.jamPraktek.substring(0, 5)
+
     return deps.registerWalkin({
       pasienId: patient.pasienId,
-      poliId: service.poli.id,
-      ppaId: service.dokter.id,
-      jadwalId: service.jadwal.jadwalId,
-      tglBerobat: businessDate.value ?? '',
-      tipeJaminanId: walkinEligibility.value?.tipeJaminanId ?? '00000',
-      noPeserta: walkinNoPeserta.value || walkinEligibility.value?.noPeserta || null,
       userId: KIOSK_USER_ID,
+      tipeJaminanId: tipeJaminan,
+      caraMasukDkId: isBpjs ? '00002' : '00001',
+      rujukanId: "", // derived from BPJS picker in future iterations
+      dokterId: service.dokter.id,
+      layananId: service.poli.id,
+      jamPraktek,
+      karcisId: defaultKarcisId,
+      pesertaJaminanId: noPeserta,
     })
   }
 

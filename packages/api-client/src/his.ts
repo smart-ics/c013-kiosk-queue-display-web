@@ -21,6 +21,9 @@ import {
   sepCreateBodySchema,
   sepUploadBodySchema,
   serviceItemSchema,
+  payloadDirectRegisterRajalWalkInSchema,
+  payloadDirectRegisterRajalByBookingSchema,
+  payloadSetDataEligibilitySchema,
   type AdmissionQueueIntakeResponse,
   type BookingAssistanceBody,
   type BookingDetail,
@@ -98,12 +101,19 @@ export function createHisApi(client: AdmissionQueueClient) {
       })
     },
 
-    registerByBookingDirect(body: Record<string, unknown>): Promise<ReturnCreateWalkIn> {
-      return client.postJson('Reg/rajalByBooking/direct', body, returnCreateWalkInSchema)
+    registerByBookingDirect(body: z.input<typeof payloadDirectRegisterRajalByBookingSchema>): Promise<ReturnCreateWalkIn> {
+      const parsed = payloadDirectRegisterRajalByBookingSchema.parse(body)
+      return client.postJson('Reg/rajalByBooking/direct', parsed, returnCreateWalkInSchema)
     },
 
-    registerWalkInDirect(body: Record<string, unknown>): Promise<ReturnCreateWalkIn> {
-      return client.postJson('Reg/rajalWalkIn/direct', body, returnCreateWalkInSchema)
+    registerWalkInDirect(body: z.input<typeof payloadDirectRegisterRajalWalkInSchema>): Promise<ReturnCreateWalkIn> {
+      const parsed = payloadDirectRegisterRajalWalkInSchema.parse(body)
+      return client.postJson('Reg/rajalWalkIn/direct', parsed, returnCreateWalkInSchema)
+    },
+
+    setDataEligibility(body: z.input<typeof payloadSetDataEligibilitySchema>): Promise<string> {
+      const parsed = payloadSetDataEligibilitySchema.parse(body)
+      return client.patchJson('Reg/setDataEligibility', parsed, z.string())
     },
 
     bookingAssistance(body: BookingAssistanceBody): Promise<AdmissionQueueIntakeResponse> {

@@ -359,6 +359,45 @@ export const returnCreateWalkInSchema = z.object({
 })
 export type ReturnCreateWalkIn = z.infer<typeof returnCreateWalkInSchema>
 
+export const payloadDirectRegisterRajalWalkInSchema = z.object({
+  pasienId: z.string().min(1),
+  userId: z.string().min(1),
+  tipeJaminanId: z.string().min(1),
+  caraMasukDkId: z.string().min(1),
+  rujukanId: z.string(),
+  dokterId: z.string().min(1),
+  layananId: z.string().min(1),
+  jamPraktek: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  karcisId: z.string().min(1),
+  pesertaJaminanId: z.string(),
+})
+export type PayloadDirectRegisterRajalWalkIn = z.infer<typeof payloadDirectRegisterRajalWalkInSchema>
+
+export const payloadDirectRegisterRajalByBookingSchema = z.object({
+  bookingId: z.string().min(1),
+  userId: z.string().min(1),
+  karcisId: z.string().min(1),
+  caraMasukDkId: z.string().min(1),
+  rujukanId: z.string(),
+  tipeJaminanId: z.string().min(1),
+  pesertaJaminanId: z.string(),
+})
+export type PayloadDirectRegisterRajalByBooking = z.infer<typeof payloadDirectRegisterRajalByBookingSchema>
+
+export const payloadSetDataEligibilitySchema = z.object({
+  regId: z.string().min(1),
+  sjpNo: z.string().min(1),
+  pesertaJaminanId: z.string(),
+  sjpId: z.string(),
+})
+export type PayloadSetDataEligibility = z.infer<typeof payloadSetDataEligibilitySchema>
+
+export const karcisItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+export type KarcisItem = z.infer<typeof karcisItemSchema>
+
 export const bookingSearchItemSchema = z.object({
   bookingId: z.string(),
   bookingDate: z.string(),
