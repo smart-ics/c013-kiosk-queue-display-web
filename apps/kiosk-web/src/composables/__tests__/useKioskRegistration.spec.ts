@@ -471,7 +471,7 @@ describe('useKioskRegistration guards and reset', () => {
     expect(reg.flow.value).toBe('HOME')
   })
 
-  it('returns to HOME 10s after a successful registration print', async () => {
+  it('stays on REGISTRATION_SUCCESS after successful registration print', async () => {
     vi.useFakeTimers()
     const deps = makeDeps({ getBookingDetail: vi.fn(async () => umumDetail) })
     const reg = useKioskRegistration(deps)
@@ -480,7 +480,7 @@ describe('useKioskRegistration guards and reset', () => {
     await reg.confirmBooking()
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
     await vi.advanceTimersByTimeAsync(10_100)
-    expect(reg.flow.value).toBe('HOME')
+    expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
   })
 })
 

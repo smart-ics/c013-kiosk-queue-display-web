@@ -34,7 +34,6 @@ import {
   ASSISTANCE_RESET_MS,
   IDLE_RESET_MS,
   KIOSK_USER_ID,
-  SUCCESS_RESET_MS,
 } from '../lib/constants'
 import { mapErrorToFailureCode, type FailureCode } from '../lib/failureCode'
 import type { BiometricVerdict } from '../lib/biometric'
@@ -469,10 +468,9 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       }
 
       transition('REGISTRATION_SUCCESS')
-      const printed = await deps
+      await deps
         .printRegistration(buildPrintContext(currentMode))
         .catch(() => ({ printed: false }))
-      if (printed.printed) scheduleAutoHome(SUCCESS_RESET_MS)
     } catch (error) {
       setFailure(mapErrorToFailureCode(error), messageFromError(error))
     }

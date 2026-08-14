@@ -352,7 +352,6 @@ const loadingMessage = computed(() => {
       :pending="registration.submitting.value"
       :error-message="null"
       @confirm="registration.confirmWalkin"
-      @update-no-peserta="registration.setWalkinNoPeserta"
       @back="onHome"
     />
     <RegistrationSuccessStep

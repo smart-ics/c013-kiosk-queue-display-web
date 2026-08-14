@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import type { PasienSearchItem, ServiceSelection } from '@aq/shared-types'
 import type { EligibilityStatus } from '../../composables/useKioskRegistration'
 
@@ -10,13 +9,10 @@ defineProps<{
   pending: boolean
   errorMessage: string | null
 }>()
-const emit = defineEmits<{
+defineEmits<{
   confirm: []
   back: []
-  updateNoPeserta: [value: string]
 }>()
-
-const noPesertaInput = ref('')
 </script>
 
 <template>
@@ -38,22 +34,11 @@ const noPesertaInput = ref('')
       </dd>
     </dl>
 
-    <div v-if="eligibility.needsEligibility" class="noPeserta-block">
-      <p>Masukkan Nomor Peserta BPJS (scan QR kartu atau ketik manual).</p>
-      <input
-        v-model="noPesertaInput"
-        class="big-input"
-        placeholder="Nomor Peserta BPJS"
-        data-testid="no-peserta"
-        @input="emit('updateNoPeserta', noPesertaInput)"
-      />
-    </div>
-
     <div class="actions">
       <button
         type="button"
         class="sp-btn"
-        :disabled="pending || (eligibility.needsEligibility && !noPesertaInput.trim())"
+        :disabled="pending"
         data-testid="walkin-confirm"
         @click="$emit('confirm')"
       >
