@@ -6,6 +6,9 @@ import VirtualKeyboard from '../components/VirtualKeyboard.vue'
 import { useKioskMediaInfo } from '../composables/useKioskMediaInfo'
 import { resolveMediaDirUrl } from '../lib/mediaDirectory'
 import { getKodeBookingMjkn } from '../lib/qrCodeDecoder'
+import { brandingService } from '../lib/branding'
+
+const branding = brandingService.getBranding()
 
 const props = withDefaults(
   defineProps<{
@@ -102,8 +105,7 @@ onUnmounted(() => {
 
       <section class="kiosk-input-section">
         <div class="welcome">
-          <!-- TODO: need implemenet rs name from config -->
-          <h1 class="welcome-title">Selamat datang di RS Sehat Sejahtera</h1>
+          <h1 class="welcome-title">Selamat datang di {{ branding.name }}</h1>
           <p class="welcome-sub">Masukkan data Anda untuk memulai</p>
         </div>
 
