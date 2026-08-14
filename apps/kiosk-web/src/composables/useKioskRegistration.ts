@@ -254,6 +254,9 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     touch()
     return withSubmit(async () => {
       try {
+        if (!item.patientId) {
+          throw new Error('Data Rekam Medis pasien ini tidak valid (Patient ID kosong).')
+        }
         selectedContextPatient.value = item
         const polisList = await deps.listPolis(item.patientId)
         const jaminan = deriveWalkinJaminan(polisList)

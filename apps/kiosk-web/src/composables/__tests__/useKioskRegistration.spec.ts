@@ -43,7 +43,7 @@ const bpjsPolis: Polis = {
 const group: GroupJaminanMap = { tipeJaminanId: 'BPJS', groupJaminanId: 'G1', groupJaminanName: 'BPJS' }
 
 const contextItem = {
-  kind: 'Patient',
+  kind: 'Patient' as const,
   id: 'P001',
   patientName: 'Budi',
   patientId: 'PT1',

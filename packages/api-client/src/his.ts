@@ -20,7 +20,6 @@ import {
   rujukanSkpdResponseSchema,
   sepCreateBodySchema,
   sepUploadBodySchema,
-  serviceItemSchema,
   payloadDirectRegisterRajalWalkInSchema,
   payloadDirectRegisterRajalByBookingSchema,
   payloadSetDataEligibilitySchema,
@@ -50,7 +49,6 @@ import type { AdmissionQueueClient } from './http'
 const bookingSearchArraySchema = z.array(bookingSearchItemSchema)
 const polisArraySchema = z.array(polisSchema)
 const pasienArraySchema = z.array(pasienSearchItemSchema)
-const serviceItemsSchema = z.array(serviceItemSchema)
 const jadwalItemsSchema = z.array(jadwalItemSchema)
 const nullableGroupJaminanSchema = groupJaminanMapSchema.nullable()
 
@@ -84,11 +82,13 @@ export function createHisApi(client: AdmissionQueueClient) {
     },
 
     listPoli(): Promise<ServiceItem[]> {
-      return client.getJson('layanan', serviceItemsSchema)
+      return client.getJson('layanan', z.array(z.object({ layananId: z.string(), layananName: z.string() })))
+        .then(list => list.map(item => ({ id: item.layananId, name: item.layananName })))
     },
 
     listDokter(poliId: string): Promise<ServiceItem[]> {
-      return client.getJson(`ppa/dokter/${encodeURIComponent(poliId)}`, serviceItemsSchema)
+      return client.getJson(`ppa/dokter/${encodeURIComponent(poliId)}`, z.array(z.object({ ppaId: z.string(), ppaName: z.string() })))
+        .then(list => list.map(item => ({ id: item.ppaId, name: item.ppaName })))
     },
 
     listJadwal(businessDate: string, ppaId: string): Promise<JadwalItem[]> {

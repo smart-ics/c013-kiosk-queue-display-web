@@ -14,7 +14,7 @@ const emit = defineEmits<{
 }>()
 
 function disambiguator(item: PatientContextItem): string {
-  return item.maskedNik || item.id || item.patientId
+  return item.maskedNik || item.id || item.patientId || ''
 }
 </script>
 
