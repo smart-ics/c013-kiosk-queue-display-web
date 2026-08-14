@@ -8,7 +8,6 @@ const emit = defineEmits<{ select: [selection: ServiceSelection]; back: [] }>()
 
 const polis = ref<ServiceItem[]>([])
 const dokterList = ref<ServiceItem[]>([])
-const jadwalList = ref<JadwalItem[]>([])
 const selectedPoli = ref<ServiceItem | null>(null)
 const selectedDokter = ref<ServiceItem | null>(null)
 const loading = ref(false)
@@ -30,7 +29,6 @@ void loadPolis()
 async function choosePoli(poli: ServiceItem) {
   selectedPoli.value = poli
   dokterList.value = []
-  jadwalList.value = []
   selectedDokter.value = null
   loading.value = true
   loadError.value = null
@@ -43,23 +41,20 @@ async function choosePoli(poli: ServiceItem) {
   }
 }
 
-async function chooseDokter(dokter: ServiceItem) {
+function chooseDokter(dokter: ServiceItem) {
+  if (!selectedPoli.value) return
   selectedDokter.value = dokter
-  jadwalList.value = []
-  loading.value = true
-  loadError.value = null
-  try {
-    jadwalList.value = await props.catalog.listJadwal(dokter.id)
-  } catch (error) {
-    loadError.value = error instanceof Error ? error.message : 'Gagal memuat jadwal.'
-  } finally {
-    loading.value = false
-  }
-}
 
-function chooseJadwal(jadwal: JadwalItem) {
-  if (!selectedPoli.value || !selectedDokter.value) return
-  emit('select', { poli: selectedPoli.value, dokter: selectedDokter.value, jadwal })
+  const currentHour = new Date().getHours()
+  const jamPraktek = currentHour < 12 ? '08:00' : '14:00'
+
+  const jadwal: JadwalItem = {
+    jadwalId: 'DEFAULT',
+    ppaId: dokter.id,
+    jamPraktek,
+    sisaKuota: 99,
+  }
+  emit('select', { poli: selectedPoli.value, dokter, jadwal })
 }
 </script>
 
@@ -78,7 +73,7 @@ function chooseJadwal(jadwal: JadwalItem) {
       </div>
     </template>
 
-    <template v-else-if="!selectedDokter">
+    <template v-else>
       <h2>Dokter — {{ selectedPoli.name }}</h2>
       <div class="sp-grid">
         <button v-for="dokter in dokterList" :key="dokter.id" type="button" class="sp-btn" :disabled="loading || pending" @click="chooseDokter(dokter)">
@@ -86,30 +81,8 @@ function chooseJadwal(jadwal: JadwalItem) {
         </button>
       </div>
       <div class="actions">
-        <button type="button" class="secondary-btn" @click="selectedPoli = null; dokterList = []; jadwalList = []">
+        <button type="button" class="secondary-btn" @click="selectedPoli = null; dokterList = []">
           Kembali ke Poli
-        </button>
-      </div>
-    </template>
-
-    <template v-else>
-      <h2>Jadwal — {{ selectedDokter.name }}</h2>
-      <div class="sp-grid">
-        <button
-          v-for="jadwal in jadwalList"
-          :key="jadwal.jadwalId"
-          type="button"
-          class="sp-btn"
-          :disabled="jadwal.sisaKuota <= 0 || loading || pending"
-          @click="chooseJadwal(jadwal)"
-        >
-          {{ jadwal.jamPraktek }}
-          <small>{{ jadwal.sisaKuota }} slot</small>
-        </button>
-      </div>
-      <div class="actions">
-        <button type="button" class="secondary-btn" @click="selectedDokter = null; jadwalList = []">
-          Kembali ke Dokter
         </button>
       </div>
     </template>
