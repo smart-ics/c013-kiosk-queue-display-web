@@ -295,7 +295,9 @@ button {
   flex: none;
   width: 56px;
   height: 56px;
-  filter: drop-shadow(0 6px 14px rgba(194, 65, 12, 0.28));
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .brand-text {
@@ -437,10 +439,11 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #0f172a 100%);
+  background: transparent;
   color: #94a3b8;
   overflow: hidden;
   position: relative;
+  padding: 24px;
 }
 
 .kiosk-ad-media {
@@ -467,10 +470,14 @@ button {
 }
 
 .kiosk-ad-video {
-  width: 100%;
+  width: auto;
   height: 100%;
+  max-width: 100%;
   object-fit: contain;
   object-position: center;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  background: #000;
 }
 
 .kiosk-ad-caption {
