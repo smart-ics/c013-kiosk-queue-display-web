@@ -16,6 +16,7 @@ import {
   responseSepByNoPesertaSchema,
   responseSepByRegSchema,
   responseUploadSepUnionSchema,
+  karcisItemSchema,
   returnCreateWalkInSchema,
   rujukanSkpdResponseSchema,
   sepCreateBodySchema,
@@ -30,6 +31,7 @@ import {
   type BusinessDate,
   type GroupJaminanMap,
   type JadwalItem,
+  type KarcisItem,
   type PasienSearchItem,
   type PatientContextSearchResponse,
   type Polis,
@@ -87,8 +89,8 @@ export function createHisApi(client: AdmissionQueueClient) {
     },
 
     listDokter(poliId: string): Promise<ServiceItem[]> {
-      return client.getJson(`ppa/dokter/${encodeURIComponent(poliId)}`, z.array(z.object({ ppaId: z.string(), ppaName: z.string() })))
-        .then(list => list.map(item => ({ id: item.ppaId, name: item.ppaName })))
+      return client.getJson(`ppa/dokter/${encodeURIComponent(poliId)}`, z.array(z.object({ dokterId: z.string(), dokterName: z.string() })))
+        .then(list => list.map(item => ({ id: item.dokterId, name: item.dokterName })))
     },
 
     listJadwal(businessDate: string, ppaId: string): Promise<JadwalItem[]> {
@@ -96,6 +98,13 @@ export function createHisApi(client: AdmissionQueueClient) {
         tglBerobat: businessDate,
         ppaId,
       })
+    },
+
+    listKarcis(layananId: string): Promise<KarcisItem[]> {
+      return client.getJson(
+        `Karcis/${encodeURIComponent(layananId)}/list`,
+        z.array(karcisItemSchema),
+      )
     },
 
     registerByBookingDirect(body: z.input<typeof payloadDirectRegisterRajalByBookingSchema>): Promise<ReturnCreateWalkIn> {

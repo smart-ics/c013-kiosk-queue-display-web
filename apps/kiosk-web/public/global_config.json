@@ -2,7 +2,7 @@
   "bilregApiBase": "http://dev.smart-ics.com:8888/bilregapi/api",
   "jetliApiBase": "http://dev.smart-ics.com:8089/JetliAPi/api",
   "mediaInfoDir": "media",
-  "kioskDefaultKarcisId": "KARCIS-001",
+  "kioskDefaultKarcisId": "04",
   "branding": {
     "name": "RS Sehat Sejahtera",
     "taglineId": "Melayani dengan hati, sehat untuk negeri",

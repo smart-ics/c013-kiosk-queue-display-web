@@ -190,6 +190,9 @@
   },
   "active": "497434a0ad7c63dd",
   "lastOpenFiles": [
+    "apps/kiosk-web/src/composables/__tests__/inspect.spec.ts",
+    "docs/architecture/KioskWinform.exe.config",
+    "docs/architecture/HiDokKioskWinform.exe (8).config",
     "docs/architecture/gap-analysis-self-registration.md",
     "docs/architecture/registrasi-langsung.md",
     "docs/architecture/2026-08-03-kiosk-self-registration.md",
@@ -221,7 +224,6 @@
     "docs/archive/superpowers",
     "docs/archive/reports",
     "docs/archive/plans",
-    "docs/archive",
-    "docs/adr/ADR-001-queue-ledger-boundaries.md"
+    "docs/archive"
   ]
 }

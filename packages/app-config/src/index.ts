@@ -1,10 +1,25 @@
 import { z } from 'zod'
 
+export const mappingLayananKarcisSchema = z.object({
+  layananId: z.string(),
+  karcisId: z.string(),
+  name: z.string().optional(),
+})
+
+export const mappingJmnLayananKarcisSchema = z.object({
+  tipeJaminanId: z.string(),
+  layananId: z.string(),
+  karcisId: z.string(),
+  name: z.string().optional(),
+})
+
 export const appConfigSchema = z.object({
   bilregApiBase: z.string().min(1, 'bilregApiBase must not be empty'),
   jetliApiBase: z.string().optional(),
   mediaInfoDir: z.string().optional(),
   kioskDefaultKarcisId: z.string().optional(),
+  mappingLayananKarcis: z.array(mappingLayananKarcisSchema).optional(),
+  mappingJmnLayananKarcis: z.array(mappingJmnLayananKarcisSchema).optional(),
 })
 
 export type AppConfig = z.infer<typeof appConfigSchema>

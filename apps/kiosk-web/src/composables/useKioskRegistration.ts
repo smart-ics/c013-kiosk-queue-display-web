@@ -5,11 +5,13 @@ import type {
   BookingDetail,
   BookingSearchItem,
   GroupJaminanMap,
+  KarcisItem,
   PasienSearchItem,
   PatientContextItem,
   PatientContextSearchResponse,
   Polis,
   ReturnCreateWalkIn,
+  RujukanSkpdResponse,
   ServiceSelection,
   PayloadDirectRegisterRajalByBooking,
   PayloadDirectRegisterRajalWalkIn,
@@ -64,6 +66,8 @@ export type KioskRegistrationDeps = {
   }) => Promise<PatientContextSearchResponse>
   appConfig: AppConfig
   verifyBiometric: () => Promise<BiometricVerdict>
+  listKarcis: (layananId: string) => Promise<KarcisItem[]>
+  getRujukanSkpd: (noPeserta: string) => Promise<RujukanSkpdResponse>
   registerBooking: (ctx: PayloadDirectRegisterRajalByBooking) => Promise<ReturnCreateWalkIn>
   registerWalkin: (ctx: PayloadDirectRegisterRajalWalkIn) => Promise<ReturnCreateWalkIn>
   createSep: (body: SepCreateBody) => Promise<ResponseCreateSep>
@@ -82,6 +86,37 @@ export type KioskRegistrationDeps = {
 
 function messageFromError(error: unknown): string {
   return error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga.'
+}
+
+function calculateAge(birthDateStr: string, refDateStr: string): number {
+  const birthDate = new Date(birthDateStr)
+  const refDate = new Date(refDateStr)
+  let age = refDate.getFullYear() - birthDate.getFullYear()
+  const m = refDate.getMonth() - birthDate.getMonth()
+  if (m < 0 || (m === 0 && refDate.getDate() < birthDate.getDate())) {
+    age--
+  }
+  return age
+}
+
+function resolveDefaultKarcisId(
+  appConfig: AppConfig,
+  tipeJaminanId: string,
+  layananId: string,
+): string {
+  if (appConfig.mappingJmnLayananKarcis) {
+    const match = appConfig.mappingJmnLayananKarcis.find(
+      (m) => m.tipeJaminanId === tipeJaminanId && m.layananId === layananId
+    )
+    if (match) return match.karcisId
+  }
+  if (appConfig.mappingLayananKarcis) {
+    const match = appConfig.mappingLayananKarcis.find(
+      (m) => m.layananId === layananId
+    )
+    if (match) return match.karcisId
+  }
+  return appConfig.kioskDefaultKarcisId ?? ''
 }
 
 export function useKioskRegistration(deps: KioskRegistrationDeps) {
@@ -107,6 +142,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   const selectedContextPatient = ref<PatientContextItem | null>(null)
   const errorContext = ref<FailureContext | null>(null)
   const biometricVerdict = ref<BiometricVerdict | null>(null)
+  const activeBpjsContext = ref<{ noRujukan: string; kelasRawatId: string; diagnosaId: string } | null>(null)
 
   const lastActivity = ref(deps.now ? deps.now() : Date.now())
   let idleTimer: number | null = null
@@ -162,6 +198,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     patientContextResult.value = null
     selectedContextPatient.value = null
     biometricVerdict.value = null
+    activeBpjsContext.value = null
     submitting.value = false
     touch()
   }
@@ -296,11 +333,73 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   function confirmBooking(): Promise<void> {
     touch()
     if (submitting.value) return Promise.resolve()
-    if (bookingEligibility.value?.needsEligibility) {
-      transition('BIOMETRIC_VERIFY')
-      return withSubmit(() => runBiometric('booking'))
+    return withSubmit(async () => {
+      try {
+        const eligibility = bookingEligibility.value
+        if (eligibility?.needsEligibility) {
+          await handleBpjsVerificationAndRegistration('booking', eligibility)
+        } else {
+          await register('booking')
+        }
+      } catch (error) {
+        setFailure(mapErrorToFailureCode(error), messageFromError(error))
+      }
+    })
+  }
+
+  async function handleBpjsVerificationAndRegistration(
+    currentMode: FlowMode,
+    eligibility: EligibilityStatus,
+  ): Promise<void> {
+    const noPeserta = currentMode === 'booking'
+      ? eligibility.noPeserta
+      : (eligibility.noPeserta || walkinNoPeserta.value)
+    if (!noPeserta) {
+      throw new Error('Nomor kartu BPJS tidak ditemukan.')
     }
-    return withSubmit(() => register('booking'))
+
+    const res = await deps.getRujukanSkpd(noPeserta)
+    const rujukan = res.rujukan as Record<string, any> | null
+    let extracted: { noRujukan: string; kelasRawatId: string; diagnosaId: string; tglLahir: string } | null = null
+
+    if (rujukan && rujukan.noRujukan) {
+      extracted = {
+        noRujukan: rujukan.noRujukan as string,
+        kelasRawatId: res.peserta.hakKelas.kode,
+        diagnosaId: (rujukan.diagnosa?.kode || 'Z00.0') as string,
+        tglLahir: res.peserta.tglLahir,
+      }
+    } else {
+      const skdp = res.listSkdp && res.listSkdp[0] as Record<string, any> | null
+      if (skdp && skdp.noSkdp) {
+        extracted = {
+          noRujukan: skdp.noSkdp as string,
+          kelasRawatId: res.peserta.hakKelas.kode,
+          diagnosaId: (skdp.diagnosa?.kode || 'Z00.0') as string,
+          tglLahir: res.peserta.tglLahir,
+        }
+      }
+    }
+
+    if (!extracted) {
+      throw new Error('Rujukan atau SKDP BPJS tidak aktif/tidak ditemukan. Silakan ambil antrian pendaftaran manual.')
+    }
+
+    activeBpjsContext.value = {
+      noRujukan: extracted.noRujukan,
+      kelasRawatId: extracted.kelasRawatId,
+      diagnosaId: extracted.diagnosaId,
+    }
+
+    const currentBusinessDate = businessDate.value || await ensureBusinessDate()
+    const age = calculateAge(extracted.tglLahir, currentBusinessDate)
+
+    if (age < 17) {
+      await register(currentMode)
+    } else {
+      transition('BIOMETRIC_VERIFY')
+      await runBiometric(currentMode)
+    }
   }
 
   async function runBiometric(currentMode: FlowMode): Promise<void> {
@@ -336,9 +435,9 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
           sepId: "",
           noPeserta,
           sepDate: businessDate.value ?? "",
-          noRujukan: currentMode === 'booking' ? (bookingDetail.value?.extAppRef?.reffId ?? "") : "",
+          noRujukan: activeBpjsContext.value?.noRujukan || (currentMode === 'booking' ? (bookingDetail.value?.extAppRef?.reffId ?? "") : ""),
           pasienId: patientId,
-          kelasRawatId: "3", // default or derived from skdp
+          kelasRawatId: activeBpjsContext.value?.kelasRawatId || "3",
           tujuanKunjunganId: "0",
           flagProcedureId: "",
           assesmentPelayananId: "",
@@ -352,7 +451,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
           propIdKll: "",
           kabIdKll: "",
           kecIdKll: "",
-          diagnosaId: "Z00.0", // default or derived from skdp
+          diagnosaId: activeBpjsContext.value?.diagnosaId || "Z00.0",
           userId: KIOSK_USER_ID
         }
         
@@ -383,17 +482,23 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     const detail = bookingDetail.value
     if (!detail) throw new Error('Booking detail missing')
     
-    const defaultKarcisId = deps.appConfig.kioskDefaultKarcisId ?? ""
     const tipeJaminan = bookingEligibility.value?.tipeJaminanId ?? '00000'
     const isBpjs = tipeJaminan !== '00000'
     const noPeserta = bookingEligibility.value?.noPeserta ?? ""
 
+    const resolvedKarcis = resolveDefaultKarcisId(deps.appConfig, tipeJaminan, detail.layanan.layananId)
+    const karcisList = await deps.listKarcis(detail.layanan.layananId)
+    const found = karcisList.find((k) => k.id === resolvedKarcis)
+    if (!found) {
+      throw new Error(`Karcis dengan ID '${resolvedKarcis}' tidak aktif untuk poliklinik ini. Hubungi petugas.`)
+    }
+
     return deps.registerBooking({
       bookingId: detail.bookingId,
       userId: KIOSK_USER_ID,
-      karcisId: defaultKarcisId,
-      caraMasukDkId: isBpjs ? '00002' : '00001',
-      rujukanId: detail.extAppRef?.reffId ?? "",
+      karcisId: resolvedKarcis,
+      caraMasukDkId: isBpjs ? '1' : '8',
+      rujukanId: activeBpjsContext.value?.noRujukan || detail.extAppRef?.reffId || "",
       tipeJaminanId: tipeJaminan,
       pesertaJaminanId: noPeserta,
     })
@@ -404,22 +509,28 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     const service = selectedService.value
     if (!patient || !service) throw new Error('Walk-in selection incomplete')
 
-    const defaultKarcisId = deps.appConfig.kioskDefaultKarcisId ?? ""
     const tipeJaminan = walkinEligibility.value?.tipeJaminanId ?? '00000'
     const isBpjs = tipeJaminan !== '00000'
     const noPeserta = walkinNoPeserta.value || walkinEligibility.value?.noPeserta || ""
     const jamPraktek = service.jadwal.jamPraktek.substring(0, 5)
 
+    const resolvedKarcis = resolveDefaultKarcisId(deps.appConfig, tipeJaminan, service.poli.id)
+    const karcisList = await deps.listKarcis(service.poli.id)
+    const found = karcisList.find((k) => k.id === resolvedKarcis)
+    if (!found) {
+      throw new Error(`Karcis dengan ID '${resolvedKarcis}' tidak aktif untuk poliklinik ini. Hubungi petugas.`)
+    }
+
     return deps.registerWalkin({
       pasienId: patient.pasienId,
       userId: KIOSK_USER_ID,
       tipeJaminanId: tipeJaminan,
-      caraMasukDkId: isBpjs ? '00002' : '00001',
-      rujukanId: "", // derived from BPJS picker in future iterations
+      caraMasukDkId: isBpjs ? '1' : '8',
+      rujukanId: activeBpjsContext.value?.noRujukan || "",
       dokterId: service.dokter.id,
       layananId: service.poli.id,
       jamPraktek,
-      karcisId: defaultKarcisId,
+      karcisId: resolvedKarcis,
       pesertaJaminanId: noPeserta,
     })
   }
@@ -457,11 +568,18 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   function confirmWalkin(): Promise<void> {
     touch()
     if (submitting.value) return Promise.resolve()
-    if (walkinEligibility.value?.needsEligibility) {
-      transition('BIOMETRIC_VERIFY')
-      return withSubmit(() => runBiometric('walkin'))
-    }
-    return withSubmit(() => register('walkin'))
+    return withSubmit(async () => {
+      try {
+        const eligibility = walkinEligibility.value
+        if (eligibility?.needsEligibility) {
+          await handleBpjsVerificationAndRegistration('walkin', eligibility)
+        } else {
+          await register('walkin')
+        }
+      } catch (error) {
+        setFailure(mapErrorToFailureCode(error), messageFromError(error))
+      }
+    })
   }
 
   function confirmAssistance(servicePointId: string): Promise<void> {
