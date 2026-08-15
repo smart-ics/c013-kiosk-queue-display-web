@@ -44,7 +44,7 @@ sequenceDiagram
 
     Note over UI, JamSvc: Inisialisasi Workspace Registrasi Langsung
     par Load Master Referensi Kunjungan
-        UI->>LaySvc: GET /layanan (Rajal & IGD)
+        UI->>LaySvc: GET /Layanan/2/list (Rajal)
         UI->>RegSvc: GET /CaraMasukDk
         UI->>DocSvc: GET /ppa/dokter
     and Load Jaminan Pasien
@@ -103,7 +103,7 @@ Berikut adalah daftar endpoint API yang digunakan secara khusus dalam alur Regis
 | :--------------------------------------------- | :------ | :---------- | :--------------------------------------------------------------------------------------- |
 | `/v1/admisi-rajal/patient-context-search`      | `POST`  | `bilregApi` | Melakukan pencarian data pasien, booking, atau registrasi aktif secara terpadu.          |
 | `/v1/admisi-rajal/patient-context/{kind}/{id}` | `GET`   | `bilregApi` | Mengonfirmasi detail entitas terpilih (Booking, Registration, atau Patient).             |
-| `/layanan`                                     | `GET`   | `bilregApi` | Mengambil daftar poliklinik rawat jalan (instalasiDkId = 2) dan IGD (instalasiDkId = 1). |
+| `/Layanan/{instalasiDkId}/list`                | `GET`   | `bilregApi` | Mengambil daftar poliklinik berdasarkan instalasi (e.g. instalasiDkId = 2 untuk Rajal).  |
 | `/CaraMasukDk`                                 | `GET`   | `bilregApi` | Mengambil opsi cara masuk pasien (rujukan, datang sendiri, dsb).                         |
 | `/ppa/dokter`                                  | `GET`   | `bilregApi` | Mengambil daftar keseluruhan praktisi medis (Dokter/PPA).                                |
 | `/ppa/dokter/{layananId}`                      | `GET`   | `bilregApi` | Mengambil daftar dokter yang bertugas di poliklinik terpilih.                            |

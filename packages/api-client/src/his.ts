@@ -6,7 +6,6 @@ import {
   bookingSearchItemSchema,
   businessDateSchema,
   groupJaminanMapSchema,
-  jadwalItemSchema,
   pasienSearchItemSchema,
   patientContextSearchRequestSchema,
   patientContextSearchResponseSchema,
@@ -51,7 +50,6 @@ import type { AdmissionQueueClient } from './http'
 const bookingSearchArraySchema = z.array(bookingSearchItemSchema)
 const polisArraySchema = z.array(polisSchema)
 const pasienArraySchema = z.array(pasienSearchItemSchema)
-const jadwalItemsSchema = z.array(jadwalItemSchema)
 const nullableGroupJaminanSchema = groupJaminanMapSchema.nullable()
 
 /**
@@ -84,8 +82,25 @@ export function createHisApi(client: AdmissionQueueClient) {
     },
 
     listPoli(): Promise<ServiceItem[]> {
-      return client.getJson('layanan', z.array(z.object({ layananId: z.string(), layananName: z.string() })))
-        .then(list => list.map(item => ({ id: item.layananId, name: item.layananName })))
+      return client.getJson(
+        'Layanan/2/list',
+        z.array(
+          z.object({
+            layananId: z.string(),
+            layananName: z.string(),
+            isAktif: z.boolean(),
+            instalasiId: z.string(),
+            instalasiName: z.string(),
+            poliBpjsId: z.string().nullable().optional(),
+            poliBpjsName: z.string().nullable().optional(),
+          }),
+        ),
+      )
+        .then(list =>
+          list
+            .filter(item => item.isAktif)
+            .map(item => ({ id: item.layananId, name: item.layananName })),
+        )
     },
 
     listDokter(poliId: string): Promise<ServiceItem[]> {
@@ -94,10 +109,39 @@ export function createHisApi(client: AdmissionQueueClient) {
     },
 
     listJadwal(businessDate: string, ppaId: string): Promise<JadwalItem[]> {
-      return client.getJson('Dokter/jadwal', jadwalItemsSchema, {
-        tglBerobat: businessDate,
-        ppaId,
-      })
+      return client.postJson(
+        'PraktekDokter/dokter',
+        {
+          tglYmdAwal: businessDate,
+          tglYmdAkhir: businessDate,
+          dokterId: ppaId,
+        },
+        z.array(
+          z.object({
+            tanggal: z.string(),
+            dokter: z.object({
+              dokterId: z.string(),
+              dokterName: z.string(),
+            }),
+            layanan: z.object({
+              layananId: z.string(),
+              layananName: z.string(),
+            }),
+            jamMulaiPraktek: z.string(),
+            jamSelesaiPraktek: z.string(),
+            jumlahPasien: z.number(),
+            maxPasien: z.number(),
+          }),
+        ),
+      )
+        .then(list =>
+          list.map(item => ({
+            jadwalId: `${item.dokter.dokterId}-${item.tanggal}-${item.jamMulaiPraktek}`,
+            ppaId: item.dokter.dokterId,
+            jamPraktek: `${item.jamMulaiPraktek} - ${item.jamSelesaiPraktek}`,
+            sisaKuota: Math.max(0, item.maxPasien - item.jumlahPasien),
+          })),
+        )
     },
 
     listKarcis(layananId: string): Promise<KarcisItem[]> {

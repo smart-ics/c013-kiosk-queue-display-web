@@ -68,6 +68,96 @@ describe('createHisApi', () => {
     const url = String(fetchImpl.mock.calls[0]?.[0])
     expect(url).toContain('v1/admission-queue/booking-assistance')
   })
+
+  it('fetches and filters active clinics via listPoli', async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          status: 'success',
+          data: [
+            {
+              layananId: 'RJ011',
+              layananName: 'KLINIK BEDAH',
+              isAktif: true,
+              instalasiId: 'I2',
+              instalasiName: 'RAWAT JALAN',
+              poliBpjsId: 'BED',
+              poliBpjsName: 'BEDAH',
+            },
+            {
+              layananId: 'RJ012',
+              layananName: 'KLINIK MATA',
+              isAktif: false,
+              instalasiId: 'I2',
+              instalasiName: 'RAWAT JALAN',
+              poliBpjsId: 'MAT',
+              poliBpjsName: 'MATA',
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    )
+    const client = new AdmissionQueueClient({
+      baseUrl: 'http://localhost:5000/api',
+      auth: createAuth(),
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    const items = await createHisApi(client).listPoli()
+    expect(items).toHaveLength(1)
+    expect(items[0]).toEqual({ id: 'RJ011', name: 'KLINIK BEDAH' })
+    const url = String(fetchImpl.mock.calls[0]?.[0])
+    expect(url).toContain('Layanan/2/list')
+  })
+
+  it('fetches doctor schedule via POST PraktekDokter/dokter and maps to JadwalItem', async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          status: 'success',
+          data: [
+            {
+              tanggal: '2026-08-15',
+              dokter: {
+                dokterId: 'D001',
+                dokterName: 'dr. John Doe, Sp.A',
+              },
+              layanan: {
+                layananId: 'L002',
+                layananName: 'Poliklinik Anak',
+              },
+              jamMulaiPraktek: '08:00',
+              jamSelesaiPraktek: '12:00',
+              jumlahPasien: 5,
+              maxPasien: 30,
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    )
+    const client = new AdmissionQueueClient({
+      baseUrl: 'http://localhost:5000/api',
+      auth: createAuth(),
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    const items = await createHisApi(client).listJadwal('2026-08-15', 'D001')
+    expect(items).toHaveLength(1)
+    expect(items[0]).toEqual({
+      jadwalId: 'D001-2026-08-15-08:00',
+      ppaId: 'D001',
+      jamPraktek: '08:00 - 12:00',
+      sisaKuota: 25,
+    })
+    const url = String(fetchImpl.mock.calls[0]?.[0])
+    expect(url).toContain('PraktekDokter/dokter')
+    expect(fetchImpl.mock.calls[0]?.[1]?.method).toBe('POST')
+    expect(JSON.parse(fetchImpl.mock.calls[0]?.[1]?.body as string)).toEqual({
+      tglYmdAwal: '2026-08-15',
+      tglYmdAkhir: '2026-08-15',
+      dokterId: 'D001',
+    })
+  })
 })
 
 describe('createJetliApi', () => {

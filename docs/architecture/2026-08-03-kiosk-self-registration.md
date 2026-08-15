@@ -210,7 +210,7 @@ sequenceDiagram
     Bilreg-->>Kiosk: List Polis (Ambil yang pertama/active)
     
     Note over Kiosk, Pasien: Flow Pemilihan Poli, Dokter & Jadwal
-    Kiosk->>Bilreg: GET /api/layanan
+    Kiosk->>Bilreg: GET /api/Layanan/2/list
     Bilreg-->>Kiosk: ServiceItem[] (Layanan)
     Pasien->>Kiosk: Pilih Poli
     
@@ -437,9 +437,9 @@ Kiosk berpindah layar berdasarkan perubahan state `flow` yang diatur oleh `useKi
 
 ### 4.6 Daftar Poliklinik (Layanan)
 * **HTTP Method**: `GET`
-* **Path**: `/api/layanan`
+* **Path**: `/api/Layanan/{instalasiDkId}/list` (dengan `instalasiDkId = 2` untuk Rawat Jalan)
 * **Query Parameters**: None
-* **Response Schema**: `z.array(serviceItemSchema)`
+* **Response Schema**: `z.array(serviceItemSchema)` (hasil pemetaan dari field `layananId` ke `id`, dan `layananName` ke `name` setelah difilter `isAktif = true`)
   ```json
   [
     { "id": "PL-001", "name": "Poli Anak" },
@@ -475,6 +475,143 @@ Kiosk berpindah layar berdasarkan perubahan state `flow` yang diatur oleh `useKi
     }
   ]
   ```
+
+### 4.9 Praktek Dokter (PraktekDokter/dokter & PraktekDokter/groupSpesialis)
+
+Kedua API endpoint tersebut (`PraktekDokter/dokter` dan `PraktekDokter/groupSpesialis`) digunakan untuk mendapatkan jadwal praktik dokter. Keduanya mengembalikan data dengan struktur array yang sama, yaitu array dari objek `ListPraktekDokter` yang divalidasi dan ditransformasikan oleh `jadwal.ts:171-184` di frontend.
+
+---
+
+#### 4.9.1 Endpoint: /PraktekDokter/dokter
+
+Digunakan untuk mendapatkan daftar jadwal praktik dari satu dokter tertentu dalam rentang waktu yang didefinisikan.
+
+* **HTTP Method**: `POST`
+* **Content-Type**: `application/json`
+* **Base API Service**: `bilregApi`
+
+##### Request Payload (`PayloadListPraktekDokter`):
+
+```json
+{
+  "tglYmdAwal": "2026-08-15",
+  "tglYmdAkhir": "2026-08-15",
+  "dokterId": "D001"
+}
+```
+
+##### Response Payload (`Array<ListPraktekDokter>`):
+
+```json
+[
+  {
+    "tanggal": "2026-08-15",
+    "dokter": {
+      "dokterId": "D001",
+      "dokterName": "dr. John Doe, Sp.A"
+    },
+    "layanan": {
+      "layananId": "L002",
+      "layananName": "Poliklinik Anak"
+    },
+    "jamMulaiPraktek": "08:00",
+    "jamSelesaiPraktek": "12:00",
+    "jumlahPasien": 5,
+    "maxPasien": 30
+  }
+]
+```
+
+---
+
+#### 4.9.2 Endpoint: /PraktekDokter/groupSpesialis
+
+Digunakan untuk mendapatkan daftar jadwal praktik dari semua dokter yang tergabung dalam satu kelompok spesialisasi tertentu dalam rentang waktu yang didefinisikan.
+
+* **HTTP Method**: `POST`
+* **Content-Type**: `application/json`
+* **Base API Service**: `bilregApi`
+
+##### Request Payload (`PayloadListPraktekDokterSp`):
+
+```json
+{
+  "tglYmdAwal": "2026-08-15",
+  "tglYmdAkhir": "2026-08-29",
+  "groupSpesialisId": "SP-001"
+}
+```
+
+##### Response Payload (`Array<ListPraktekDokter>`):
+
+```json
+[
+  {
+    "tanggal": "2026-08-15",
+    "dokter": {
+      "dokterId": "D001",
+      "dokterName": "dr. John Doe, Sp.A"
+    },
+    "layanan": {
+      "layananId": "L002",
+      "layananName": "Poliklinik Anak"
+    },
+    "jamMulaiPraktek": "08:00",
+    "jamSelesaiPraktek": "12:00",
+    "jumlahPasien": 5,
+    "maxPasien": 30
+  },
+  {
+    "tanggal": "2026-08-15",
+    "dokter": {
+      "dokterId": "D003",
+      "dokterName": "dr. Alice Brown, Sp.A"
+    },
+    "layanan": {
+      "layananId": "L002",
+      "layananName": "Poliklinik Anak"
+    },
+    "jamMulaiPraktek": "13:00",
+    "jamSelesaiPraktek": "17:00",
+    "jumlahPasien": 2,
+    "maxPasien": 20
+  }
+]
+```
+
+---
+
+#### 4.9.3 Validasi & Skema Data (Zod & Schema)
+
+##### 1. Skema Validasi Zod (Zod Response Schema)
+
+Didefinisikan pada file `jadwal.ts`:
+
+```typescript
+import { z } from 'zod'
+import { dokterHeaderSchema } from '../../BillingBase/types/doctor'
+import { layananHeader } from '../../BillingBase/types/layanan'
+
+// Schema Output Akhir setelah Transformasi/Adaptasi
+export const listPraktekDokterOutputSchema = z.object({
+  tanggal: z.string(),                 // Format: YYYY-MM-DD
+  dokter: z.object({                   // Mengacu ke dokterHeaderSchema
+    dokterId: z.string(),
+    dokterName: z.string(),
+  }),
+  layanan: z.object({                  // Mengacu ke layananHeader
+    layananId: z.string(),
+    layananName: z.string(),
+  }),
+  jamMulaiPraktek: z.string(),         // Format: HH:MM
+  jamSelesaiPraktek: z.string(),       // Format: HH:MM
+  jumlahPasien: z.number(),            // Jumlah pasien saat ini yang terdaftar
+  maxPasien: z.number(),               // Kuota maksimum pasien
+})
+
+// Schema Response Array
+export const listPraktekDokterResponseSchema = z.array(listPraktekDokterOutputSchema)
+```
 
 ---
 
