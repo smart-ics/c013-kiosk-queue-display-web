@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.2.2] - 2026-08-15
+
+### Fixed
+
+- **HIS API schema gaps**: `listPoli`, `listDokter`, `listJadwal`, and `listKarcis` now match the real HIS endpoint shapes (`/Layanan/2/list`, `/JadwalPraktek/layanan/{layananId}`, `/PraktekDokter/dokter`, `/Karcis/{layananId}/list`) and map `ppaId`/`ppaName`, `karcisId`/`karcisName` correctly — fixing validation failures on confirm.
+- **BPJS eligibility flow**: Registration now resolves the active rujukan/SKDP before registering, creates/uploads the SEP, and sets data eligibility (`setDataEligibility`) for BPJS patients. Children under 17 bypass biometric verification.
+
+### Added
+
+- **Dynamic Praktek Hari Ini badge**: Doctor listing shows whether the doctor practices today, computed from the schedule API data.
+- **Confirmation page details**: No. Rekam Medis row and Jam Praktik time range on the walk-in confirm page.
+- **In-place pending state**: Confirm button shows "Mendaftarkan…" while the request is in flight.
+- **Patient match grid**: Patient matches render as a 2×2 card grid with gender-coded icons, 4 items per page with pagination.
+- **Kiosk branding**: Header uses `logo.jpg`; hospital name is read from `global_config.json` branding.
+- **Karcis configuration**: `kioskDefaultKarcisId` and per-layanan/per-jaminan karcis mappings in `global_config.json`.
+
+### Changed
+
+- **Walk-in flow**: Poli/dokter/jadwal selection now paginated with a 2×2 layout and numpad-based manual input on the search step.
+- **Idle reset**: Kiosk returns to home after 60s idle (was 30s); registration success screen stays until the patient finishes instead of auto-navigating after 10s.
+- **Theme**: Kiosk applies the `theme` value from `global_config.json` (e.g. `clinical-blue`).
+
 ## [0.2.1] - 2026-08-13
 
 ### Added
