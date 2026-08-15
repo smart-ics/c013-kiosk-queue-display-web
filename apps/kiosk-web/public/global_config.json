@@ -2,10 +2,24 @@
   "bilregApiBase": "http://dev.smart-ics.com:8888/bilregapi/api",
   "jetliApiBase": "http://dev.smart-ics.com:8089/JetliAPi/api",
   "mediaInfoDir": "media",
+  "kioskDefaultKarcisId": "04",
+  "mappingLayananKarcis": [
+    { "layananId": "00025", "karcisId": "25", "name": "Layanan CST" },
+    { "layananId": "00111", "karcisId": "21", "name": "Layanan VCT" }
+  ],
+  "mappingJmnLayananKarcis": [
+    {
+      "tipeJaminanId": "00000",
+      "layananId": "00025",
+      "karcisId": "25",
+      "name": "Umum - Layanan CST"
+    }
+  ],
   "branding": {
-    "name": "RS Sehat Sejahtera",
+    "name": "RS Mekarsari",
     "taglineId": "Melayani dengan hati, sehat untuk negeri",
     "taglineEn": "Serving with heart, healthy for the nation",
     "timeZoneLabel": "WIB"
-  }
+  },
+  "theme": "clinical-blue"
 }

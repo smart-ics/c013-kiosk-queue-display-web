@@ -359,6 +359,45 @@ export const returnCreateWalkInSchema = z.object({
 })
 export type ReturnCreateWalkIn = z.infer<typeof returnCreateWalkInSchema>
 
+export const payloadDirectRegisterRajalWalkInSchema = z.object({
+  pasienId: z.string().min(1),
+  userId: z.string().min(1),
+  tipeJaminanId: z.string().min(1),
+  caraMasukDkId: z.string().min(1),
+  rujukanId: z.string(),
+  dokterId: z.string().min(1),
+  layananId: z.string().min(1),
+  jamPraktek: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  karcisId: z.string().min(1),
+  pesertaJaminanId: z.string(),
+})
+export type PayloadDirectRegisterRajalWalkIn = z.infer<typeof payloadDirectRegisterRajalWalkInSchema>
+
+export const payloadDirectRegisterRajalByBookingSchema = z.object({
+  bookingId: z.string().min(1),
+  userId: z.string().min(1),
+  karcisId: z.string().min(1),
+  caraMasukDkId: z.string().min(1),
+  rujukanId: z.string(),
+  tipeJaminanId: z.string().min(1),
+  pesertaJaminanId: z.string(),
+})
+export type PayloadDirectRegisterRajalByBooking = z.infer<typeof payloadDirectRegisterRajalByBookingSchema>
+
+export const payloadSetDataEligibilitySchema = z.object({
+  regId: z.string().min(1),
+  sjpNo: z.string().min(1),
+  pesertaJaminanId: z.string(),
+  sjpId: z.string(),
+})
+export type PayloadSetDataEligibility = z.infer<typeof payloadSetDataEligibilitySchema>
+
+export const karcisItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+export type KarcisItem = z.infer<typeof karcisItemSchema>
+
 export const bookingSearchItemSchema = z.object({
   bookingId: z.string(),
   bookingDate: z.string(),
@@ -525,6 +564,8 @@ export type SepUploadBody = z.infer<typeof sepUploadBodySchema>
 export const responseCreateSepSchema = z.object({
   sepId: z.string(),
   sepNo: z.string(),
+  noPeserta: z.string().optional(),
+  namaPeserta: z.string().optional(),
   regId: z.string().optional(),
 })
 
@@ -534,6 +575,8 @@ export type ResponseCreateSep = z.infer<typeof responseCreateSepUnionSchema>
 export const responseUploadSepSchema = z.object({
   sepId: z.string(),
   sepNo: z.string(),
+  noPeserta: z.string().optional(),
+  namaPeserta: z.string().optional(),
   regId: z.string().optional(),
 })
 
@@ -567,6 +610,7 @@ export type BookingAssistanceBody = z.infer<typeof bookingAssistanceBodySchema>
 export const serviceItemSchema = z.object({
   id: z.string(),
   name: z.string(),
+  isPraktekHariIni: z.boolean().optional(),
 })
 export type ServiceItem = z.infer<typeof serviceItemSchema>
 
@@ -586,12 +630,12 @@ export const serviceSelectionSchema = z.object({
 export type ServiceSelection = z.infer<typeof serviceSelectionSchema>
 
 export const patientContextItemSchema = z.object({
-  kind: z.string(),
+  kind: z.enum(['Booking', 'Registration', 'Patient']),
   id: z.string(),
   patientName: z.string(),
-  patientId: z.string(),
-  birthDate: z.string(),
-  gender: z.string(),
+  patientId: z.string().nullable(),
+  birthDate: z.string().nullable(),
+  gender: z.string().nullable(),
   locality: z.string().nullable(),
   maskedNik: z.string().nullable(),
   maskedPhone: z.string().nullable(),
@@ -605,36 +649,36 @@ export const patientContextItemSchema = z.object({
   matchType: z.string(),
   isExactMatch: z.boolean(),
   rank: z.number(),
-  warnings: z.array(z.unknown()),
+  warnings: z.array(z.string()),
 })
 export type PatientContextItem = z.infer<typeof patientContextItemSchema>
 
 export const patientContextSearchRequestSchema = z.object({
-  keyword: z.string(),
-  businessDate: z.string(),
-  scope: z.string().default('All'),
-  limitPerType: z.number().int().default(10),
-  suggestedBookingId: z.string().default(''),
-  suggestedRegistrationId: z.string().default(''),
-  suggestedPatientId: z.string().default(''),
+  keyword: z.string().trim().min(1),
+  businessDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  scope: z.enum(['All', 'Booking', 'Registration', 'Patient']).default('All'),
+  limitPerType: z.number().int().min(1).max(10).default(10),
+  suggestedBookingId: z.string().nullable().optional(),
+  suggestedRegistrationId: z.string().nullable().optional(),
+  suggestedPatientId: z.string().nullable().optional(),
 })
 export type PatientContextSearchRequest = z.infer<typeof patientContextSearchRequestSchema>
 
 export const patientContextSearchResponseSchema = z.object({
   businessDate: z.string(),
   bookings: z.object({
-    items: z.array(z.unknown()),
-    total: z.number(),
+    items: z.array(patientContextItemSchema),
+    total: z.number().int().nonnegative(),
     hasMore: z.boolean(),
   }),
   registrations: z.object({
-    items: z.array(z.unknown()),
-    total: z.number(),
+    items: z.array(patientContextItemSchema),
+    total: z.number().int().nonnegative(),
     hasMore: z.boolean(),
   }),
   patients: z.object({
     items: z.array(patientContextItemSchema),
-    total: z.number(),
+    total: z.number().int().nonnegative(),
     hasMore: z.boolean(),
   }),
   bestMatch: patientContextItemSchema.nullable(),

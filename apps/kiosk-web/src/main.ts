@@ -23,6 +23,8 @@ configService.initialize(import.meta.env.BASE_URL).then(() => {
 }).then(() => {
   return kioskLogin()
 }).then(() => {
+  const theme = configService.getConfig().theme || 'clinical-blue'
+  document.body.classList.add(`theme-${theme}`)
   createApp(App).use(router).use(VueQueryPlugin, { queryClient }).mount('#app')
 }).catch((err) => {
   console.error('Configuration or login failed:', err)

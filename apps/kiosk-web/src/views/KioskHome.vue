@@ -6,6 +6,9 @@ import VirtualKeyboard from '../components/VirtualKeyboard.vue'
 import { useKioskMediaInfo } from '../composables/useKioskMediaInfo'
 import { resolveMediaDirUrl } from '../lib/mediaDirectory'
 import { getKodeBookingMjkn } from '../lib/qrCodeDecoder'
+import { brandingService } from '../lib/branding'
+
+const branding = brandingService.getBranding()
 
 const props = withDefaults(
   defineProps<{
@@ -80,7 +83,6 @@ onUnmounted(() => {
             @ended="onVideoEnded"
             @error="onVideoError"
           />
-          <p class="kiosk-ad-caption">Media &amp; Informasi Layanan RS</p>
         </template>
         <div v-else class="kiosk-ad-media">
           <svg
@@ -96,13 +98,12 @@ onUnmounted(() => {
             <path d="M8 21h8" />
             <path d="M12 17v4" />
           </svg>
-          <p>Media &amp; Informasi Layanan RS</p>
         </div>
       </aside>
 
       <section class="kiosk-input-section">
         <div class="welcome">
-          <h1 class="welcome-title">Selamat datang di RS Sehat Sejahtera</h1>
+          <h1 class="welcome-title">Selamat datang di {{ branding.name }}</h1>
           <p class="welcome-sub">Masukkan data Anda untuk memulai</p>
         </div>
 

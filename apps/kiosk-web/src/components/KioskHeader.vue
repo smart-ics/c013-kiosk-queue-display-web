@@ -6,6 +6,7 @@ const props = defineProps<{ lang: 'id' | 'en'; businessDate?: string | null }>()
 const emit = defineEmits<{ toggleLang: [lang: 'id' | 'en']; help: [] }>()
 
 const branding = brandingService.getBranding()
+const logoUrl = `${import.meta.env.BASE_URL}logo.jpg`
 
 const now = ref(new Date())
 let timer: ReturnType<typeof setInterval> | undefined
@@ -54,19 +55,7 @@ const isoTime = computed(() => now.value.toISOString())
 <template>
   <header class="kiosk-header">
     <div class="brand">
-      <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
-        <defs>
-          <linearGradient id="aq-brand-mark" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#f97316" />
-            <stop offset="1" stop-color="#c2410c" />
-          </linearGradient>
-        </defs>
-        <rect x="2" y="2" width="44" height="44" rx="14" fill="url(#aq-brand-mark)" />
-        <path
-          d="M21.5 14.5h5v7h7v5h-7v7h-5v-7h-7v-5h7Z"
-          fill="#fff"
-        />
-      </svg>
+      <img class="brand-mark" :src="logoUrl" alt="Logo" />
       <div class="brand-text">
         <p class="brand-name">{{ branding.name }}</p>
         <p class="brand-tagline">{{ tagline }}</p>

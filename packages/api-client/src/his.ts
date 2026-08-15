@@ -6,7 +6,6 @@ import {
   bookingSearchItemSchema,
   businessDateSchema,
   groupJaminanMapSchema,
-  jadwalItemSchema,
   pasienSearchItemSchema,
   patientContextSearchRequestSchema,
   patientContextSearchResponseSchema,
@@ -20,7 +19,9 @@ import {
   rujukanSkpdResponseSchema,
   sepCreateBodySchema,
   sepUploadBodySchema,
-  serviceItemSchema,
+  payloadDirectRegisterRajalWalkInSchema,
+  payloadDirectRegisterRajalByBookingSchema,
+  payloadSetDataEligibilitySchema,
   type AdmissionQueueIntakeResponse,
   type BookingAssistanceBody,
   type BookingDetail,
@@ -28,6 +29,7 @@ import {
   type BusinessDate,
   type GroupJaminanMap,
   type JadwalItem,
+  type KarcisItem,
   type PasienSearchItem,
   type PatientContextSearchResponse,
   type Polis,
@@ -47,8 +49,6 @@ import type { AdmissionQueueClient } from './http'
 const bookingSearchArraySchema = z.array(bookingSearchItemSchema)
 const polisArraySchema = z.array(polisSchema)
 const pasienArraySchema = z.array(pasienSearchItemSchema)
-const serviceItemsSchema = z.array(serviceItemSchema)
-const jadwalItemsSchema = z.array(jadwalItemSchema)
 const nullableGroupJaminanSchema = groupJaminanMapSchema.nullable()
 
 /**
@@ -80,30 +80,134 @@ export function createHisApi(client: AdmissionQueueClient) {
       return client.getJson(`Pasien/search/${encodeURIComponent(keyword)}`, pasienArraySchema)
     },
 
-    listPoli(businessDate: string): Promise<ServiceItem[]> {
-      return client.getJson('Poli', serviceItemsSchema, { tglBerobat: businessDate })
+    listPoli(): Promise<ServiceItem[]> {
+      return client.getJson(
+        'Layanan/2/list',
+        z.array(
+          z.object({
+            layananId: z.string(),
+            layananName: z.string(),
+            isAktif: z.boolean(),
+            instalasiId: z.string(),
+            instalasiName: z.string(),
+            poliBpjsId: z.string().nullable().optional(),
+            poliBpjsName: z.string().nullable().optional(),
+          }),
+        ),
+      )
+        .then(list =>
+          list
+            .filter(item => item.isAktif)
+            .map(item => ({ id: item.layananId, name: item.layananName })),
+        )
     },
 
-    listDokter(businessDate: string, poliId: string): Promise<ServiceItem[]> {
-      return client.getJson('Poli/dokter', serviceItemsSchema, {
-        tglBerobat: businessDate,
-        poliId,
-      })
+    listDokter(poliId: string): Promise<ServiceItem[]> {
+      return client.getJson(
+        `JadwalPraktek/layanan/${encodeURIComponent(poliId)}`,
+        z.array(
+          z.object({
+            dokterId: z.string(),
+            dokterName: z.string(),
+            layananId: z.string(),
+            layananName: z.string(),
+            ruangId: z.string(),
+            ruangName: z.string(),
+            listHari: z.array(
+              z.object({
+                jadwalPraktekId: z.string(),
+                hari: z.string(),
+                jamMulai: z.string(),
+                jamSelesai: z.string(),
+                maxPasien: z.number(),
+              }),
+            ),
+          }),
+        ),
+      )
+        .then(list => {
+          const dayIndex = new Date().getDay()
+          const ENGLISH_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+          const todayName = ENGLISH_DAYS[dayIndex].toLowerCase()
+
+          return list.map(item => {
+            const isPraktekHariIni = item.listHari.some(
+              h => h.hari.trim().toLowerCase() === todayName,
+            )
+            return {
+              id: item.dokterId,
+              name: item.dokterName,
+              isPraktekHariIni,
+            }
+          })
+        })
     },
 
     listJadwal(businessDate: string, ppaId: string): Promise<JadwalItem[]> {
-      return client.getJson('Dokter/jadwal', jadwalItemsSchema, {
-        tglBerobat: businessDate,
-        ppaId,
-      })
+      return client.postJson(
+        'PraktekDokter/dokter',
+        {
+          tglYmdAwal: businessDate,
+          tglYmdAkhir: businessDate,
+          dokterId: ppaId,
+        },
+        z.array(
+          z.object({
+            tanggal: z.string(),
+            dokter: z.object({
+              ppaId: z.string(),
+              ppaName: z.string(),
+              isDefault: z.boolean().nullable().optional(),
+            }),
+            layanan: z.object({
+              layananId: z.string(),
+              layananName: z.string(),
+            }),
+            jamMulaiPraktek: z.string(),
+            jamSelesaiPraktek: z.string(),
+            jumlahPasien: z.number(),
+            maxPasien: z.number(),
+          }),
+        ),
+      )
+        .then(list =>
+          list.map(item => ({
+            jadwalId: `${item.dokter.ppaId}-${item.tanggal}-${item.jamMulaiPraktek}`,
+            ppaId: item.dokter.ppaId,
+            jamPraktek: `${item.jamMulaiPraktek} - ${item.jamSelesaiPraktek}`,
+            sisaKuota: Math.max(0, item.maxPasien - item.jumlahPasien),
+          })),
+        )
     },
 
-    registerByBookingDirect(body: Record<string, unknown>): Promise<ReturnCreateWalkIn> {
-      return client.postJson('Reg/rajalByBooking/direct', body, returnCreateWalkInSchema)
+    listKarcis(layananId: string): Promise<KarcisItem[]> {
+      return client.getJson(
+        `Karcis/${encodeURIComponent(layananId)}/list`,
+        z.array(
+          z.object({
+            karcisId: z.string(),
+            karcisName: z.string(),
+            layanan: z.object({ layananId: z.string(), layananName: z.string() }).optional(),
+            defaultTarif: z.object({ tarifId: z.string(), tarifName: z.string() }).optional(),
+            nilai: z.number().optional(),
+          }),
+        ),
+      ).then(list => list.map(item => ({ id: item.karcisId, name: item.karcisName })))
     },
 
-    registerWalkInDirect(body: Record<string, unknown>): Promise<ReturnCreateWalkIn> {
-      return client.postJson('Reg/rajalWalkIn/direct', body, returnCreateWalkInSchema)
+    registerByBookingDirect(body: z.input<typeof payloadDirectRegisterRajalByBookingSchema>): Promise<ReturnCreateWalkIn> {
+      const parsed = payloadDirectRegisterRajalByBookingSchema.parse(body)
+      return client.postJson('Reg/rajalByBooking/direct', parsed, returnCreateWalkInSchema)
+    },
+
+    registerWalkInDirect(body: z.input<typeof payloadDirectRegisterRajalWalkInSchema>): Promise<ReturnCreateWalkIn> {
+      const parsed = payloadDirectRegisterRajalWalkInSchema.parse(body)
+      return client.postJson('Reg/rajalWalkIn/direct', parsed, returnCreateWalkInSchema)
+    },
+
+    setDataEligibility(body: z.input<typeof payloadSetDataEligibilitySchema>): Promise<string> {
+      const parsed = payloadSetDataEligibilitySchema.parse(body)
+      return client.patchJson('Reg/setDataEligibility', parsed, z.string())
     },
 
     bookingAssistance(body: BookingAssistanceBody): Promise<AdmissionQueueIntakeResponse> {

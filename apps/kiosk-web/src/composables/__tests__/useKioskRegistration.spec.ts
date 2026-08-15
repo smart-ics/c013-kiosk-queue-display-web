@@ -43,7 +43,7 @@ const bpjsPolis: Polis = {
 const group: GroupJaminanMap = { tipeJaminanId: 'BPJS', groupJaminanId: 'G1', groupJaminanName: 'BPJS' }
 
 const contextItem = {
-  kind: 'Patient',
+  kind: 'Patient' as const,
   id: 'P001',
   patientName: 'Budi',
   patientId: 'PT1',
@@ -90,9 +90,29 @@ function makeDeps(overrides: Partial<KioskRegistrationDeps> = {}): KioskRegistra
       bestMatch: null,
       canCreatePatient: true,
     })),
+    appConfig: { bilregApiBase: '', kioskDefaultKarcisId: 'K-TEST' },
     verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
+    listKarcis: vi.fn(async () => [{ id: 'K-TEST', name: 'Karcis Test' }]),
+    getRujukanSkpd: vi.fn(async () => ({
+      peserta: {
+        noPeserta: '000123456',
+        nama: 'Andi',
+        hakKelas: { kode: '3', nama: 'Kelas 3' },
+        status: { kode: '1', info: 'AKTIF' },
+        jenisPeserta: { kode: 'PNS', nama: 'PNS' },
+        provider: { kode: 'P1', nama: 'RS A' },
+        prbInfo: null,
+        tglTat: '2026-08-06',
+        tglLahir: '1990-01-01',
+      },
+      rujukan: { noRujukan: 'REF1', tglRujukan: '2026-08-01', diagnosa: { kode: 'Z00.0', name: 'DM' } },
+      listSkdp: [],
+    })),
     registerBooking: vi.fn(async () => ({ regId: 'R1', noAntrian: 12 })),
     registerWalkin: vi.fn(async () => ({ regId: 'R2', noAntrian: 13 })),
+    createSep: vi.fn(async () => ({ sepId: 'sep-1', sepNo: '0112R', noPeserta: '123', namaPeserta: 'A' })),
+    uploadSep: vi.fn(async () => ({ sepId: 'sep-1', sepNo: '0112R', noPeserta: '123', namaPeserta: 'A' })),
+    setDataEligibility: vi.fn(async () => 'OK'),
     bookingAssistance: vi.fn(async () => ({
       antrianId: 'B1',
       noUrut: 1,
@@ -144,10 +164,12 @@ describe('useKioskRegistration booking flow', () => {
     expect(reg.registrationResult.value?.noAntrian).toBe(12)
     expect(deps.registerBooking).toHaveBeenCalledWith({
       bookingId: 'BK1',
-      pasienId: 'PT1',
-      tipeJaminanId: '00000',
-      noPeserta: null,
       userId: 'hidokkiosk',
+      karcisId: 'K-TEST',
+      caraMasukDkId: '8',
+      rujukanId: 'REF1',
+      tipeJaminanId: '00000',
+      pesertaJaminanId: '',
     })
   })
 
@@ -384,13 +406,15 @@ describe('useKioskRegistration goshow walk-in flow', () => {
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
     expect(deps.registerWalkin).toHaveBeenCalledWith({
       pasienId: 'PT1',
-      poliId: 'PO1',
-      ppaId: 'DP1',
-      jadwalId: 'J1',
-      tglBerobat: '2026-08-03',
-      tipeJaminanId: 'BPJS',
-      noPeserta: '000123456',
       userId: 'hidokkiosk',
+      tipeJaminanId: 'BPJS',
+      caraMasukDkId: '1',
+      rujukanId: 'REF1',
+      dokterId: 'DP1',
+      layananId: 'PO1',
+      jamPraktek: '08:00',
+      karcisId: 'K-TEST',
+      pesertaJaminanId: '000123456',
     })
   })
 
@@ -435,19 +459,19 @@ describe('useKioskRegistration guards and reset', () => {
     expect(deps.searchBooking).toHaveBeenCalledTimes(1)
   })
 
-  it('returns to HOME after 30s idle while on a flow', async () => {
+  it('returns to HOME after 60s idle while on a flow', async () => {
     let nowMs = 1000
     vi.useFakeTimers()
     const reg = useKioskRegistration(makeDeps({ now: () => nowMs }))
     reg.startIdleReset()
     reg.startBookingFlow()
     expect(reg.flow.value).toBe('BOOKING_SEARCH')
-    nowMs = 2000 + 30_000
+    nowMs = 2000 + 60_000
     await vi.advanceTimersByTimeAsync(1100)
     expect(reg.flow.value).toBe('HOME')
   })
 
-  it('returns to HOME 10s after a successful registration print', async () => {
+  it('stays on REGISTRATION_SUCCESS after successful registration print', async () => {
     vi.useFakeTimers()
     const deps = makeDeps({ getBookingDetail: vi.fn(async () => umumDetail) })
     const reg = useKioskRegistration(deps)
@@ -456,6 +480,144 @@ describe('useKioskRegistration guards and reset', () => {
     await reg.confirmBooking()
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
     await vi.advanceTimersByTimeAsync(10_100)
-    expect(reg.flow.value).toBe('HOME')
+    expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
+  })
+})
+
+describe('useKioskRegistration gap closure features', () => {
+  it('bypasses biometric verification for children under 17 years old', async () => {
+    const deps = makeDeps({
+      getRujukanSkpd: vi.fn(async () => ({
+        peserta: {
+          noPeserta: '000123456',
+          nama: 'Child Patient',
+          hakKelas: { kode: '3', nama: 'Kelas 3' },
+          status: { kode: '1', info: 'AKTIF' },
+          jenisPeserta: { kode: 'PBI', nama: 'PBI' },
+          provider: { kode: 'P1', nama: 'RS A' },
+          prbInfo: null,
+          tglTat: '2026-08-06',
+          tglLahir: '2015-01-01', // 11 years old relative to 2026-08-03
+        },
+        rujukan: { noRujukan: 'REF_CHILD', tglRujukan: '2026-08-01', diagnosa: { kode: 'Z00.0', name: 'Checkup' } },
+        listSkdp: [],
+      })),
+      verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    await reg.confirmBooking()
+    
+    expect(deps.verifyBiometric).not.toHaveBeenCalled()
+    expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
+    expect(deps.registerBooking).toHaveBeenCalledWith(expect.objectContaining({
+      rujukanId: 'REF_CHILD',
+      caraMasukDkId: '1',
+    }))
+  })
+
+  it('falls back to SKDP if rujukan is null and listSkdp is populated', async () => {
+    const deps = makeDeps({
+      getRujukanSkpd: vi.fn(async () => ({
+        peserta: {
+          noPeserta: '000123456',
+          nama: 'Adult SKDP Patient',
+          hakKelas: { kode: '1', nama: 'Kelas 1' },
+          status: { kode: '1', info: 'AKTIF' },
+          jenisPeserta: { kode: 'PNS', nama: 'PNS' },
+          provider: { kode: 'P1', nama: 'RS A' },
+          prbInfo: null,
+          tglTat: '2026-08-06',
+          tglLahir: '1980-01-01', // 46 years old
+        },
+        rujukan: null,
+        listSkdp: [{ noSkdp: 'SKDP_99', tglMulai: '2026-08-01', diagnosa: { kode: 'I10', name: 'Hypertension' } }],
+      })),
+      verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    await reg.confirmBooking()
+
+    expect(deps.verifyBiometric).toHaveBeenCalled()
+    expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
+    expect(deps.registerBooking).toHaveBeenCalledWith(expect.objectContaining({
+      rujukanId: 'SKDP_99',
+      caraMasukDkId: '1',
+    }))
+  })
+
+  it('fails registration if both rujukan and listSkdp are empty/null', async () => {
+    const deps = makeDeps({
+      getRujukanSkpd: vi.fn(async () => ({
+        peserta: {
+          noPeserta: '000123456',
+          nama: 'Adult SKDP Patient',
+          hakKelas: { kode: '1', nama: 'Kelas 1' },
+          status: { kode: '1', info: 'AKTIF' },
+          jenisPeserta: { kode: 'PNS', nama: 'PNS' },
+          provider: { kode: 'P1', nama: 'RS A' },
+          prbInfo: null,
+          tglTat: '2026-08-06',
+          tglLahir: '1980-01-01',
+        },
+        rujukan: null,
+        listSkdp: [],
+      })),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    await reg.confirmBooking()
+
+    expect(reg.flow.value).toBe('FAILURE')
+    expect(reg.errorContext.value?.message).toContain('Rujukan atau SKDP BPJS tidak aktif/tidak ditemukan')
+  })
+
+  it('resolves karcis via mappingJmnLayananKarcis and fails if inactive', async () => {
+    const deps = makeDeps({
+      appConfig: {
+        bilregApiBase: '',
+        kioskDefaultKarcisId: 'K-DEFAULT',
+        mappingJmnLayananKarcis: [
+          { tipeJaminanId: 'BPJS', layananId: 'LY1', karcisId: 'K-MAP-JMN' }
+        ]
+      },
+      listKarcis: vi.fn(async () => [{ id: 'K-DEFAULT', name: 'Default' }])
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    await reg.confirmBooking()
+
+    expect(reg.flow.value).toBe('FAILURE')
+    expect(reg.errorContext.value?.message).toContain("Karcis dengan ID 'K-MAP-JMN' tidak aktif")
+  })
+
+  it('resolves karcis via mappingLayananKarcis successfully if active', async () => {
+    const deps = makeDeps({
+      appConfig: {
+        bilregApiBase: '',
+        kioskDefaultKarcisId: 'K-DEFAULT',
+        mappingLayananKarcis: [
+          { layananId: 'LY1', karcisId: 'K-MAP-LAY' }
+        ]
+      },
+      listKarcis: vi.fn(async () => [
+        { id: 'K-DEFAULT', name: 'Default' },
+        { id: 'K-MAP-LAY', name: 'Mapped Layanan Karcis' }
+      ])
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    await reg.confirmBooking()
+
+    expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
+    expect(deps.registerBooking).toHaveBeenCalledWith(expect.objectContaining({
+      karcisId: 'K-MAP-LAY',
+    }))
   })
 })
