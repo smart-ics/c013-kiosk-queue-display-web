@@ -36,7 +36,7 @@ const unifiedPatients = computed(() => {
   return list
 })
 
-const ITEMS_PER_PAGE = 3
+const ITEMS_PER_PAGE = 4
 
 const totalPages = computed(() => {
   return Math.ceil(unifiedPatients.value.length / ITEMS_PER_PAGE)
@@ -60,10 +60,11 @@ function disambiguator(item: PatientContextItem): string {
       border: none;
       box-shadow: none;
       padding: 0;
+      width: 100%;
+      max-width: 900px;
       height: 100%;
       display: flex;
       flex-direction: column;
-      width: 100%;
     "
   >
     <!-- Header (flex-none) -->
@@ -86,9 +87,9 @@ function disambiguator(item: PatientContextItem): string {
       <div
         v-if="unifiedPatients.length > 0"
         class="context-list-section"
-        style="width: 100%; max-width: 600px; margin: 0"
+        style="width: 100%; max-width: 900px; margin: 0"
       >
-        <div class="sp-grid" style="grid-template-columns: 1fr; gap: 16px">
+        <div class="kiosk-grid-2x2" style="padding-bottom: 24px">
           <button
             v-for="item in paginatedPatients"
             :key="item.id"
@@ -97,23 +98,42 @@ function disambiguator(item: PatientContextItem): string {
             :disabled="pending"
             :data-testid="`patient-${item.id}`"
             @click="emit('confirm', item)"
-            style="padding: 20px 24px; min-height: 88px"
+            style="min-height: 88px"
           >
+            <!-- Gender-Coded Icon Wrapper -->
             <div
-              class="radio-card-content"
-              style="display: flex; flex-direction: column; align-items: flex-start"
+              class="radio-card-icon"
+              :style="{
+                background: item.gender === 'L' || item.gender === 'M' ? '#eff6ff' : '#fdf2f8',
+                color: item.gender === 'L' || item.gender === 'M' ? '#2563eb' : '#db2777'
+              }"
             >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+
+            <div class="radio-card-content">
               <span
                 v-if="
                   bestMatch && item.id === bestMatch.id && item.patientId === bestMatch.patientId
                 "
                 class="context-card-badge"
-                style="background: var(--brand-strong); margin: 0 0 6px 0; font-size: 0.75rem"
               >
                 Paling Cocok
               </span>
 
-              <h4 class="radio-card-title" style="margin: 0; font-size: 1.25rem">
+              <h4 class="radio-card-title">
                 {{ item.patientName }}
               </h4>
 
@@ -222,17 +242,7 @@ function disambiguator(item: PatientContextItem): string {
               </div>
             </div>
 
-            <div
-              class="select-arrow"
-              style="
-                color: var(--brand-strong);
-                flex: none;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding-left: 12px;
-              "
-            >
+            <div class="select-arrow">
               <svg
                 width="24"
                 height="24"

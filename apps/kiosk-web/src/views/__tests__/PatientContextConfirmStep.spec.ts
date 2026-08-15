@@ -61,19 +61,21 @@ describe('PatientContextConfirmStep', () => {
     expect(wrapper.get(`[data-testid="patient-${alt.id}"]`).text()).toContain('Budi Prasetyo')
   })
 
-  it('paginates patients list at 3 items per page', async () => {
+  it('paginates patients list at 4 items per page', async () => {
     const alt2 = { ...alt, id: 'P003', patientId: 'PT3', patientName: 'Budi 3' }
     const alt3 = { ...alt, id: 'P004', patientId: 'PT4', patientName: 'Budi 4' }
+    const alt4 = { ...alt, id: 'P005', patientId: 'PT5', patientName: 'Budi 5' }
 
-    // total 4 items (best, alt, alt2, alt3) -> page size 3
+    // total 5 items (best, alt, alt2, alt3, alt4) -> page size 4
     const wrapper = mount(PatientContextConfirmStep, {
-      props: { bestMatch: best, patients: [alt, alt2, alt3], pending: false },
+      props: { bestMatch: best, patients: [alt, alt2, alt3, alt4], pending: false },
     })
 
     expect(wrapper.find(`[data-testid="patient-${best.id}"]`).exists()).toBe(true)
     expect(wrapper.find(`[data-testid="patient-${alt.id}"]`).exists()).toBe(true)
     expect(wrapper.find(`[data-testid="patient-${alt2.id}"]`).exists()).toBe(true)
-    expect(wrapper.find(`[data-testid="patient-${alt3.id}"]`).exists()).toBe(false) // page 2
+    expect(wrapper.find(`[data-testid="patient-${alt3.id}"]`).exists()).toBe(true)
+    expect(wrapper.find(`[data-testid="patient-${alt4.id}"]`).exists()).toBe(false) // page 2
 
     // Pagination should exist
     const pagination = wrapper.get('[data-testid="kiosk-pagination"]')
@@ -85,7 +87,8 @@ describe('PatientContextConfirmStep', () => {
     expect(wrapper.find(`[data-testid="patient-${best.id}"]`).exists()).toBe(false)
     expect(wrapper.find(`[data-testid="patient-${alt.id}"]`).exists()).toBe(false)
     expect(wrapper.find(`[data-testid="patient-${alt2.id}"]`).exists()).toBe(false)
-    expect(wrapper.find(`[data-testid="patient-${alt3.id}"]`).exists()).toBe(true)
+    expect(wrapper.find(`[data-testid="patient-${alt3.id}"]`).exists()).toBe(false)
+    expect(wrapper.find(`[data-testid="patient-${alt4.id}"]`).exists()).toBe(true)
     expect(pagination.text()).toContain('2/2')
   })
 
