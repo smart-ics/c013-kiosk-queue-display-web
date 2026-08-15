@@ -104,8 +104,44 @@ export function createHisApi(client: AdmissionQueueClient) {
     },
 
     listDokter(poliId: string): Promise<ServiceItem[]> {
-      return client.getJson(`ppa/dokter/${encodeURIComponent(poliId)}`, z.array(z.object({ dokterId: z.string(), dokterName: z.string() })))
-        .then(list => list.map(item => ({ id: item.dokterId, name: item.dokterName })))
+      return client.getJson(
+        `JadwalPraktek/layanan/${encodeURIComponent(poliId)}`,
+        z.array(
+          z.object({
+            dokterId: z.string(),
+            dokterName: z.string(),
+            layananId: z.string(),
+            layananName: z.string(),
+            ruangId: z.string(),
+            ruangName: z.string(),
+            listHari: z.array(
+              z.object({
+                jadwalPraktekId: z.string(),
+                hari: z.string(),
+                jamMulai: z.string(),
+                jamSelesai: z.string(),
+                maxPasien: z.number(),
+              }),
+            ),
+          }),
+        ),
+      )
+        .then(list => {
+          const dayIndex = new Date().getDay()
+          const INDONESIAN_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+          const todayName = INDONESIAN_DAYS[dayIndex].toLowerCase()
+
+          return list.map(item => {
+            const isPraktekHariIni = item.listHari.some(
+              h => h.hari.trim().toLowerCase() === todayName,
+            )
+            return {
+              id: item.dokterId,
+              name: item.dokterName,
+              isPraktekHariIni,
+            }
+          })
+        })
     },
 
     listJadwal(businessDate: string, ppaId: string): Promise<JadwalItem[]> {

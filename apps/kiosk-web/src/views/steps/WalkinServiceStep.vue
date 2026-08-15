@@ -247,6 +247,9 @@ function handleBack() {
               <h4 class="radio-card-title">
                 {{ dokter.name }}
               </h4>
+              <p class="radio-card-subtitle" v-if="dokter.isPraktekHariIni">
+                <span class="quota-badge quota-high" style="margin-top: 0">Praktek Hari Ini</span>
+              </p>
             </div>
 
             <div class="select-arrow">

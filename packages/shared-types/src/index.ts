@@ -610,6 +610,7 @@ export type BookingAssistanceBody = z.infer<typeof bookingAssistanceBodySchema>
 export const serviceItemSchema = z.object({
   id: z.string(),
   name: z.string(),
+  isPraktekHariIni: z.boolean().optional(),
 })
 export type ServiceItem = z.infer<typeof serviceItemSchema>
 

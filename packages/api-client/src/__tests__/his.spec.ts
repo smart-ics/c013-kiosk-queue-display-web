@@ -110,6 +110,53 @@ describe('createHisApi', () => {
     expect(url).toContain('Layanan/2/list')
   })
 
+  it('fetches doctors via JadwalPraktek/layanan and sets isPraktekHariIni from listHari', async () => {
+    const INDONESIAN_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+    const todayHari = INDONESIAN_DAYS[new Date().getDay()]
+
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          status: 'success',
+          data: [
+            {
+              dokterId: 'DR001',
+              dokterName: 'dr. Andi, Sp.A',
+              layananId: 'RJ011',
+              layananName: 'KLINIK BEDAH',
+              ruangId: 'R01',
+              ruangName: 'Ruang A',
+              listHari: [
+                { jadwalPraktekId: 'JP1', hari: todayHari, jamMulai: '08:00', jamSelesai: '12:00', maxPasien: 20 },
+              ],
+            },
+            {
+              dokterId: 'DR002',
+              dokterName: 'dr. Budi, Sp.PD',
+              layananId: 'RJ011',
+              layananName: 'KLINIK BEDAH',
+              ruangId: 'R01',
+              ruangName: 'Ruang A',
+              listHari: [],
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    )
+    const client = new AdmissionQueueClient({
+      baseUrl: 'http://localhost:5000/api',
+      auth: createAuth(),
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    const items = await createHisApi(client).listDokter('RJ011')
+    expect(items).toHaveLength(2)
+    expect(items[0]).toEqual({ id: 'DR001', name: 'dr. Andi, Sp.A', isPraktekHariIni: true })
+    expect(items[1]).toEqual({ id: 'DR002', name: 'dr. Budi, Sp.PD', isPraktekHariIni: false })
+    const url = String(fetchImpl.mock.calls[0]?.[0])
+    expect(url).toContain('JadwalPraktek/layanan/RJ011')
+  })
+
   it('fetches doctor schedule via POST PraktekDokter/dokter and maps to JadwalItem', async () => {
     const fetchImpl = vi.fn(async () =>
       new Response(
