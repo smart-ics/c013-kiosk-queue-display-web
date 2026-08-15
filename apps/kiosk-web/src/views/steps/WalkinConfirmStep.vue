@@ -60,11 +60,10 @@ defineEmits<{
         @click="$emit('confirm')"
         style="min-width: 240px;"
       >
-        Konfirmasi &amp; Daftar
+        {{ pending ? 'Mendaftarkan…' : 'Konfirmasi & Daftar' }}
       </button>
     </div>
-    
-    <p v-if="pending" class="status" style="text-align: center;">Mendaftarkan…</p>
+
     <p v-if="errorMessage" class="status error" style="text-align: center;">{{ errorMessage }}</p>
   </section>
 </template>
