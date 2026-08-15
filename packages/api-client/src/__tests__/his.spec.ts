@@ -119,8 +119,8 @@ describe('createHisApi', () => {
             {
               tanggal: '2026-08-15',
               dokter: {
-                dokterId: 'D001',
-                dokterName: 'dr. John Doe, Sp.A',
+                ppaId: 'D001',
+                ppaName: 'dr. John Doe, Sp.A',
               },
               layanan: {
                 layananId: 'L002',

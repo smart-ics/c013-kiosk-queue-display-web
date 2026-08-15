@@ -120,8 +120,9 @@ export function createHisApi(client: AdmissionQueueClient) {
           z.object({
             tanggal: z.string(),
             dokter: z.object({
-              dokterId: z.string(),
-              dokterName: z.string(),
+              ppaId: z.string(),
+              ppaName: z.string(),
+              isDefault: z.boolean().nullable().optional(),
             }),
             layanan: z.object({
               layananId: z.string(),
@@ -136,8 +137,8 @@ export function createHisApi(client: AdmissionQueueClient) {
       )
         .then(list =>
           list.map(item => ({
-            jadwalId: `${item.dokter.dokterId}-${item.tanggal}-${item.jamMulaiPraktek}`,
-            ppaId: item.dokter.dokterId,
+            jadwalId: `${item.dokter.ppaId}-${item.tanggal}-${item.jamMulaiPraktek}`,
+            ppaId: item.dokter.ppaId,
             jamPraktek: `${item.jamMulaiPraktek} - ${item.jamSelesaiPraktek}`,
             sisaKuota: Math.max(0, item.maxPasien - item.jumlahPasien),
           })),

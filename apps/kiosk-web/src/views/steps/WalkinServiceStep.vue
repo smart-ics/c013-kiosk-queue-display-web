@@ -125,11 +125,12 @@ function handleBack() {
   <section
     class="panel"
     style="
-      max-width: 900px;
-      padding-top: 0;
       background: transparent;
       border: none;
       box-shadow: none;
+      padding: 0;
+      width: 100%;
+      max-width: 900px;
       height: 100%;
       display: flex;
       flex-direction: column;
@@ -161,14 +162,7 @@ function handleBack() {
       "
     >
       <template v-if="!selectedPoli">
-        <div
-          class="sp-grid"
-          style="
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 24px;
-            padding-bottom: 24px;
-          "
-        >
+        <div class="kiosk-grid-2x2" style="padding-bottom: 24px">
           <button
             v-for="poli in visibleItems as ServiceItem[]"
             :key="poli.id"
@@ -176,27 +170,15 @@ function handleBack() {
             class="radio-card"
             :disabled="loading || pending"
             @click="choosePoli(poli)"
-            style="padding: 20px 24px; min-height: 88px"
+            style="min-height: 88px"
           >
-            <div
-              style="
-                flex: none;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                width: 44px;
-                height: 44px;
-                background: var(--brand-soft);
-                border-radius: 12px;
-                margin-right: 4px;
-              "
-            >
+            <div class="radio-card-icon">
               <svg
                 width="24"
                 height="24"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="var(--brand-strong)"
+                stroke="currentColor"
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -208,22 +190,12 @@ function handleBack() {
             </div>
 
             <div class="radio-card-content">
-              <h4 class="radio-card-title" style="margin: 0; font-size: 1.25rem">
+              <h4 class="radio-card-title">
                 {{ poli.name }}
               </h4>
             </div>
 
-            <div
-              class="select-arrow"
-              style="
-                color: var(--brand-strong);
-                flex: none;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding-left: 12px;
-              "
-            >
+            <div class="select-arrow">
               <svg
                 width="24"
                 height="24"
@@ -243,14 +215,7 @@ function handleBack() {
       </template>
 
       <template v-else-if="selectedPoli && !selectedDokter">
-        <div
-          class="sp-grid"
-          style="
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 24px;
-            padding-bottom: 24px;
-          "
-        >
+        <div class="kiosk-grid-2x2" style="padding-bottom: 24px">
           <button
             v-for="dokter in visibleItems as ServiceItem[]"
             :key="dokter.id"
@@ -258,27 +223,15 @@ function handleBack() {
             class="radio-card"
             :disabled="loading || pending"
             @click="chooseDokter(dokter)"
-            style="padding: 20px 24px; min-height: 88px"
+            style="min-height: 88px"
           >
-            <div
-              style="
-                flex: none;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                width: 44px;
-                height: 44px;
-                background: var(--brand-soft);
-                border-radius: 12px;
-                margin-right: 4px;
-              "
-            >
+            <div class="radio-card-icon">
               <svg
                 width="24"
                 height="24"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="var(--brand-strong)"
+                stroke="currentColor"
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -290,29 +243,13 @@ function handleBack() {
               </svg>
             </div>
 
-            <div
-              class="radio-card-content"
-              style="display: flex; flex-direction: column; align-items: flex-start"
-            >
-              <h4 class="radio-card-title" style="margin: 0; font-size: 1.2rem">
+            <div class="radio-card-content">
+              <h4 class="radio-card-title">
                 {{ dokter.name }}
               </h4>
-              <p class="radio-card-subtitle" style="margin: 4px 0 0 0; font-size: 0.95rem">
-                Praktek hari ini
-              </p>
             </div>
 
-            <div
-              class="select-arrow"
-              style="
-                color: var(--brand-strong);
-                flex: none;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding-left: 12px;
-              "
-            >
+            <div class="select-arrow">
               <svg
                 width="24"
                 height="24"
@@ -332,14 +269,7 @@ function handleBack() {
       </template>
 
       <template v-else-if="selectedPoli && selectedDokter">
-        <div
-          class="sp-grid"
-          style="
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 24px;
-            padding-bottom: 24px;
-          "
-        >
+        <div class="kiosk-grid-2x2" style="padding-bottom: 24px">
           <button
             v-for="jadwal in visibleItems as JadwalItem[]"
             :key="jadwal.jadwalId"
@@ -347,27 +277,15 @@ function handleBack() {
             class="radio-card"
             :disabled="loading || pending"
             @click="chooseJadwal(jadwal)"
-            style="padding: 20px 24px; min-height: 88px"
+            style="min-height: 88px"
           >
-            <div
-              style="
-                flex: none;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                width: 44px;
-                height: 44px;
-                background: var(--brand-soft);
-                border-radius: 12px;
-                margin-right: 4px;
-              "
-            >
+            <div class="radio-card-icon">
               <svg
                 width="24"
                 height="24"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="var(--brand-strong)"
+                stroke="currentColor"
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -377,53 +295,29 @@ function handleBack() {
               </svg>
             </div>
 
-            <div
-              class="radio-card-content"
-              style="display: flex; flex-direction: column; align-items: flex-start"
-            >
-              <h4 class="radio-card-title" style="margin: 0; font-size: 1.2rem">
+            <div class="radio-card-content">
+              <h4 class="radio-card-title">
                 {{ jadwal.jamPraktek }}
               </h4>
-              <p
-                class="radio-card-subtitle"
-                style="
-                  margin: 4px 0 0 0;
-                  font-size: 0.95rem;
-                  display: flex;
-                  align-items: center;
-                  gap: 4px;
-                "
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+              <p class="radio-card-subtitle">
+                <span
+                  class="quota-badge"
+                  :class="{
+                    'quota-high': jadwal.sisaKuota > 10,
+                    'quota-low': jadwal.sisaKuota > 0 && jadwal.sisaKuota <= 10,
+                    'quota-full': jadwal.sisaKuota === 0,
+                  }"
                 >
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-                <span>Sisa Kuota: {{ jadwal.sisaKuota }}</span>
+                  {{
+                    jadwal.sisaKuota === 0
+                      ? 'Kuota Penuh'
+                      : `Sisa Kuota: ${jadwal.sisaKuota}`
+                  }}
+                </span>
               </p>
             </div>
 
-            <div
-              class="select-arrow"
-              style="
-                color: var(--brand-strong);
-                flex: none;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding-left: 12px;
-              "
-            >
+            <div class="select-arrow">
               <svg
                 width="24"
                 height="24"
