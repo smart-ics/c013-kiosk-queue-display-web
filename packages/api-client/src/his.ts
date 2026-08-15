@@ -128,8 +128,8 @@ export function createHisApi(client: AdmissionQueueClient) {
       )
         .then(list => {
           const dayIndex = new Date().getDay()
-          const INDONESIAN_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
-          const todayName = INDONESIAN_DAYS[dayIndex].toLowerCase()
+          const ENGLISH_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+          const todayName = ENGLISH_DAYS[dayIndex].toLowerCase()
 
           return list.map(item => {
             const isPraktekHariIni = item.listHari.some(

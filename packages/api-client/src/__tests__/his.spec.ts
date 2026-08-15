@@ -111,8 +111,8 @@ describe('createHisApi', () => {
   })
 
   it('fetches doctors via JadwalPraktek/layanan and sets isPraktekHariIni from listHari', async () => {
-    const INDONESIAN_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
-    const todayHari = INDONESIAN_DAYS[new Date().getDay()]
+    const ENGLISH_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const todayHari = ENGLISH_DAYS[new Date().getDay()]
 
     const fetchImpl = vi.fn(async () =>
       new Response(
