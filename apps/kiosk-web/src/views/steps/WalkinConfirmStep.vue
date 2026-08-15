@@ -16,39 +16,51 @@ defineEmits<{
 </script>
 
 <template>
-  <section class="panel">
-    <h1>Konfirmasi Data</h1>
-    <dl class="detail-list">
-      <dt>Pasien</dt>
-      <dd>{{ patient.pasienName }}</dd>
-      <dt>Poli</dt>
-      <dd>{{ service.poli.name }}</dd>
-      <dt>Dokter</dt>
-      <dd>{{ service.dokter.name }}</dd>
-      <dt>Jadwal</dt>
-      <dd>{{ service.jadwal.jamPraktek }}</dd>
-      <dt>Jaminan</dt>
-      <dd>
-        {{ eligibility.tipeJaminanName }}
-        <span v-if="eligibility.needsEligibility">· verifikasi BPJS</span>
-      </dd>
-    </dl>
+  <section class="panel" style="background: transparent; border: none; box-shadow: none; padding-top: 0;">
+    <h1 style="text-align: center;">Konfirmasi Data Layanan</h1>
+    <p style="text-align: center;">Pastikan data berikut sudah benar sebelum melanjutkan.</p>
 
-    <div class="actions">
+    <div class="smart-card">
+      <div class="smart-card-header">
+        <h3>{{ patient.pasienName }}</h3>
+        <span class="context-card-badge" :style="{ background: eligibility.needsEligibility ? 'var(--brand-strong)' : 'var(--ok)' }">
+          {{ eligibility.tipeJaminanName }}
+          <span v-if="eligibility.needsEligibility"> (Perlu Verifikasi)</span>
+        </span>
+      </div>
+      <div class="smart-card-body">
+        <div class="smart-info-row">
+          <span class="smart-info-label">Poli Tujuan</span>
+          <span class="smart-info-value">{{ service.poli.name }}</span>
+        </div>
+        <div class="smart-info-row">
+          <span class="smart-info-label">Dokter</span>
+          <span class="smart-info-value">{{ service.dokter.name }}</span>
+        </div>
+        <div class="smart-info-row">
+          <span class="smart-info-label">Jadwal Praktek</span>
+          <span class="smart-info-value">{{ service.jadwal.jamPraktek }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions" style="justify-content: center; margin-top: 32px;">
+      <button type="button" class="secondary-btn" :disabled="pending" @click="$emit('back')" style="min-width: 160px;">
+        Batal
+      </button>
       <button
         type="button"
         class="sp-btn"
         :disabled="pending"
         data-testid="walkin-confirm"
         @click="$emit('confirm')"
+        style="min-width: 240px;"
       >
         Konfirmasi &amp; Daftar
       </button>
-      <button type="button" class="secondary-btn" :disabled="pending" @click="$emit('back')">
-        Kembali
-      </button>
     </div>
-    <p v-if="pending" class="status">Mendaftarkan…</p>
-    <p v-if="errorMessage" class="status error">{{ errorMessage }}</p>
+    
+    <p v-if="pending" class="status" style="text-align: center;">Mendaftarkan…</p>
+    <p v-if="errorMessage" class="status error" style="text-align: center;">{{ errorMessage }}</p>
   </section>
 </template>

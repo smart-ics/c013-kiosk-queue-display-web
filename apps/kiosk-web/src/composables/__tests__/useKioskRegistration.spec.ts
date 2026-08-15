@@ -459,14 +459,14 @@ describe('useKioskRegistration guards and reset', () => {
     expect(deps.searchBooking).toHaveBeenCalledTimes(1)
   })
 
-  it('returns to HOME after 30s idle while on a flow', async () => {
+  it('returns to HOME after 60s idle while on a flow', async () => {
     let nowMs = 1000
     vi.useFakeTimers()
     const reg = useKioskRegistration(makeDeps({ now: () => nowMs }))
     reg.startIdleReset()
     reg.startBookingFlow()
     expect(reg.flow.value).toBe('BOOKING_SEARCH')
-    nowMs = 2000 + 30_000
+    nowMs = 2000 + 60_000
     await vi.advanceTimersByTimeAsync(1100)
     expect(reg.flow.value).toBe('HOME')
   })

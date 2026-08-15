@@ -30,11 +30,7 @@ import {
   deriveWalkinJaminan,
   UMAT_TIPE_JAMINAN_ID,
 } from '../lib/eligibility'
-import {
-  ASSISTANCE_RESET_MS,
-  IDLE_RESET_MS,
-  KIOSK_USER_ID,
-} from '../lib/constants'
+import { ASSISTANCE_RESET_MS, IDLE_RESET_MS, KIOSK_USER_ID } from '../lib/constants'
 import { mapErrorToFailureCode, type FailureCode } from '../lib/failureCode'
 import type { BiometricVerdict } from '../lib/biometric'
 import type { RegistrationPrintContext, RegistrationPrintResult } from './useKioskSelfPrint'
@@ -49,8 +45,6 @@ export type EligibilityStatus = {
 }
 
 export type FailureContext = { code: FailureCode; message: string }
-
-
 
 export type KioskRegistrationDeps = {
   stationId: Ref<string>
@@ -105,14 +99,12 @@ function resolveDefaultKarcisId(
 ): string {
   if (appConfig.mappingJmnLayananKarcis) {
     const match = appConfig.mappingJmnLayananKarcis.find(
-      (m) => m.tipeJaminanId === tipeJaminanId && m.layananId === layananId
+      (m) => m.tipeJaminanId === tipeJaminanId && m.layananId === layananId,
     )
     if (match) return match.karcisId
   }
   if (appConfig.mappingLayananKarcis) {
-    const match = appConfig.mappingLayananKarcis.find(
-      (m) => m.layananId === layananId
-    )
+    const match = appConfig.mappingLayananKarcis.find((m) => m.layananId === layananId)
     if (match) return match.karcisId
   }
   return appConfig.kioskDefaultKarcisId ?? ''
@@ -141,7 +133,11 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   const selectedContextPatient = ref<PatientContextItem | null>(null)
   const errorContext = ref<FailureContext | null>(null)
   const biometricVerdict = ref<BiometricVerdict | null>(null)
-  const activeBpjsContext = ref<{ noRujukan: string; kelasRawatId: string; diagnosaId: string } | null>(null)
+  const activeBpjsContext = ref<{
+    noRujukan: string
+    kelasRawatId: string
+    diagnosaId: string
+  } | null>(null)
 
   const lastActivity = ref(deps.now ? deps.now() : Date.now())
   let idleTimer: number | null = null
@@ -268,7 +264,6 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   }
 
   async function searchPatientContextFor(keyword: string): Promise<void> {
-    transition('PATIENT_CONTEXT_SEARCH')
     try {
       const tgl = await ensureBusinessDate()
       const result = await deps.searchPatientContext({
@@ -279,7 +274,10 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       if (result.bestMatch || result.patients.total > 0) {
         transition('PATIENT_CONTEXT_CONFIRM')
       } else {
-        setFailure('BOOKING_NOT_FOUND', 'Data pasien tidak ditemukan. Silakan coba lagi atau ambil antrian pendaftaran.')
+        setFailure(
+          'BOOKING_NOT_FOUND',
+          'Data pasien tidak ditemukan. Silakan coba lagi atau ambil antrian pendaftaran.',
+        )
       }
     } catch (error) {
       setFailure(mapErrorToFailureCode(error), messageFromError(error))
@@ -350,16 +348,22 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     currentMode: FlowMode,
     eligibility: EligibilityStatus,
   ): Promise<void> {
-    const noPeserta = currentMode === 'booking'
-      ? eligibility.noPeserta
-      : (eligibility.noPeserta || walkinNoPeserta.value)
+    const noPeserta =
+      currentMode === 'booking'
+        ? eligibility.noPeserta
+        : eligibility.noPeserta || walkinNoPeserta.value
     if (!noPeserta) {
       throw new Error('Nomor kartu BPJS tidak ditemukan.')
     }
 
     const res = await deps.getRujukanSkpd(noPeserta)
     const rujukan = res.rujukan as Record<string, any> | null
-    let extracted: { noRujukan: string; kelasRawatId: string; diagnosaId: string; tglLahir: string } | null = null
+    let extracted: {
+      noRujukan: string
+      kelasRawatId: string
+      diagnosaId: string
+      tglLahir: string
+    } | null = null
 
     if (rujukan && rujukan.noRujukan) {
       extracted = {
@@ -369,7 +373,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         tglLahir: res.peserta.tglLahir,
       }
     } else {
-      const skdp = res.listSkdp && res.listSkdp[0] as Record<string, any> | null
+      const skdp = res.listSkdp && (res.listSkdp[0] as Record<string, any> | null)
       if (skdp && skdp.noSkdp) {
         extracted = {
           noRujukan: skdp.noSkdp as string,
@@ -381,7 +385,9 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     }
 
     if (!extracted) {
-      throw new Error('Rujukan atau SKDP BPJS tidak aktif/tidak ditemukan. Silakan ambil antrian pendaftaran manual.')
+      throw new Error(
+        'Rujukan atau SKDP BPJS tidak aktif/tidak ditemukan. Silakan ambil antrian pendaftaran manual.',
+      )
     }
 
     activeBpjsContext.value = {
@@ -390,7 +396,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       diagnosaId: extracted.diagnosaId,
     }
 
-    const currentBusinessDate = businessDate.value || await ensureBusinessDate()
+    const currentBusinessDate = businessDate.value || (await ensureBusinessDate())
     const age = calculateAge(extracted.tglLahir, currentBusinessDate)
 
     if (age < 17) {
@@ -421,39 +427,43 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   async function register(currentMode: FlowMode): Promise<void> {
     try {
       const result =
-        currentMode === 'booking'
-          ? await registerBookingCommit()
-          : await registerWalkinCommit()
+        currentMode === 'booking' ? await registerBookingCommit() : await registerWalkinCommit()
       registrationResult.value = result
 
-      const eligibility = currentMode === 'booking' ? bookingEligibility.value : walkinEligibility.value
+      const eligibility =
+        currentMode === 'booking' ? bookingEligibility.value : walkinEligibility.value
       if (eligibility?.tipeJaminanId !== '00000' && eligibility?.needsEligibility) {
-        const patientId = currentMode === 'booking' ? bookingDetail.value!.reg.pasienId : selectedPatient.value!.pasienId
-        const noPeserta = eligibility.noPeserta ?? ""
+        const patientId =
+          currentMode === 'booking'
+            ? bookingDetail.value!.reg.pasienId
+            : selectedPatient.value!.pasienId
+        const noPeserta = eligibility.noPeserta ?? ''
         const sepPayload: SepCreateBody = {
-          sepId: "",
+          sepId: '',
           noPeserta,
-          sepDate: businessDate.value ?? "",
-          noRujukan: activeBpjsContext.value?.noRujukan || (currentMode === 'booking' ? (bookingDetail.value?.extAppRef?.reffId ?? "") : ""),
+          sepDate: businessDate.value ?? '',
+          noRujukan:
+            activeBpjsContext.value?.noRujukan ||
+            (currentMode === 'booking' ? (bookingDetail.value?.extAppRef?.reffId ?? '') : ''),
           pasienId: patientId,
-          kelasRawatId: activeBpjsContext.value?.kelasRawatId || "3",
-          tujuanKunjunganId: "0",
-          flagProcedureId: "",
-          assesmentPelayananId: "",
-          penunjangId: "",
-          katarak: "0",
-          catatan: "Kiosk Self Registration",
-          kll: "0",
-          tglKLL: "",
-          noLaporanPolisi: "",
-          keteranganKLL: "",
-          propIdKll: "",
-          kabIdKll: "",
-          kecIdKll: "",
-          diagnosaId: activeBpjsContext.value?.diagnosaId || "Z00.0",
-          userId: KIOSK_USER_ID
+          kelasRawatId: activeBpjsContext.value?.kelasRawatId || '3',
+          tujuanKunjunganId: '0',
+          flagProcedureId: '',
+          assesmentPelayananId: '',
+          penunjangId: '',
+          katarak: '0',
+          catatan: 'Kiosk Self Registration',
+          kll: '0',
+          tglKLL: '',
+          noLaporanPolisi: '',
+          keteranganKLL: '',
+          propIdKll: '',
+          kabIdKll: '',
+          kecIdKll: '',
+          diagnosaId: activeBpjsContext.value?.diagnosaId || 'Z00.0',
+          userId: KIOSK_USER_ID,
         }
-        
+
         const sepRes = await deps.createSep(sepPayload)
         if (typeof sepRes === 'string') {
           throw new Error(`Gagal membuat SEP: ${sepRes}`)
@@ -463,14 +473,12 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
           regId: result.regId,
           sjpNo: sepRes.sepNo,
           pesertaJaminanId: noPeserta,
-          sjpId: sepRes.sepId
+          sjpId: sepRes.sepId,
         })
       }
 
       transition('REGISTRATION_SUCCESS')
-      await deps
-        .printRegistration(buildPrintContext(currentMode))
-        .catch(() => ({ printed: false }))
+      await deps.printRegistration(buildPrintContext(currentMode)).catch(() => ({ printed: false }))
     } catch (error) {
       setFailure(mapErrorToFailureCode(error), messageFromError(error))
     }
@@ -479,16 +487,22 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   async function registerBookingCommit(): Promise<ReturnCreateWalkIn> {
     const detail = bookingDetail.value
     if (!detail) throw new Error('Booking detail missing')
-    
+
     const tipeJaminan = bookingEligibility.value?.tipeJaminanId ?? '00000'
     const isBpjs = tipeJaminan !== '00000'
-    const noPeserta = bookingEligibility.value?.noPeserta ?? ""
+    const noPeserta = bookingEligibility.value?.noPeserta ?? ''
 
-    const resolvedKarcis = resolveDefaultKarcisId(deps.appConfig, tipeJaminan, detail.layanan.layananId)
+    const resolvedKarcis = resolveDefaultKarcisId(
+      deps.appConfig,
+      tipeJaminan,
+      detail.layanan.layananId,
+    )
     const karcisList = await deps.listKarcis(detail.layanan.layananId)
     const found = karcisList.find((k) => k.id === resolvedKarcis)
     if (!found) {
-      throw new Error(`Karcis dengan ID '${resolvedKarcis}' tidak aktif untuk poliklinik ini. Hubungi petugas.`)
+      throw new Error(
+        `Karcis dengan ID '${resolvedKarcis}' tidak aktif untuk poliklinik ini. Hubungi petugas.`,
+      )
     }
 
     return deps.registerBooking({
@@ -496,7 +510,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       userId: KIOSK_USER_ID,
       karcisId: resolvedKarcis,
       caraMasukDkId: isBpjs ? '1' : '8',
-      rujukanId: activeBpjsContext.value?.noRujukan || detail.extAppRef?.reffId || "",
+      rujukanId: activeBpjsContext.value?.noRujukan || detail.extAppRef?.reffId || '',
       tipeJaminanId: tipeJaminan,
       pesertaJaminanId: noPeserta,
     })
@@ -509,14 +523,16 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
 
     const tipeJaminan = walkinEligibility.value?.tipeJaminanId ?? '00000'
     const isBpjs = tipeJaminan !== '00000'
-    const noPeserta = walkinNoPeserta.value || walkinEligibility.value?.noPeserta || ""
+    const noPeserta = walkinNoPeserta.value || walkinEligibility.value?.noPeserta || ''
     const jamPraktek = service.jadwal.jamPraktek.substring(0, 5)
 
     const resolvedKarcis = resolveDefaultKarcisId(deps.appConfig, tipeJaminan, service.poli.id)
     const karcisList = await deps.listKarcis(service.poli.id)
     const found = karcisList.find((k) => k.id === resolvedKarcis)
     if (!found) {
-      throw new Error(`Karcis dengan ID '${resolvedKarcis}' tidak aktif untuk poliklinik ini. Hubungi petugas.`)
+      throw new Error(
+        `Karcis dengan ID '${resolvedKarcis}' tidak aktif untuk poliklinik ini. Hubungi petugas.`,
+      )
     }
 
     return deps.registerWalkin({
@@ -524,7 +540,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       userId: KIOSK_USER_ID,
       tipeJaminanId: tipeJaminan,
       caraMasukDkId: isBpjs ? '1' : '8',
-      rujukanId: activeBpjsContext.value?.noRujukan || "",
+      rujukanId: activeBpjsContext.value?.noRujukan || '',
       dokterId: service.dokter.id,
       layananId: service.poli.id,
       jamPraktek,
@@ -540,8 +556,8 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       result,
       pasienName:
         currentMode === 'booking'
-          ? bookingDetail.value?.reg.pasienName ?? ''
-          : selectedPatient.value?.pasienName ?? '',
+          ? (bookingDetail.value?.reg.pasienName ?? '')
+          : (selectedPatient.value?.pasienName ?? ''),
       serviceName:
         currentMode === 'booking'
           ? bookingDetail.value?.layanan.layananName
@@ -596,10 +612,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         assistanceTicket.value = ticket
         assistanceServicePointId.value = servicePointId
         transition('ASSISTANCE_QUEUE')
-        const printed = await deps.printQueueTicket(
-          ticket,
-          deps.offeringsName?.(servicePointId),
-        )
+        const printed = await deps.printQueueTicket(ticket, deps.offeringsName?.(servicePointId))
         if (printed.printed) scheduleAutoHome(ASSISTANCE_RESET_MS)
       } catch (error) {
         errorContext.value = {
@@ -623,8 +636,17 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     )
   }
 
+  function onUserActivity() {
+    touch()
+  }
+
   function startIdleReset() {
     stopIdleReset()
+    if (typeof window !== 'undefined') {
+      window.addEventListener('click', onUserActivity, { passive: true })
+      window.addEventListener('touchstart', onUserActivity, { passive: true })
+      window.addEventListener('keydown', onUserActivity, { passive: true })
+    }
     idleTimer = window.setInterval(() => {
       const now = deps.now ? deps.now() : Date.now()
       if (flow.value !== 'HOME' && now - lastActivity.value > IDLE_RESET_MS) {
@@ -634,6 +656,11 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   }
 
   function stopIdleReset() {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('click', onUserActivity)
+      window.removeEventListener('touchstart', onUserActivity)
+      window.removeEventListener('keydown', onUserActivity)
+    }
     if (idleTimer !== null) {
       window.clearInterval(idleTimer)
       idleTimer = null

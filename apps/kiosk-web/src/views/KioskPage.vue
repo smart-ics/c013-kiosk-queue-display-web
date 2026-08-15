@@ -21,6 +21,7 @@ import { useKioskSelfPrint } from '../composables/useKioskSelfPrint'
 import type { PatientContextItem } from '@aq/shared-types'
 import BootErrorPage from './BootErrorPage.vue'
 import KioskHome from './KioskHome.vue'
+import KioskHeader from '../components/KioskHeader.vue'
 import BookingSearchStep from './steps/BookingSearchStep.vue'
 import BookingConfirmStep from './steps/BookingConfirmStep.vue'
 import PatientContextConfirmStep from './steps/PatientContextConfirmStep.vue'
@@ -39,6 +40,7 @@ const bootError = ref<string | null>(null)
 const deviceConfig = ref<DeviceConfig | null>(null)
 const homeMode = ref<'idle' | 'intake'>('idle')
 const scanError = ref<string | null>(null)
+const lang = ref<'id' | 'en'>('id')
 const stationIdRef = computed(() => props.stationId)
 const printerProxyPort = computed(() => deviceConfig.value?.printerProxyPort)
 
@@ -115,18 +117,13 @@ const {
   resetToSelection,
 } = useKioskIntake(offerings)
 
-const {
-  printPending,
-  printError,
-  printSucceeded,
-  printCommittedLabel,
-  resetPrintState,
-} = useKioskPrint({
-  stationId: stationIdRef,
-  result,
-  offerings,
-  printerProxyPort,
-})
+const { printPending, printError, printSucceeded, printCommittedLabel, resetPrintState } =
+  useKioskPrint({
+    stationId: stationIdRef,
+    result,
+    offerings,
+    printerProxyPort,
+  })
 
 const catalog = getServiceCatalog()
 
@@ -137,7 +134,10 @@ const selfPrint = useKioskSelfPrint({
 
 const registration = useKioskRegistration({
   stationId: stationIdRef,
-  getBusinessDate: () => getHisApi().getBusinessDate().then((d) => d.businessDate),
+  getBusinessDate: () =>
+    getHisApi()
+      .getBusinessDate()
+      .then((d) => d.businessDate),
   searchBooking: (tglBerobat, keyword) => getHisApi().searchBooking(tglBerobat, keyword),
   getBookingDetail: (bookingId) => getHisApi().getBookingDetail(bookingId),
   listPolis: (pasienId) => getHisApi().listPolis(pasienId),
@@ -167,9 +167,7 @@ watch(result, (next, prev) => {
 })
 
 const assistanceTitle = computed(() =>
-  registration.mode.value === 'booking'
-    ? 'Nomor Antrian Bantuan'
-    : 'Nomor Antrian Pendaftaran',
+  registration.mode.value === 'booking' ? 'Nomor Antrian Bantuan' : 'Nomor Antrian Pendaftaran',
 )
 
 const assistanceServicePointName = computed(() => {
@@ -261,131 +259,10 @@ const loadingMessage = computed(() => {
 </script>
 
 <template>
-  <BootErrorPage
-    v-if="bootError"
-    title="Kiosk tidak dapat dimulai"
-    :message="bootError"
-  />
-
-  <section v-else-if="result" class="panel">
-    <h1>Nomor Antrian Anda</h1>
-    <p>Simpan Queue Label berikut. Cetak memakai print proxy lokal.</p>
-    <div class="queue-label" data-testid="queue-label">{{ result.queueLabel }}</div>
-    <p class="status ok">Antrian ID {{ result.antrianId }} · Urut {{ result.noUrut }}</p>
-
-    <p v-if="printPending" class="status" data-testid="print-pending">Sedang mencetak…</p>
-    <p v-else-if="printSucceeded && !printError" class="status ok" data-testid="print-ok">
-      Tiket berhasil dicetak.
-    </p>
-    <p v-if="printError" class="status error" data-testid="print-error">{{ printError }}</p>
-
-    <div class="actions">
-      <button
-        type="button"
-        class="secondary-btn"
-        :disabled="printPending"
-        data-testid="reprint"
-        @click="onReprint"
-      >
-        Cetak ulang
-      </button>
-      <button type="button" class="secondary-btn" :disabled="printPending" @click="onResetToSelection">
-        Ambil nomor lain
-      </button>
-      <button type="button" class="secondary-btn" @click="onHome">
-        Kembali ke menu
-      </button>
-    </div>
-  </section>
-
-  <template v-else-if="registration.flow.value !== 'HOME'">
-    <BookingSearchStep
-      v-if="registration.flow.value === 'BOOKING_SEARCH'"
-      :pending="registration.submitting.value"
-      :error-message="scanError"
-      @submit="registration.submitBookingKeyword"
-      @scan="onScanBooking"
-      @back="onHome"
-    />
-    <section
-      v-else-if="registration.flow.value === 'PATIENT_CONTEXT_SEARCH'"
-      class="panel"
-    >
-      <h1>Mencari Data</h1>
-      <p class="status">Mencari data pasien…</p>
-    </section>
-    <BookingConfirmStep
-      v-else-if="registration.flow.value === 'BOOKING_CONFIRM'"
-      :booking="registration.bookingDetail.value!"
-      :eligibility="registration.bookingEligibility.value!"
-      :pending="registration.submitting.value"
-      :error-message="null"
-      @confirm="registration.confirmBooking"
-      @back="onHome"
-    />
-    <PatientContextConfirmStep
-      v-else-if="registration.flow.value === 'PATIENT_CONTEXT_CONFIRM'"
-      :best-match="registration.patientContextResult.value?.bestMatch ?? null"
-      :patients="registration.patientContextResult.value?.patients.items ?? []"
-      :pending="registration.submitting.value"
-      @confirm="onConfirmPatientContext"
-      @intake="onIntakeFromContext"
-      @retry="onCancelPatientContext"
-    />
-    <BiometricStep
-      v-else-if="registration.flow.value === 'BIOMETRIC_VERIFY'"
-      :pending="registration.submitting.value"
-      :error-message="null"
-    />
-    <WalkinServiceStep
-      v-else-if="registration.flow.value === 'WALKIN_SELECT_SERVICE'"
-      :catalog="catalog"
-      :pending="registration.submitting.value"
-      @select="registration.selectService"
-      @back="onHome"
-    />
-    <WalkinConfirmStep
-      v-else-if="registration.flow.value === 'WALKIN_CONFIRM'"
-      :patient="registration.selectedPatient.value!"
-      :service="registration.selectedService.value!"
-      :eligibility="registration.walkinEligibility.value!"
-      :pending="registration.submitting.value"
-      :error-message="null"
-      @confirm="registration.confirmWalkin"
-      @back="onHome"
-    />
-    <RegistrationSuccessStep
-      v-else-if="registration.flow.value === 'REGISTRATION_SUCCESS'"
-      :result="registration.registrationResult.value!"
-      :print-pending="selfPrint.printPending.value"
-      :print-succeeded="selfPrint.printSucceeded.value"
-      :print-error="selfPrint.printError.value"
-      @reprint="onReprintRegistration"
-      @finish="onHome"
-    />
-    <FailureStep
-      v-else-if="registration.flow.value === 'FAILURE'"
-      :error-context="registration.errorContext.value!"
-      :offerings="offerings"
-      :pending="registration.submitting.value"
-      @select-service-point="registration.confirmAssistance"
-      @back="onHome"
-    />
-    <AssistanceQueueStep
-      v-else-if="registration.flow.value === 'ASSISTANCE_QUEUE'"
-      :ticket="registration.assistanceTicket.value!"
-      :title="assistanceTitle"
-      :service-point-name="assistanceServicePointName"
-      :print-pending="selfPrint.printPending.value"
-      :print-succeeded="selfPrint.printSucceeded.value"
-      :print-error="selfPrint.printError.value"
-      @reprint="onReprintAssistance"
-      @finish="onHome"
-    />
-  </template>
+  <BootErrorPage v-if="bootError" title="Kiosk tidak dapat dimulai" :message="bootError" />
 
   <KioskHome
-    v-else-if="homeMode === 'idle'"
+    v-else-if="homeMode === 'idle' && registration.flow.value === 'HOME'"
     :intake-available="offerings.length > 0"
     :business-date="businessDate"
     :pending="registration.submitting.value"
@@ -393,56 +270,274 @@ const loadingMessage = computed(() => {
     @start-intake="onStartIntake"
   />
 
-  <section v-else class="panel">
-    <h1>Ambil Nomor Antrian</h1>
-    <p>Station <strong>{{ stationId }}</strong> — pilih Service Point.</p>
+  <div v-else class="kiosk-flow-shell">
+    <KioskHeader :lang="lang" :business-date="businessDate" @toggle-lang="lang = $event" />
 
-    <p v-if="loadingMessage" class="status" :class="{ error: !!servicePointsQuery.isError.value }">
-      {{ loadingMessage }}
-    </p>
+    <div class="kiosk-flow-body">
+      <template v-if="result">
+        <section class="panel">
+          <h1>Nomor Antrian Anda</h1>
+          <p>Simpan Queue Label berikut. Cetak memakai print proxy lokal.</p>
+          <div class="queue-label" data-testid="queue-label">{{ result.queueLabel }}</div>
+          <p class="status ok">Antrian ID {{ result.antrianId }} · Urut {{ result.noUrut }}</p>
 
-    <p
-      v-if="errorMessage"
-      class="status error"
-      :class="{ uncertain: errorUncertain }"
-      data-testid="intake-error"
-    >
-      {{ errorMessage }}
-    </p>
+          <p v-if="printPending" class="status" data-testid="print-pending">Sedang mencetak…</p>
+          <p v-else-if="printSucceeded && !printError" class="status ok" data-testid="print-ok">
+            Tiket berhasil dicetak.
+          </p>
+          <p v-if="printError" class="status error" data-testid="print-error">{{ printError }}</p>
 
-    <div v-if="offerings.length" class="sp-grid">
-      <button
-        v-for="sp in offerings"
-        :key="sp.servicePointId"
-        type="button"
-        class="sp-btn"
-        :disabled="!canSubmit"
-        :data-testid="`sp-${sp.servicePointId}`"
-        @click="submitIntake(sp.servicePointId)"
-      >
-        {{ sp.displayName }}
-        <small>{{ sp.queuePrefix }} · {{ sp.servicePointId }}</small>
-      </button>
+          <div class="actions">
+            <button
+              type="button"
+              class="secondary-btn"
+              :disabled="printPending"
+              data-testid="reprint"
+              @click="onReprint"
+            >
+              Cetak ulang
+            </button>
+            <button
+              type="button"
+              class="secondary-btn"
+              :disabled="printPending"
+              @click="onResetToSelection"
+            >
+              Ambil nomor lain
+            </button>
+            <button type="button" class="secondary-btn" @click="onHome">Kembali ke menu</button>
+          </div>
+        </section>
+      </template>
+
+      <template v-else-if="registration.flow.value !== 'HOME'">
+        <div
+          class="kiosk-stepper"
+          v-if="
+            [
+              'BOOKING_SEARCH',
+              'PATIENT_CONTEXT_SEARCH',
+              'PATIENT_CONTEXT_CONFIRM',
+              'WALKIN_SELECT_SERVICE',
+              'BOOKING_CONFIRM',
+              'WALKIN_CONFIRM',
+              'BIOMETRIC_VERIFY',
+              'REGISTRATION_SUCCESS',
+              'ASSISTANCE_QUEUE',
+            ].includes(registration.flow.value)
+          "
+        >
+          <div
+            class="step-item"
+            :class="{
+              completed: [
+                'WALKIN_SELECT_SERVICE',
+                'BOOKING_CONFIRM',
+                'WALKIN_CONFIRM',
+                'BIOMETRIC_VERIFY',
+                'REGISTRATION_SUCCESS',
+                'ASSISTANCE_QUEUE',
+              ].includes(registration.flow.value),
+              active: [
+                'BOOKING_SEARCH',
+                'PATIENT_CONTEXT_SEARCH',
+                'PATIENT_CONTEXT_CONFIRM',
+              ].includes(registration.flow.value),
+            }"
+          >
+            1. Identifikasi
+          </div>
+          <div class="step-divider"></div>
+          <div
+            class="step-item"
+            :class="{
+              completed: [
+                'BOOKING_CONFIRM',
+                'WALKIN_CONFIRM',
+                'BIOMETRIC_VERIFY',
+                'REGISTRATION_SUCCESS',
+                'ASSISTANCE_QUEUE',
+              ].includes(registration.flow.value),
+              active: registration.flow.value === 'WALKIN_SELECT_SERVICE',
+            }"
+          >
+            2. Layanan
+          </div>
+          <div class="step-divider"></div>
+          <div
+            class="step-item"
+            :class="{
+              completed: ['REGISTRATION_SUCCESS', 'ASSISTANCE_QUEUE'].includes(
+                registration.flow.value,
+              ),
+              active: ['BOOKING_CONFIRM', 'WALKIN_CONFIRM', 'BIOMETRIC_VERIFY'].includes(
+                registration.flow.value,
+              ),
+            }"
+          >
+            3. Konfirmasi
+          </div>
+          <div class="step-divider"></div>
+          <div
+            class="step-item"
+            :class="{
+              completed: false,
+              active: ['REGISTRATION_SUCCESS', 'ASSISTANCE_QUEUE'].includes(
+                registration.flow.value,
+              ),
+            }"
+          >
+            4. Selesai
+          </div>
+        </div>
+
+        <div class="kiosk-step-wrapper">
+          <BookingSearchStep
+            v-if="registration.flow.value === 'BOOKING_SEARCH'"
+            :pending="registration.submitting.value"
+            :error-message="scanError"
+            @submit="registration.submitBookingKeyword"
+            @scan="onScanBooking"
+            @back="onHome"
+          />
+          <section v-else-if="registration.flow.value === 'PATIENT_CONTEXT_SEARCH'" class="panel">
+            <h1>Mencari Data</h1>
+            <p class="status">Mencari data pasien…</p>
+          </section>
+          <BookingConfirmStep
+            v-else-if="registration.flow.value === 'BOOKING_CONFIRM'"
+            :booking="registration.bookingDetail.value!"
+            :eligibility="registration.bookingEligibility.value!"
+            :pending="registration.submitting.value"
+            :error-message="null"
+            @confirm="registration.confirmBooking"
+            @back="onHome"
+          />
+          <PatientContextConfirmStep
+            v-else-if="registration.flow.value === 'PATIENT_CONTEXT_CONFIRM'"
+            :best-match="registration.patientContextResult.value?.bestMatch ?? null"
+            :patients="registration.patientContextResult.value?.patients.items ?? []"
+            :pending="registration.submitting.value"
+            @confirm="onConfirmPatientContext"
+            @intake="onIntakeFromContext"
+            @retry="onCancelPatientContext"
+          />
+          <BiometricStep
+            v-else-if="registration.flow.value === 'BIOMETRIC_VERIFY'"
+            :pending="registration.submitting.value"
+            :error-message="null"
+          />
+          <WalkinServiceStep
+            v-else-if="registration.flow.value === 'WALKIN_SELECT_SERVICE'"
+            :catalog="catalog"
+            :pending="registration.submitting.value"
+            @select="registration.selectService"
+            @back="onHome"
+          />
+          <WalkinConfirmStep
+            v-else-if="registration.flow.value === 'WALKIN_CONFIRM'"
+            :patient="registration.selectedPatient.value!"
+            :service="registration.selectedService.value!"
+            :eligibility="registration.walkinEligibility.value!"
+            :pending="registration.submitting.value"
+            :error-message="null"
+            @confirm="registration.confirmWalkin"
+            @back="onHome"
+          />
+          <RegistrationSuccessStep
+            v-else-if="registration.flow.value === 'REGISTRATION_SUCCESS'"
+            :result="registration.registrationResult.value!"
+            :print-pending="selfPrint.printPending.value"
+            :print-succeeded="selfPrint.printSucceeded.value"
+            :print-error="selfPrint.printError.value"
+            @reprint="onReprintRegistration"
+            @finish="onHome"
+          />
+          <FailureStep
+            v-else-if="registration.flow.value === 'FAILURE'"
+            :error-context="registration.errorContext.value!"
+            :offerings="offerings"
+            :pending="registration.submitting.value"
+            @select-service-point="registration.confirmAssistance"
+            @back="onHome"
+          />
+          <AssistanceQueueStep
+            v-else-if="registration.flow.value === 'ASSISTANCE_QUEUE'"
+            :ticket="registration.assistanceTicket.value!"
+            :title="assistanceTitle"
+            :service-point-name="assistanceServicePointName"
+            :print-pending="selfPrint.printPending.value"
+            :print-succeeded="selfPrint.printSucceeded.value"
+            :print-error="selfPrint.printError.value"
+            @reprint="onReprintAssistance"
+            @finish="onHome"
+          />
+        </div>
+      </template>
+
+      <template v-else>
+        <section class="panel" style="max-height: 100%; display: flex; flex-direction: column">
+          <h1>Ambil Nomor Antrian</h1>
+          <p>
+            Station <strong>{{ stationId }}</strong> — pilih Service Point.
+          </p>
+
+          <p
+            v-if="loadingMessage"
+            class="status"
+            :class="{ error: !!servicePointsQuery.isError.value }"
+          >
+            {{ loadingMessage }}
+          </p>
+
+          <p
+            v-if="errorMessage"
+            class="status error"
+            :class="{ uncertain: errorUncertain }"
+            data-testid="intake-error"
+          >
+            {{ errorMessage }}
+          </p>
+
+          <div class="scrollable-content" style="padding-bottom: 24px">
+            <div v-if="offerings.length" class="sp-grid">
+              <button
+                v-for="sp in offerings"
+                :key="sp.servicePointId"
+                type="button"
+                class="sp-btn"
+                :disabled="!canSubmit"
+                :data-testid="`sp-${sp.servicePointId}`"
+                @click="submitIntake(sp.servicePointId)"
+              >
+                {{ sp.displayName }}
+                <small>{{ sp.queuePrefix }} · {{ sp.servicePointId }}</small>
+              </button>
+            </div>
+          </div>
+
+          <div v-if="errorMessage" class="actions" style="margin-top: 16px">
+            <button
+              type="button"
+              class="secondary-btn"
+              :disabled="pending"
+              data-testid="retry-intake"
+              @click="retryLast"
+            >
+              Coba lagi
+            </button>
+          </div>
+
+          <div
+            class="actions"
+            style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px"
+          >
+            <button type="button" class="secondary-btn" @click="onHome">Kembali ke menu</button>
+          </div>
+
+          <p v-if="pending" class="status" style="margin-top: 12px">Sedang mengambil nomor…</p>
+        </section>
+      </template>
     </div>
-
-    <div v-if="errorMessage" class="actions">
-      <button
-        type="button"
-        class="secondary-btn"
-        :disabled="pending"
-        data-testid="retry-intake"
-        @click="retryLast"
-      >
-        Coba lagi
-      </button>
-    </div>
-
-    <div class="actions">
-      <button type="button" class="secondary-btn" @click="onHome">
-        Kembali ke menu
-      </button>
-    </div>
-
-    <p v-if="pending" class="status">Sedang mengambil nomor…</p>
-  </section>
+  </div>
 </template>

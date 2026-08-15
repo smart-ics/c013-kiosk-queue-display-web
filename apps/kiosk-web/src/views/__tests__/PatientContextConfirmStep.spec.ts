@@ -29,6 +29,7 @@ const best: PatientContextItem = {
 const alt: PatientContextItem = {
   ...best,
   id: 'P002',
+  patientId: 'PT2',
   patientName: 'Budi Prasetyo',
   maskedNik: '317402******',
   isExactMatch: false,
@@ -36,27 +37,56 @@ const alt: PatientContextItem = {
 }
 
 describe('PatientContextConfirmStep', () => {
-  it('shows bestMatch prominently', () => {
+  it('shows bestMatch in selector list with badge', () => {
     const wrapper = mount(PatientContextConfirmStep, {
       props: { bestMatch: best, patients: [], pending: false },
     })
-    expect(wrapper.get('[data-testid="best-match"]').text()).toContain('Budi Santoso')
-    expect(wrapper.get('[data-testid="best-match"]').text()).toContain('Paling Cocok')
+    const card = wrapper.get('[data-testid="patient-P001"]')
+    expect(card.text()).toContain('Budi Santoso')
+    expect(card.text()).toContain('Paling Cocok')
   })
 
-  it('emits confirm with best match item', async () => {
+  it('emits confirm with best match item from list', async () => {
     const wrapper = mount(PatientContextConfirmStep, {
       props: { bestMatch: best, patients: [], pending: false },
     })
-    await wrapper.get('[data-testid="confirm-best-match"]').trigger('click')
+    await wrapper.get('[data-testid="patient-P001"]').trigger('click')
     expect(wrapper.emitted('confirm')).toEqual([[best]])
   })
 
   it('shows additional patients in list', () => {
     const wrapper = mount(PatientContextConfirmStep, {
-      props: { bestMatch: best, patients: [alt], pending: false },
+      props: { bestMatch: null, patients: [alt], pending: false },
     })
     expect(wrapper.get(`[data-testid="patient-${alt.id}"]`).text()).toContain('Budi Prasetyo')
+  })
+
+  it('paginates patients list at 3 items per page', async () => {
+    const alt2 = { ...alt, id: 'P003', patientId: 'PT3', patientName: 'Budi 3' }
+    const alt3 = { ...alt, id: 'P004', patientId: 'PT4', patientName: 'Budi 4' }
+
+    // total 4 items (best, alt, alt2, alt3) -> page size 3
+    const wrapper = mount(PatientContextConfirmStep, {
+      props: { bestMatch: best, patients: [alt, alt2, alt3], pending: false },
+    })
+
+    expect(wrapper.find(`[data-testid="patient-${best.id}"]`).exists()).toBe(true)
+    expect(wrapper.find(`[data-testid="patient-${alt.id}"]`).exists()).toBe(true)
+    expect(wrapper.find(`[data-testid="patient-${alt2.id}"]`).exists()).toBe(true)
+    expect(wrapper.find(`[data-testid="patient-${alt3.id}"]`).exists()).toBe(false) // page 2
+
+    // Pagination should exist
+    const pagination = wrapper.get('[data-testid="kiosk-pagination"]')
+    expect(pagination.text()).toContain('1/2')
+
+    // Click next page
+    await pagination.get('.next-btn').trigger('click')
+
+    expect(wrapper.find(`[data-testid="patient-${best.id}"]`).exists()).toBe(false)
+    expect(wrapper.find(`[data-testid="patient-${alt.id}"]`).exists()).toBe(false)
+    expect(wrapper.find(`[data-testid="patient-${alt2.id}"]`).exists()).toBe(false)
+    expect(wrapper.find(`[data-testid="patient-${alt3.id}"]`).exists()).toBe(true)
+    expect(pagination.text()).toContain('2/2')
   })
 
   it('emits intake when ambil antrian clicked', async () => {

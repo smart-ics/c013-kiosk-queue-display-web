@@ -20,6 +20,7 @@ export const appConfigSchema = z.object({
   kioskDefaultKarcisId: z.string().optional(),
   mappingLayananKarcis: z.array(mappingLayananKarcisSchema).optional(),
   mappingJmnLayananKarcis: z.array(mappingJmnLayananKarcisSchema).optional(),
+  theme: z.string().optional(),
 })
 
 export type AppConfig = z.infer<typeof appConfigSchema>
