@@ -30,6 +30,10 @@ defineEmits<{
       </div>
       <div class="smart-card-body">
         <div class="smart-info-row">
+          <span class="smart-info-label">No. Rekam Medis</span>
+          <span class="smart-info-value">{{ patient.noMR ?? patient.pasienId }}</span>
+        </div>
+        <div class="smart-info-row">
           <span class="smart-info-label">Poli Tujuan</span>
           <span class="smart-info-value">{{ service.poli.name }}</span>
         </div>
@@ -38,7 +42,7 @@ defineEmits<{
           <span class="smart-info-value">{{ service.dokter.name }}</span>
         </div>
         <div class="smart-info-row">
-          <span class="smart-info-label">Jadwal Praktek</span>
+          <span class="smart-info-label">Jam Praktik</span>
           <span class="smart-info-value">{{ service.jadwal.jamPraktek }}</span>
         </div>
       </div>

@@ -15,7 +15,6 @@ import {
   responseSepByNoPesertaSchema,
   responseSepByRegSchema,
   responseUploadSepUnionSchema,
-  karcisItemSchema,
   returnCreateWalkInSchema,
   rujukanSkpdResponseSchema,
   sepCreateBodySchema,
@@ -184,8 +183,16 @@ export function createHisApi(client: AdmissionQueueClient) {
     listKarcis(layananId: string): Promise<KarcisItem[]> {
       return client.getJson(
         `Karcis/${encodeURIComponent(layananId)}/list`,
-        z.array(karcisItemSchema),
-      )
+        z.array(
+          z.object({
+            karcisId: z.string(),
+            karcisName: z.string(),
+            layanan: z.object({ layananId: z.string(), layananName: z.string() }).optional(),
+            defaultTarif: z.object({ tarifId: z.string(), tarifName: z.string() }).optional(),
+            nilai: z.number().optional(),
+          }),
+        ),
+      ).then(list => list.map(item => ({ id: item.karcisId, name: item.karcisName })))
     },
 
     registerByBookingDirect(body: z.input<typeof payloadDirectRegisterRajalByBookingSchema>): Promise<ReturnCreateWalkIn> {
