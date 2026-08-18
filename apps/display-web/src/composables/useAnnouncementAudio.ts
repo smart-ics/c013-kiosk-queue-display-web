@@ -8,7 +8,10 @@ import type { CurrentLoketDisplayItem } from '@aq/shared-types'
 
 export type PlayQueueFn = (files: string[]) => Promise<void>
 
-export function defaultPlayQueue(files: string[]): Promise<void> {
+export function defaultPlayQueue(
+  files: string[],
+  onPlayBlocked?: () => void
+): Promise<void> {
   return new Promise(async (resolve) => {
     if (typeof window === 'undefined') {
       resolve()
@@ -26,10 +29,17 @@ export function defaultPlayQueue(files: string[]): Promise<void> {
           console.warn(`Failed to play audio file: ${url}`, e)
           next()
         }
-        audio.play().catch((err) => {
-          console.warn(`Audio play failed: ${url}`, err)
-          next()
-        })
+        audio.play()
+          .then(() => {
+            // Successful play
+          })
+          .catch((err) => {
+            console.warn(`Audio play failed: ${url}`, err)
+            if (err && (err.name === 'NotAllowedError' || String(err).includes('NotAllowedError'))) {
+              onPlayBlocked?.()
+            }
+            next()
+          })
       })
     }
     resolve()
@@ -44,7 +54,19 @@ export function useAnnouncementAudio(options: {
   const lastVersions = ref(new Map<string, number>())
   const seeded = ref(false)
   const announcing = ref(false)
-  const playQueue = options.playQueue ?? defaultPlayQueue
+  const isAudioLocked = ref(false)
+
+  const playQueueImpl = options.playQueue ?? ((files) => defaultPlayQueue(files, () => {
+    isAudioLocked.value = true
+  }))
+
+  function unlockAudio() {
+    isAudioLocked.value = false
+    if (typeof window !== 'undefined') {
+      const audio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAAA')
+      audio.play().catch((err) => console.warn('Unlock audio failed:', err))
+    }
+  }
 
   async function announceAll(candidates: AnnouncementCandidate[]) {
     if (!candidates.length) return
@@ -52,7 +74,7 @@ export function useAnnouncementAudio(options: {
     try {
       for (const candidate of candidates) {
         const queue = buildAudioQueue(candidate)
-        await playQueue(queue)
+        await playQueueImpl(queue)
       }
     } finally {
       announcing.value = false
@@ -86,6 +108,8 @@ export function useAnnouncementAudio(options: {
     announcing,
     seeded,
     lastVersions,
+    isAudioLocked,
+    unlockAudio,
     resetAnnouncementState,
   }
 }

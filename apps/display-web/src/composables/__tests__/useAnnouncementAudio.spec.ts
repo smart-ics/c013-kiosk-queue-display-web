@@ -161,4 +161,22 @@ describe('useAnnouncementAudio', () => {
 
     expect(playQueue).not.toHaveBeenCalled()
   })
+
+  it('triggers onPlayBlocked callback in defaultPlayQueue on NotAllowedError', async () => {
+    const originalAudio = globalThis.Audio
+    const mockPlay = vi.fn().mockRejectedValue({ name: 'NotAllowedError' })
+    globalThis.Audio = vi.fn().mockImplementation(() => ({
+      play: mockPlay,
+      addEventListener: vi.fn(),
+    })) as any
+
+    const onPlayBlocked = vi.fn()
+    
+    // We import defaultPlayQueue directly to test it
+    const { defaultPlayQueue: defaultPlayQueueFn } = await import('../useAnnouncementAudio')
+    await defaultPlayQueueFn(['chime.wav'], onPlayBlocked)
+
+    expect(onPlayBlocked).toHaveBeenCalled()
+    globalThis.Audio = originalAudio
+  })
 })

@@ -1028,3 +1028,72 @@ body {
   box-shadow: var(--shadow-card);
   width: min(600px, calc(100% - 2rem));
 }
+
+/* Audio Autoplay Blocked Banner */
+.audio-blocked-banner {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--brand-orange, #f97316);
+  color: #ffffff;
+  padding: 16px 24px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(249, 115, 22, 0.4), 0 8px 10px -6px rgba(249, 115, 22, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  z-index: 9999;
+  cursor: pointer;
+  animation: slideUp 0.3s ease-out;
+  max-width: 90%;
+  width: 600px;
+}
+
+.audio-blocked-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.audio-blocked-content .warning-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  stroke: #ffffff;
+}
+
+.btn-enable-audio {
+  background-color: #ffffff;
+  color: var(--brand-orange, #f97316);
+  border: none;
+  padding: 8px 16px;
+  font-weight: 700;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-enable-audio:hover {
+  background-color: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translate(-50%, 100px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
