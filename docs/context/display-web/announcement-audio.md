@@ -87,3 +87,14 @@ Karena kebijakan keamanan browser modern yang memblokir pemutaran audio otomatis
 * **Banner Interaktif UI**: Muncul spanduk melayang oranye di bagian bawah layar Display (`.audio-blocked-banner`) bertuliskan *"Browser memblokir suara otomatis. Klik untuk mengaktifkan suara pemanggilan."*.
 * **Unlock Alur Audio**: Ketika pengguna/petugas mengeklik spanduk tersebut, method `unlockAudio()` dipicu. Fungsi ini memutar audio sunyi mini (menggunakan buffer base64 WAV inline 44-byte) untuk membuka kunci konteks audio pada browser tersebut secara instan tanpa membebani memori, lalu menyembunyikan spanduk. Pemanggilan berikutnya akan berbunyi secara otomatis.
 
+---
+
+## 6. Antrean Pemutaran Berurutan (Sequential Queue Player)
+
+Untuk mencegah bentrokan suara saat beberapa loket melakukan pemanggilan secara beruntun dalam waktu bersamaan/hampir bersamaan, sistem menggunakan mekanisme **Task Queue**:
+* Setiap request pemanggilan baru akan dimasukkan ke dalam antrean array memori (`announcementQueue`).
+* Fungsi pemutar (`processQueue()`) akan mengeksekusi antrean tersebut satu per satu secara sekuensial (FIFO - First In First Out).
+* Panggilan baru tidak akan menimpa atau menabrak panggilan aktif, melainkan menunggu hingga panggilan sebelumnya selesai dibacakan seutuhnya.
+* Jika terjadi pembatasan autoplay saat antrean berjalan, antrean dibersihkan dan panggilan terakhir disimpan di `lastCandidates` agar dapat diputar ulang secara otomatis begitu pengguna mengeklik tombol unblock.
+
+
