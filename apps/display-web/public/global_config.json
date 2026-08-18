@@ -1,5 +1,6 @@
 {
   "bilregApiBase": "http://dev.smart-ics.com:8888/bilregapi/api",
+  "bilregApiHubBase": "http://dev.smart-ics.com:8888/bilregapi/hubs/admission-queue",
   "branding": {
     "name": "RS Sehat Waluyo",
     "taglineId": "Sistem Antrian Admission",
