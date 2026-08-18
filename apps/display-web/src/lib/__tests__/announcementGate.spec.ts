@@ -145,5 +145,14 @@ describe('buildAudioQueue', () => {
       'phrases/loket.wav',
       'letters/a.wav',
     ])
+
+    expect(buildAudioQueue({ loketKey: 'L1', queueLabel: 'B60' })).toEqual([
+      'soundrs.m4a',
+      'phrases/nomor-antrian.wav',
+      'letters/b.wav',
+      'numbers/60.wav',
+      'phrases/silakan-menuju.wav',
+      'counters/loket-1.wav',
+    ])
   })
 })

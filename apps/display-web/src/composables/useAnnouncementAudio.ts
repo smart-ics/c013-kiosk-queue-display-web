@@ -24,21 +24,32 @@ export function defaultPlayQueue(
       const url = `${audioBase}/${file}`
       await new Promise<void>((next) => {
         const audio = new Audio(url)
-        audio.onended = () => next()
+        let resolved = false
+        const done = () => {
+          if (!resolved) {
+            resolved = true
+            next()
+          }
+        }
+        audio.onended = () => done()
         audio.onerror = (e) => {
           console.warn(`Failed to play audio file: ${url}`, e)
-          next()
+          done()
         }
         audio.play()
           .then(() => {
-            // Successful play
+            if (file === 'soundrs.m4a') {
+              setTimeout(() => {
+                done()
+              }, 1500)
+            }
           })
           .catch((err) => {
             console.warn(`Audio play failed: ${url}`, err)
             if (err && (err.name === 'NotAllowedError' || String(err).includes('NotAllowedError'))) {
               onPlayBlocked?.()
             }
-            next()
+            done()
           })
       })
     }

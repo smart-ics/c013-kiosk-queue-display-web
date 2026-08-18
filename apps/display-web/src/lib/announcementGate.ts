@@ -134,7 +134,12 @@ export function buildAudioQueue(candidate: {
   queue.push('phrases/silakan-menuju.wav')
 
   // 5. Loket / Counter phrase and number
-  const loketNum = parseInt(candidate.loketKey, 10)
+  let cleanLoketKey = candidate.loketKey.trim()
+  if (/^[lL]\d+$/.test(cleanLoketKey)) {
+    cleanLoketKey = cleanLoketKey.substring(1)
+  }
+
+  const loketNum = parseInt(cleanLoketKey, 10)
   if (!isNaN(loketNum) && loketNum >= 1 && loketNum <= 10) {
     queue.push(`counters/loket-${loketNum}.wav`)
   } else {
@@ -142,8 +147,8 @@ export function buildAudioQueue(candidate: {
     if (!isNaN(loketNum) && loketNum > 0) {
       queue.push(...decomposeNumber(loketNum))
     } else {
-      const cleanLoketKey = candidate.loketKey.trim().toLowerCase()
-      for (const char of cleanLoketKey) {
+      const lowerKey = cleanLoketKey.toLowerCase()
+      for (const char of lowerKey) {
         if (/[a-z]/.test(char)) {
           queue.push(`letters/${char}.wav`)
         } else if (/[0-9]/.test(char)) {
