@@ -60,16 +60,25 @@ export function useAnnouncementAudio(options: {
     isAudioLocked.value = true
   }))
 
+  const lastCandidates = ref<AnnouncementCandidate[]>([])
+
   function unlockAudio() {
     isAudioLocked.value = false
     if (typeof window !== 'undefined') {
       const audio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAAA')
-      audio.play().catch((err) => console.warn('Unlock audio failed:', err))
+      audio.play()
+        .then(() => {
+          if (lastCandidates.value.length > 0) {
+            void announceAll(lastCandidates.value)
+          }
+        })
+        .catch((err) => console.warn('Unlock audio failed:', err))
     }
   }
 
   async function announceAll(candidates: AnnouncementCandidate[]) {
     if (!candidates.length) return
+    lastCandidates.value = candidates
     announcing.value = true
     try {
       for (const candidate of candidates) {
