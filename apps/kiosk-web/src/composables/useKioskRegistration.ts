@@ -27,10 +27,9 @@ import { canTransition, type KioskFlow } from '../lib/flow'
 import {
   computeNeedsEligibility,
   deriveBookingJaminan,
-  deriveWalkinJaminan,
   UMAT_TIPE_JAMINAN_ID,
 } from '../lib/eligibility'
-import { ASSISTANCE_RESET_MS, IDLE_RESET_MS, KIOSK_USER_ID } from '../lib/constants'
+import { IDLE_RESET_MS, KIOSK_USER_ID } from '../lib/constants'
 import { mapErrorToFailureCode, type FailureCode } from '../lib/failureCode'
 import type { BiometricVerdict } from '../lib/biometric'
 import type { RegistrationPrintContext, RegistrationPrintResult } from './useKioskSelfPrint'
@@ -131,6 +130,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   const assistanceServicePointId = ref<string | null>(null)
   const patientContextResult = ref<PatientContextSearchResponse | null>(null)
   const selectedContextPatient = ref<PatientContextItem | null>(null)
+  const patientPolicies = ref<Polis[]>([])
   const errorContext = ref<FailureContext | null>(null)
   const biometricVerdict = ref<BiometricVerdict | null>(null)
   const activeBpjsContext = ref<{
@@ -141,7 +141,6 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
 
   const lastActivity = ref(deps.now ? deps.now() : Date.now())
   let idleTimer: number | null = null
-  let autoHomeTimer: number | null = null
 
   function touch() {
     lastActivity.value = deps.now ? deps.now() : Date.now()
@@ -159,22 +158,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     transition('FAILURE')
   }
 
-  function clearAutoHome() {
-    if (autoHomeTimer !== null) {
-      window.clearTimeout(autoHomeTimer)
-      autoHomeTimer = null
-    }
-  }
-
-  function scheduleAutoHome(ms: number) {
-    clearAutoHome()
-    autoHomeTimer = window.setTimeout(() => {
-      goHome()
-    }, ms)
-  }
-
   function goHome() {
-    clearAutoHome()
     flow.value = 'HOME'
     mode.value = null
     businessDate.value = null
@@ -192,6 +176,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     errorContext.value = null
     patientContextResult.value = null
     selectedContextPatient.value = null
+    patientPolicies.value = []
     biometricVerdict.value = null
     activeBpjsContext.value = null
     submitting.value = false
@@ -244,6 +229,20 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         selectedBooking.value = booking
         const detail = await deps.getBookingDetail(booking.bookingId)
         const polisList = await deps.listPolis(detail.reg.pasienId)
+        
+        const hasBpjsPolicy = polisList.some(p => {
+          const name = (p.tipeJaminan?.tipeJaminanName || '').toLowerCase()
+          const id = (p.tipeJaminan?.tipeJaminanId || '').toLowerCase()
+          return name.includes('bpjs') || name.includes('jkn') || id.includes('bpjs') || id.includes('jkn')
+        })
+        if (detail.coverageInfo?.noPeserta && !hasBpjsPolicy) {
+          setFailure(
+            'BPJS_VALIDATION_FAILED',
+            'Data kartu BPJS Anda belum terdaftar di rumah sakit ini. Silakan menuju Loket Pendaftaran untuk pendaftaran pertama kali.'
+          )
+          return
+        }
+
         const jaminan = deriveBookingJaminan(detail, polisList)
         const group =
           jaminan.tipeJaminanId === UMAT_TIPE_JAMINAN_ID
@@ -293,11 +292,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         }
         selectedContextPatient.value = item
         const polisList = await deps.listPolis(item.patientId)
-        const jaminan = deriveWalkinJaminan(polisList)
-        const group =
-          jaminan.tipeJaminanId === UMAT_TIPE_JAMINAN_ID
-            ? null
-            : await deps.getGroupJaminanMap(jaminan.tipeJaminanId)
+        patientPolicies.value = polisList
         selectedPatient.value = {
           pasienId: item.patientId,
           pasienName: item.patientName,
@@ -305,19 +300,127 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
           noMR: item.id,
           tglLahir: item.birthDate,
         }
-        walkinEligibility.value = {
+        mode.value = 'walkin'
+        transition('WALKIN_SELECT_GUARANTEE')
+      } catch (error) {
+        setFailure(mapErrorToFailureCode(error), messageFromError(error))
+      }
+    })
+  }
+
+  function selectWalkinGuarantee(jaminan: {
+    tipeJaminanId: string
+    tipeJaminanName: string
+    noPeserta: string | null
+  }): Promise<void> {
+    touch()
+    return withSubmit(async () => {
+      try {
+        if (jaminan.tipeJaminanId === 'BPJS_FALLBACK') {
+          setFailure(
+            'BPJS_VALIDATION_FAILED',
+            'Data kartu BPJS Anda belum terdaftar di rumah sakit ini. Silakan menuju Loket Pendaftaran untuk pendaftaran pertama kali.'
+          )
+          return
+        }
+        const group =
+          jaminan.tipeJaminanId === UMAT_TIPE_JAMINAN_ID
+            ? null
+            : await deps.getGroupJaminanMap(jaminan.tipeJaminanId)
+        const eligibility = {
           tipeJaminanId: jaminan.tipeJaminanId,
           tipeJaminanName: jaminan.tipeJaminanName,
           noPeserta: jaminan.noPeserta,
           needsEligibility: computeNeedsEligibility(jaminan.tipeJaminanId, group),
         }
-        walkinNoPeserta.value = ''
-        mode.value = 'walkin'
-        transition('WALKIN_SELECT_SERVICE')
+        walkinEligibility.value = eligibility
+        walkinNoPeserta.value = jaminan.noPeserta || ''
+
+        if (eligibility.needsEligibility) {
+          await handleBpjsVerificationAndTransitionToService(eligibility)
+        } else {
+          transition('WALKIN_SELECT_SERVICE')
+        }
       } catch (error) {
         setFailure(mapErrorToFailureCode(error), messageFromError(error))
       }
     })
+  }
+
+  async function handleBpjsVerificationAndTransitionToService(
+    eligibility: EligibilityStatus,
+  ): Promise<void> {
+    const noPeserta = eligibility.noPeserta || walkinNoPeserta.value
+    if (!noPeserta) {
+      throw new Error('Nomor kartu BPJS tidak ditemukan.')
+    }
+
+    const res = await deps.getRujukanSkpd(noPeserta)
+    const rujukan = res.rujukan as Record<string, any> | null
+    let extracted: {
+      noRujukan: string
+      kelasRawatId: string
+      diagnosaId: string
+      tglLahir: string
+    } | null = null
+
+    if (rujukan && rujukan.noRujukan) {
+      extracted = {
+        noRujukan: rujukan.noRujukan as string,
+        kelasRawatId: res.peserta.hakKelas.kode,
+        diagnosaId: (rujukan.diagnosa?.kode || 'Z00.0') as string,
+        tglLahir: res.peserta.tglLahir,
+      }
+    } else {
+      const skdp = res.listSkdp && (res.listSkdp[0] as Record<string, any> | null)
+      if (skdp && skdp.noSkdp) {
+        extracted = {
+          noRujukan: skdp.noSkdp as string,
+          kelasRawatId: res.peserta.hakKelas.kode,
+          diagnosaId: (skdp.diagnosa?.kode || 'Z00.0') as string,
+          tglLahir: res.peserta.tglLahir,
+        }
+      }
+    }
+
+    if (!extracted) {
+      throw new Error(
+        'Rujukan atau SKDP BPJS tidak aktif/tidak ditemukan. Silakan ambil antrian pendaftaran manual.',
+      )
+    }
+
+    activeBpjsContext.value = {
+      noRujukan: extracted.noRujukan,
+      kelasRawatId: extracted.kelasRawatId,
+      diagnosaId: extracted.diagnosaId,
+    }
+
+    const currentBusinessDate = businessDate.value || (await ensureBusinessDate())
+    const age = calculateAge(extracted.tglLahir, currentBusinessDate)
+
+    if (age < 17) {
+      transition('WALKIN_SELECT_SERVICE')
+    } else {
+      transition('BIOMETRIC_VERIFY')
+      await runBiometricForWalkin()
+    }
+  }
+
+  async function runBiometricForWalkin(): Promise<void> {
+    biometricVerdict.value = null
+    try {
+      const verdict = await deps.verifyBiometric()
+      biometricVerdict.value = verdict
+      if (verdict.outcome === 'SUCCESS' || verdict.outcome === 'READY') {
+        transition('WALKIN_SELECT_SERVICE')
+      } else if (verdict.outcome === 'TIMEOUT') {
+        setFailure('BIOMETRIC_TIMEOUT', 'Verifikasi biometrik melewati batas waktu.')
+      } else {
+        setFailure('BIOMETRIC_FAILED', 'Verifikasi biometrik gagal.')
+      }
+    } catch (error) {
+      setFailure('BACKEND_ERROR', messageFromError(error))
+    }
   }
 
   function cancelPatientContext() {
@@ -584,12 +687,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     if (submitting.value) return Promise.resolve()
     return withSubmit(async () => {
       try {
-        const eligibility = walkinEligibility.value
-        if (eligibility?.needsEligibility) {
-          await handleBpjsVerificationAndRegistration('walkin', eligibility)
-        } else {
-          await register('walkin')
-        }
+        await register('walkin')
       } catch (error) {
         setFailure(mapErrorToFailureCode(error), messageFromError(error))
       }
@@ -612,8 +710,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         assistanceTicket.value = ticket
         assistanceServicePointId.value = servicePointId
         transition('ASSISTANCE_QUEUE')
-        const printed = await deps.printQueueTicket(ticket, deps.offeringsName?.(servicePointId))
-        if (printed.printed) scheduleAutoHome(ASSISTANCE_RESET_MS)
+        await deps.printQueueTicket(ticket, deps.offeringsName?.(servicePointId))
       } catch (error) {
         errorContext.value = {
           code: mapErrorToFailureCode(error),
@@ -669,7 +766,6 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
 
   function dispose() {
     stopIdleReset()
-    clearAutoHome()
   }
 
   return {
@@ -690,6 +786,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     assistanceServicePointId,
     patientContextResult,
     selectedContextPatient,
+    patientPolicies,
     errorContext,
     biometricVerdict,
     startBookingFlow,
@@ -699,6 +796,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     confirmBooking,
     confirmPatientContext,
     cancelPatientContext,
+    selectWalkinGuarantee,
     selectService,
     setWalkinNoPeserta,
     confirmWalkin,

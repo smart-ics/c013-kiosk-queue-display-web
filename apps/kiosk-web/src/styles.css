@@ -71,6 +71,8 @@
   --border: #e5e7eb;
   --border-soft: #efe9e0;
   --danger: #b42318;
+  --danger-soft: #fef2f2;
+  --danger-border: #fca5a5;
   --ok: #067647;
 
   --blue: #2563eb;
@@ -1353,6 +1355,7 @@ button {
   background: var(--color-surface-card);
   border: 2px solid var(--border-soft);
   border-radius: 20px;
+  padding: 16px 20px;
   cursor: pointer;
   box-shadow: var(--elevation-level-1);
   transition: all 150ms var(--motion-easing-standard);

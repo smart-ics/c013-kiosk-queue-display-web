@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
-import type { DeviceConfig } from '@aq/shared-types'
+import type { DeviceConfig, AdmissionServicePoint } from '@aq/shared-types'
 import { DeviceConfigInvalidError, DeviceConfigNotFoundError } from '@aq/device-config'
 import {
   getAdmissionQueueApi,
@@ -26,6 +26,7 @@ import BookingSearchStep from './steps/BookingSearchStep.vue'
 import BookingConfirmStep from './steps/BookingConfirmStep.vue'
 import PatientContextConfirmStep from './steps/PatientContextConfirmStep.vue'
 import WalkinServiceStep from './steps/WalkinServiceStep.vue'
+import WalkinSelectGuaranteeStep from './steps/WalkinSelectGuaranteeStep.vue'
 import WalkinConfirmStep from './steps/WalkinConfirmStep.vue'
 import BiometricStep from './steps/BiometricStep.vue'
 import RegistrationSuccessStep from './steps/RegistrationSuccessStep.vue'
@@ -176,6 +177,12 @@ const assistanceServicePointName = computed(() => {
   return offerings.value.find((sp) => sp.servicePointId === id)?.displayName
 })
 
+function isBpjs(sp: AdmissionServicePoint): boolean {
+  const name = (sp.displayName || '').toLowerCase()
+  const id = (sp.servicePointId || '').toLowerCase()
+  return name.includes('bpjs') || name.includes('jkn') || id.includes('bpjs') || id.includes('jkn')
+}
+
 function onResetToSelection() {
   resetPrintState()
   resetToSelection()
@@ -241,6 +248,8 @@ onMounted(() => {
 onUnmounted(() => {
   registration.dispose()
 })
+
+const isBookingMode = computed(() => registration.mode.value === 'booking')
 
 const loadingMessage = computed(() => {
   if (bootError.value) return null
@@ -318,6 +327,7 @@ const loadingMessage = computed(() => {
               'BOOKING_SEARCH',
               'PATIENT_CONTEXT_SEARCH',
               'PATIENT_CONTEXT_CONFIRM',
+              'WALKIN_SELECT_GUARANTEE',
               'WALKIN_SELECT_SERVICE',
               'BOOKING_CONFIRM',
               'WALKIN_CONFIRM',
@@ -327,17 +337,25 @@ const loadingMessage = computed(() => {
             ].includes(registration.flow.value)
           "
         >
+          <!-- 1. Identifikasi -->
           <div
             class="step-item"
             :class="{
-              completed: [
-                'WALKIN_SELECT_SERVICE',
-                'BOOKING_CONFIRM',
-                'WALKIN_CONFIRM',
-                'BIOMETRIC_VERIFY',
-                'REGISTRATION_SUCCESS',
-                'ASSISTANCE_QUEUE',
-              ].includes(registration.flow.value),
+              completed: isBookingMode
+                ? [
+                    'BOOKING_CONFIRM',
+                    'BIOMETRIC_VERIFY',
+                    'REGISTRATION_SUCCESS',
+                    'ASSISTANCE_QUEUE',
+                  ].includes(registration.flow.value)
+                : [
+                    'WALKIN_SELECT_GUARANTEE',
+                    'BIOMETRIC_VERIFY',
+                    'WALKIN_SELECT_SERVICE',
+                    'WALKIN_CONFIRM',
+                    'REGISTRATION_SUCCESS',
+                    'ASSISTANCE_QUEUE',
+                  ].includes(registration.flow.value),
               active: [
                 'BOOKING_SEARCH',
                 'PATIENT_CONTEXT_SEARCH',
@@ -348,36 +366,74 @@ const loadingMessage = computed(() => {
             1. Identifikasi
           </div>
           <div class="step-divider"></div>
+
+          <!-- 2. Jaminan -->
           <div
             class="step-item"
             :class="{
-              completed: [
-                'BOOKING_CONFIRM',
-                'WALKIN_CONFIRM',
+              completed: isBookingMode
+                ? [
+                    'BOOKING_CONFIRM',
+                    'BIOMETRIC_VERIFY',
+                    'REGISTRATION_SUCCESS',
+                    'ASSISTANCE_QUEUE',
+                  ].includes(registration.flow.value)
+                : [
+                    'WALKIN_SELECT_SERVICE',
+                    'WALKIN_CONFIRM',
+                    'REGISTRATION_SUCCESS',
+                    'ASSISTANCE_QUEUE',
+                  ].includes(registration.flow.value),
+              active: !isBookingMode && [
+                'WALKIN_SELECT_GUARANTEE',
                 'BIOMETRIC_VERIFY',
-                'REGISTRATION_SUCCESS',
-                'ASSISTANCE_QUEUE',
               ].includes(registration.flow.value),
-              active: registration.flow.value === 'WALKIN_SELECT_SERVICE',
             }"
           >
-            2. Layanan
+            2. Jaminan
           </div>
           <div class="step-divider"></div>
+
+          <!-- 3. Layanan -->
+          <div
+            class="step-item"
+            :class="{
+              completed: isBookingMode
+                ? [
+                    'BOOKING_CONFIRM',
+                    'BIOMETRIC_VERIFY',
+                    'REGISTRATION_SUCCESS',
+                    'ASSISTANCE_QUEUE',
+                  ].includes(registration.flow.value)
+                : [
+                    'WALKIN_CONFIRM',
+                    'REGISTRATION_SUCCESS',
+                    'ASSISTANCE_QUEUE',
+                  ].includes(registration.flow.value),
+              active: !isBookingMode && registration.flow.value === 'WALKIN_SELECT_SERVICE',
+            }"
+          >
+            3. Layanan
+          </div>
+          <div class="step-divider"></div>
+
+          <!-- 4. Konfirmasi -->
           <div
             class="step-item"
             :class="{
               completed: ['REGISTRATION_SUCCESS', 'ASSISTANCE_QUEUE'].includes(
                 registration.flow.value,
               ),
-              active: ['BOOKING_CONFIRM', 'WALKIN_CONFIRM', 'BIOMETRIC_VERIFY'].includes(
-                registration.flow.value,
-              ),
+              active: isBookingMode
+                ? ['BOOKING_CONFIRM', 'BIOMETRIC_VERIFY'].includes(registration.flow.value)
+                : registration.flow.value === 'WALKIN_CONFIRM',
             }"
           >
-            3. Konfirmasi
+            4. Konfirmasi
           </div>
           <div class="step-divider"></div>
+
+          <!-- 5. Selesai -->
           <div
             class="step-item"
             :class="{
@@ -387,7 +443,7 @@ const loadingMessage = computed(() => {
               ),
             }"
           >
-            4. Selesai
+            5. Selesai
           </div>
         </div>
 
@@ -426,6 +482,13 @@ const loadingMessage = computed(() => {
             v-else-if="registration.flow.value === 'BIOMETRIC_VERIFY'"
             :pending="registration.submitting.value"
             :error-message="null"
+          />
+          <WalkinSelectGuaranteeStep
+            v-else-if="registration.flow.value === 'WALKIN_SELECT_GUARANTEE'"
+            :policies="registration.patientPolicies.value"
+            :pending="registration.submitting.value"
+            @select="registration.selectWalkinGuarantee"
+            @back="onHome"
           />
           <WalkinServiceStep
             v-else-if="registration.flow.value === 'WALKIN_SELECT_SERVICE'"
@@ -476,9 +539,22 @@ const loadingMessage = computed(() => {
       </template>
 
       <template v-else>
-        <section class="panel" style="max-height: 100%; display: flex; flex-direction: column">
-          <h1>Ambil Nomor Antrian</h1>
-          <p>
+        <section
+          class="panel"
+          style="
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            padding: 0;
+            width: 100%;
+            max-width: 900px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+          "
+        >
+          <h1 style="text-align: center; margin-bottom: 24px">Ambil Nomor Antrian</h1>
+          <p style="text-align: center; margin-bottom: 32px">
             Station <strong>{{ stationId }}</strong> — pilih Service Point.
           </p>
 
@@ -486,6 +562,7 @@ const loadingMessage = computed(() => {
             v-if="loadingMessage"
             class="status"
             :class="{ error: !!servicePointsQuery.isError.value }"
+            style="text-align: center;"
           >
             {{ loadingMessage }}
           </p>
@@ -495,47 +572,98 @@ const loadingMessage = computed(() => {
             class="status error"
             :class="{ uncertain: errorUncertain }"
             data-testid="intake-error"
+            style="text-align: center;"
           >
             {{ errorMessage }}
           </p>
 
-          <div class="scrollable-content" style="padding-bottom: 24px">
-            <div v-if="offerings.length" class="sp-grid">
+          <div class="scrollable-content" style="padding-bottom: 24px;">
+            <div v-if="offerings.length" class="kiosk-grid-2x2">
               <button
                 v-for="sp in offerings"
                 :key="sp.servicePointId"
                 type="button"
-                class="sp-btn"
+                class="radio-card"
                 :disabled="!canSubmit"
                 :data-testid="`sp-${sp.servicePointId}`"
                 @click="submitIntake(sp.servicePointId)"
+                style="min-height: 88px;"
               >
-                {{ sp.displayName }}
-                <small>{{ sp.queuePrefix }} · {{ sp.servicePointId }}</small>
+                <!-- Card Icon -->
+                <div
+                  class="radio-card-icon"
+                  :style="{
+                    background: isBpjs(sp) ? 'var(--green-soft)' : 'var(--brand-soft)',
+                    color: isBpjs(sp) ? 'var(--green-strong)' : 'var(--brand-strong)'
+                  }"
+                >
+                  <!-- Card/BPJS Icon vs Patient Icon -->
+                  <svg v-if="isBpjs(sp)" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="16" rx="2" />
+                    <line x1="7" y1="8" x2="17" y2="8" />
+                    <line x1="7" y1="12" x2="17" y2="12" />
+                    <line x1="7" y1="16" x2="13" y2="16" />
+                  </svg>
+                  <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+
+                <!-- Labels -->
+                <div class="radio-card-content">
+                  <h4 class="radio-card-title">{{ sp.displayName }}</h4>
+                  <p class="radio-card-subtitle">{{ sp.queuePrefix }} - {{ sp.displayName }}</p>
+                </div>
+
+                <!-- Select Arrow -->
+                <div
+                  class="select-arrow"
+                  :style="{
+                    background: isBpjs(sp) ? 'var(--green-soft)' : '',
+                    color: isBpjs(sp) ? 'var(--green-strong)' : ''
+                  }"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="13 17 18 12 13 7"></polyline>
+                    <polyline points="6 17 11 12 6 7"></polyline>
+                  </svg>
+                </div>
               </button>
             </div>
           </div>
 
-          <div v-if="errorMessage" class="actions" style="margin-top: 16px">
+          <div v-if="errorMessage" class="actions" style="margin-top: 16px; justify-content: center;">
             <button
               type="button"
               class="secondary-btn"
               :disabled="pending"
               data-testid="retry-intake"
               @click="retryLast"
+              style="min-width: 160px;"
             >
               Coba lagi
             </button>
           </div>
 
           <div
-            class="actions"
-            style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px"
+            class="actions-footer"
+            style="
+              display: flex;
+              justify-content: center;
+              width: 100%;
+              padding-top: 16px;
+              border-top: 1px solid var(--border);
+            "
           >
-            <button type="button" class="secondary-btn" @click="onHome">Kembali ke menu</button>
+            <button type="button" class="secondary-btn" @click="onHome" style="min-width: 200px;">
+              Kembali ke menu
+            </button>
           </div>
 
-          <p v-if="pending" class="status" style="margin-top: 12px">Sedang mengambil nomor…</p>
+          <p v-if="pending" class="status" style="text-align: center; margin-top: 12px; font-weight: 600; color: var(--text-secondary);">
+            Sedang mengambil nomor…
+          </p>
         </section>
       </template>
     </div>
