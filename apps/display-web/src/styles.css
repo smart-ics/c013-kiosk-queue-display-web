@@ -342,10 +342,11 @@ body {
 
 .hero-queue-number {
   font-size: clamp(4.5rem, 11.5vh, 8.2rem);
-  font-weight: 900;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   line-height: 0.95;
   margin: 0.1rem 0;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
   color: #ffffff;
   text-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
   animation: hero-subtle-float 4s ease-in-out infinite;
@@ -625,9 +626,11 @@ body {
 
 .card-queue-number {
   font-size: clamp(2rem, 4.5vh, 3.4rem);
-  font-weight: 900;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
   margin: 0;
+  letter-spacing: 0.03em;
 }
 
 .card-bottom-row {
@@ -877,12 +880,12 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: clamp(0.5rem, 1vh, 0.85rem) clamp(0.75rem, 1.2vw, 1.15rem);
+  padding: clamp(0.7rem, 1.5vh, 1.1rem) clamp(0.75rem, 1.2vw, 1.15rem);
   box-shadow: var(--shadow-card);
   display: flex;
   justify-content: space-around;
   align-items: center;
-  flex: 0.65 1 0;
+  flex: 0.95 1 0; /* increased from 0.65 to fill vertical space */
   min-height: 0;
   overflow: hidden;
 }
@@ -891,14 +894,14 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
+  gap: 0.35rem; /* increased from 0.15rem */
   flex: 1 1 0;
   min-height: 0;
 }
 
 .stat-icon-wrapper {
-  width: clamp(1.6rem, 2.8vh, 2rem);
-  height: clamp(1.6rem, 2.8vh, 2rem);
+  width: clamp(2.2rem, 3.8vh, 2.8rem); /* increased from 1.6-2rem */
+  height: clamp(2.2rem, 3.8vh, 2.8rem);
   border-radius: 50%;
   background: var(--brand-blue-soft);
   display: flex;
@@ -908,20 +911,20 @@ body {
 }
 
 .stat-icon-wrapper svg {
-  width: clamp(0.9rem, 1.6vh, 1.15rem);
-  height: clamp(0.9rem, 1.6vh, 1.15rem);
+  width: clamp(1.2rem, 2.1vh, 1.5rem); /* increased from 0.9-1.15rem */
+  height: clamp(1.2rem, 2.1vh, 1.5rem);
   color: var(--brand-blue);
 }
 
 .stat-count-value {
-  font-size: clamp(1.2rem, 2.6vh, 1.65rem);
-  font-weight: 900;
+  font-size: clamp(1.8rem, 3.8vh, 2.4rem); /* increased from 1.2-1.65rem */
+  font-weight: 700; /* changed from 900 */
   color: var(--text);
   line-height: 1;
 }
 
 .stat-count-label {
-  font-size: clamp(0.55rem, 1vh, 0.68rem);
+  font-size: clamp(0.7rem, 1.2vh, 0.85rem); /* increased from 0.55-0.68rem */
   font-weight: 700;
   color: var(--text-tertiary);
   letter-spacing: 0.04em;
@@ -1095,5 +1098,36 @@ body {
     transform: translate(-50%, 0);
     opacity: 1;
   }
+}
+
+/* Real Video Player Styling */
+.real-video-player {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+
+/* Slide Up Transition for Footer Carousel */
+.carousel-container-vertical {
+  height: clamp(14px, 2.2vh, 20px);
+  overflow: hidden;
+  position: relative;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
+}
+
+.slide-up-enter-from {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+.slide-up-leave-to {
+  transform: translateY(-100%);
+  opacity: 0;
 }
 

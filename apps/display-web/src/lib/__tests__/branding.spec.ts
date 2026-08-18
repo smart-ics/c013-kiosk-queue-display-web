@@ -44,5 +44,21 @@ describe('display brandingService.initialize', () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('network'))
     const branding = await brandingService.initialize('/')
     expect(branding.name).toBe('RS Sehat Sejahtera')
+    expect(brandingService.getHospitalServices()).toEqual([])
+    expect(brandingService.getVideoPath()).toBe('video/movie.mp4')
+  })
+
+  it('loads hospitalServices and videoPath from global_config.json', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        branding: { name: 'RS Bahagia' },
+        videoPath: 'custom-video.mp4',
+        hospitalServices: ['Layanan 1', 'Layanan 2'],
+      }),
+    } as Response)
+    await brandingService.initialize('/')
+    expect(brandingService.getHospitalServices()).toEqual(['Layanan 1', 'Layanan 2'])
+    expect(brandingService.getVideoPath()).toBe('custom-video.mp4')
   })
 })

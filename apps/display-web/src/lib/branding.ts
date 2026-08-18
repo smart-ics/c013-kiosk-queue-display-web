@@ -16,10 +16,14 @@ export function parseBranding(raw: unknown): Branding {
 
 class BrandingService {
   private branding: Branding = brandingSchema.parse({})
+  private hospitalServices: string[] = []
+  private videoPath: string = 'video/movie.mp4'
 
   async initialize(baseUrl: string = '/'): Promise<Branding> {
     const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
     this.branding = brandingSchema.parse({})
+    this.hospitalServices = []
+    this.videoPath = 'video/movie.mp4'
     try {
       const res = await fetch(`${base}global_config.json?t=${Date.now()}`, {
         cache: 'no-store',
@@ -28,6 +32,14 @@ class BrandingService {
       if (!res.ok) return this.branding
       const data = await res.json()
       this.branding = parseBranding(data)
+      if (data && typeof data === 'object') {
+        if (Array.isArray(data.hospitalServices)) {
+          this.hospitalServices = data.hospitalServices.map(String)
+        }
+        if (typeof data.videoPath === 'string' && data.videoPath.trim()) {
+          this.videoPath = data.videoPath.trim()
+        }
+      }
     } catch {
       this.branding = brandingSchema.parse({})
     }
@@ -36,6 +48,14 @@ class BrandingService {
 
   getBranding(): Branding {
     return this.branding
+  }
+
+  getHospitalServices(): string[] {
+    return this.hospitalServices
+  }
+
+  getVideoPath(): string {
+    return this.videoPath
   }
 }
 
