@@ -16,7 +16,7 @@ Sistem pemanggilan diubah dari Text-to-Speech (TTS) bawaan browser (*SpeechSynth
 ### A. Alur Rangkaian Pemanggilan (Audio Queue Sequence)
 Setiap kali ada pemanggilan nomor antrean baru, sistem akan memutar rangkaian file audio dengan urutan berikut:
 
-1. **Suara Bel / Chime** (`chime.wav`) sebagai nada pembuka.
+1. **Suara Bel / Chime** (`soundrs.m4a`) sebagai nada pembuka.
 2. **Frasa Pembuka** (`phrases/nomor-antrian.wav`).
 3. **Ejaan Huruf Awalan** (jika ada, misal: `letters/a.wav` untuk awalan "A").
 4. **Ejaan Bilangan Nomor Antrean** (hasil dekomposisi angka dalam Bahasa Indonesia, misal: `numbers/15.wav`).
