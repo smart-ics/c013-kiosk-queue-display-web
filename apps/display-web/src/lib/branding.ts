@@ -1,8 +1,10 @@
 import { z } from 'zod'
 
 export const brandingSchema = z.object({
-  name: z.string().default('RS Sehat Waluyo'),
-  subTag: z.string().default('Sistem Antrian Admission'),
+  name: z.string().default('RS Sehat Sejahtera'),
+  taglineId: z.string().default('Melayani dengan hati, sehat untuk negeri'),
+  taglineEn: z.string().default('Serving with heart, healthy for the nation'),
+  timeZoneLabel: z.string().default('WIB'),
 })
 
 export type Branding = z.infer<typeof brandingSchema>

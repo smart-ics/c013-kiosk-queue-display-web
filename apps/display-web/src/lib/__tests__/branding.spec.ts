@@ -5,19 +5,21 @@ describe('display branding', () => {
   it('applies defaults when branding block is missing', () => {
     const branding = parseBranding({ bilregApiBase: 'http://localhost:5000/api' })
     expect(branding).toEqual({
-      name: 'RS Sehat Waluyo',
-      subTag: 'Sistem Antrian Admission',
+      name: 'RS Sehat Sejahtera',
+      taglineId: 'Melayani dengan hati, sehat untuk negeri',
+      taglineEn: 'Serving with heart, healthy for the nation',
+      timeZoneLabel: 'WIB',
     })
   })
 
   it('overrides defaults from the branding block', () => {
     const branding = parseBranding({ branding: { name: 'RS Cinta Kasih' } })
     expect(branding.name).toBe('RS Cinta Kasih')
-    expect(branding.subTag).toBe('Sistem Antrian Admission')
+    expect(branding.taglineId).toBe('Melayani dengan hati, sehat untuk negeri')
   })
 
   it('parses partial branding with the schema', () => {
-    expect(brandingSchema.parse({ subTag: 'X' }).name).toBe('RS Sehat Waluyo')
+    expect(brandingSchema.parse({ taglineId: 'X' }).name).toBe('RS Sehat Sejahtera')
   })
 })
 
@@ -41,6 +43,6 @@ describe('display brandingService.initialize', () => {
   it('keeps defaults on fetch failure', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('network'))
     const branding = await brandingService.initialize('/')
-    expect(branding.name).toBe('RS Sehat Waluyo')
+    expect(branding.name).toBe('RS Sehat Sejahtera')
   })
 })

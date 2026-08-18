@@ -361,7 +361,7 @@ function formatLoketCode(loketKey: string): string {
         </svg>
         <div class="brand-text-col">
           <h1 class="hospital-main-name">{{ branding.name }}</h1>
-          <span class="hospital-sub-tag">{{ branding.subTag }}</span>
+          <span class="hospital-sub-tag">{{ branding.taglineId }}</span>
         </div>
       </div>
 
