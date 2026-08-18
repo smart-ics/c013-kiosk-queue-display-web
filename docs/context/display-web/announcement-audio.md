@@ -77,3 +77,13 @@ Sebagai bagian dari standarisasi konfigurasi monorepo, format konfigurasi identi
   * `timeZoneLabel`: Zona waktu (default: `'WIB'`).
 * Pada UI `DisplayPage.vue`, rendering subtitle diubah dari `branding.subTag` menjadi `branding.taglineId`.
 * Unit test pada `branding.spec.ts` diperbarui untuk mencerminkan skema Zod baru yang tersinkronisasi.
+
+---
+
+## 5. Penanganan Browser Autoplay Block (NotAllowedError)
+
+Karena kebijakan keamanan browser modern yang memblokir pemutaran audio otomatis tanpa interaksi pengguna pertama kali pada halaman (*NotAllowedError*), sistem dilengkapi mekanisme **Autoplay Audio Unblocker**:
+* **Deteksi Otomatis**: Jika pemutaran sekuensial audio gagal di browser karena *NotAllowedError*, status `isAudioLocked` diset menjadi `true`.
+* **Banner Interaktif UI**: Muncul spanduk melayang oranye di bagian bawah layar Display (`.audio-blocked-banner`) bertuliskan *"Browser memblokir suara otomatis. Klik untuk mengaktifkan suara pemanggilan."*.
+* **Unlock Alur Audio**: Ketika pengguna/petugas mengeklik spanduk tersebut, method `unlockAudio()` dipicu. Fungsi ini memutar audio sunyi mini (menggunakan buffer base64 WAV inline 44-byte) untuk membuka kunci konteks audio pada browser tersebut secara instan tanpa membebani memori, lalu menyembunyikan spanduk. Pemanggilan berikutnya akan berbunyi secara otomatis.
+
