@@ -64,3 +64,16 @@ Angka desimal dari 1 hingga 9999 didekomposisi berdasarkan tingkatan nilai tempa
 * **Penyimpanan Assets**: Disimpan di `apps/display-web/public/audio/`.
 * **Pathing**: Menggunakan base URL dinamis melalui `import.meta.env.BASE_URL` (secara default disajikan di `/display/audio/...` oleh Vite).
 * **Placeholder Assets**: Untuk kebutuhan testing dan *local development*, sistem dilengkapi skrip generator yang membuat file WAV mini bernoda gelombang sinus (*sine wave beeps*) untuk mencegah error 404 pada local server/CI.
+
+---
+
+## 4. Penyelarasan RS Identity / Branding Configuration
+
+Sebagai bagian dari standarisasi konfigurasi monorepo, format konfigurasi identitas rumah sakit (`branding`) pada `global_config.json` diselaraskan secara penuh antara `display-web` dan `kiosk-web`:
+* Struktur `branding` diubah dari yang sebelumnya menggunakan `subTag` menjadi:
+  * `name`: Nama rumah sakit (default: `'RS Sehat Sejahtera'`).
+  * `taglineId`: Tagline bahasa Indonesia / teks subtitle (default: `'Melayani dengan hati, sehat untuk negeri'`).
+  * `taglineEn`: Tagline bahasa Inggris (default: `'Serving with heart, healthy for the nation'`).
+  * `timeZoneLabel`: Zona waktu (default: `'WIB'`).
+* Pada UI `DisplayPage.vue`, rendering subtitle diubah dari `branding.subTag` menjadi `branding.taglineId`.
+* Unit test pada `branding.spec.ts` diperbarui untuk mencerminkan skema Zod baru yang tersinkronisasi.
