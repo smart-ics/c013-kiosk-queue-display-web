@@ -72,6 +72,35 @@ export function useAnnouncementAudio(options: {
   }))
 
   const lastCandidates = ref<AnnouncementCandidate[]>([])
+  const announcementQueue: AnnouncementCandidate[][] = []
+  let isProcessingQueue = false
+
+  async function processQueue() {
+    if (isProcessingQueue) return
+    isProcessingQueue = true
+    announcing.value = true
+    try {
+      while (announcementQueue.length > 0) {
+        const candidates = announcementQueue.shift()
+        if (candidates) {
+          for (const candidate of candidates) {
+            const queue = buildAudioQueue(candidate)
+            await playQueueImpl(queue)
+          }
+        }
+      }
+    } finally {
+      isProcessingQueue = false
+      announcing.value = false
+    }
+  }
+
+  function announceAll(candidates: AnnouncementCandidate[]) {
+    if (!candidates.length) return
+    lastCandidates.value = candidates
+    announcementQueue.push(candidates)
+    void processQueue()
+  }
 
   function unlockAudio() {
     isAudioLocked.value = false
@@ -84,20 +113,6 @@ export function useAnnouncementAudio(options: {
           }
         })
         .catch((err) => console.warn('Unlock audio failed:', err))
-    }
-  }
-
-  async function announceAll(candidates: AnnouncementCandidate[]) {
-    if (!candidates.length) return
-    lastCandidates.value = candidates
-    announcing.value = true
-    try {
-      for (const candidate of candidates) {
-        const queue = buildAudioQueue(candidate)
-        await playQueueImpl(queue)
-      }
-    } finally {
-      announcing.value = false
     }
   }
 
@@ -122,6 +137,7 @@ export function useAnnouncementAudio(options: {
     lastVersions.value = new Map()
     seeded.value = false
     announcing.value = false
+    announcementQueue.length = 0
   }
 
   return {
