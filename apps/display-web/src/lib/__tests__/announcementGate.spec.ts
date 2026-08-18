@@ -117,7 +117,7 @@ describe('decomposeNumber', () => {
 describe('buildAudioQueue', () => {
   it('builds full audio queue for a candidate', () => {
     expect(buildAudioQueue({ loketKey: '1', queueLabel: 'A15' })).toEqual([
-      'chime.wav',
+      'soundrs.m4a',
       'phrases/nomor-antrian.wav',
       'letters/a.wav',
       'numbers/15.wav',
@@ -126,7 +126,7 @@ describe('buildAudioQueue', () => {
     ])
 
     expect(buildAudioQueue({ loketKey: '11', queueLabel: 'B203' })).toEqual([
-      'chime.wav',
+      'soundrs.m4a',
       'phrases/nomor-antrian.wav',
       'letters/b.wav',
       'numbers/200.wav',
@@ -137,7 +137,7 @@ describe('buildAudioQueue', () => {
     ])
 
     expect(buildAudioQueue({ loketKey: 'A', queueLabel: 'C5' })).toEqual([
-      'chime.wav',
+      'soundrs.m4a',
       'phrases/nomor-antrian.wav',
       'letters/c.wav',
       'numbers/5.wav',

@@ -92,7 +92,7 @@ describe('useAnnouncementAudio', () => {
     await nextTick()
 
     expect(playQueue).toHaveBeenCalledWith([
-      'chime.wav',
+      'soundrs.m4a',
       'phrases/nomor-antrian.wav',
       'letters/a.wav',
       'numbers/15.wav',
@@ -174,7 +174,7 @@ describe('useAnnouncementAudio', () => {
     
     // We import defaultPlayQueue directly to test it
     const { defaultPlayQueue: defaultPlayQueueFn } = await import('../useAnnouncementAudio')
-    await defaultPlayQueueFn(['chime.wav'], onPlayBlocked)
+    await defaultPlayQueueFn(['soundrs.m4a'], onPlayBlocked)
 
     expect(onPlayBlocked).toHaveBeenCalled()
     globalThis.Audio = originalAudio

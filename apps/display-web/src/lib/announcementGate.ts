@@ -110,7 +110,7 @@ export function buildAudioQueue(candidate: {
   const queue: string[] = []
 
   // 1. Chime
-  queue.push('chime.wav')
+  queue.push('soundrs.m4a')
 
   // 2. "Nomor antrian" phrase
   queue.push('phrases/nomor-antrian.wav')
