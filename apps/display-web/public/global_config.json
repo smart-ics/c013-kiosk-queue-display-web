@@ -1,7 +1,17 @@
 {
   "bilregApiBase": "http://dev.smart-ics.com:8888/bilregapi/api",
+  "bilregApiHubBase": "http://dev.smart-ics.com:8888/bilregapi/hubs/admission-queue",
   "branding": {
     "name": "RS Sehat Waluyo",
-    "subTag": "Sistem Antrian Admission"
-  }
+    "taglineId": "Sistem Antrian Admission",
+    "taglineEn": "Admission Queue System",
+    "timeZoneLabel": "WIB"
+  },
+  "videoPath": "video/movie.mp4",
+  "hospitalServices": [
+    "Harap persiapkan kartu identitas diri (KTP/KIA), Kartu BPJS Kesehatan, dan Surat Rujukan (jika ada).",
+    "Pendaftaran online dapat dilakukan melalui Mobile JKN atau aplikasi RS Sehat Waluyo Mobile.",
+    "Layanan IGD 24 Jam siap melayani kondisi darurat Anda.",
+    "Poliklinik Spesialis melayani Senin - Sabtu mulai pukul 08:00 WIB."
+  ]
 }

@@ -111,8 +111,28 @@ const wellnessTips = [
   },
 ]
 
+const videoUrl = computed(() => {
+  const base = import.meta.env.BASE_URL
+  const baseSlash = base.endsWith('/') ? base : `${base}/`
+  const path = brandingService.getVideoPath()
+  if (/^https?:\/\//i.test(path) || path.startsWith('/')) {
+    return path
+  }
+  return `${baseSlash}${path}`
+})
+
+const hospitalServices = computed(() => {
+  const list = brandingService.getHospitalServices()
+  return list.length > 0 ? list : [
+    'Harap persiapkan kartu identitas diri (KTP/KIA), Kartu BPJS Kesehatan, dan Surat Rujukan (jika ada).'
+  ]
+})
+
+const activeServiceIndex = ref(0)
+
 let clockInterval: number
 let tipsInterval: number
+let serviceInterval: number
 
 onMounted(() => {
   updateClock()
@@ -120,11 +140,17 @@ onMounted(() => {
   tipsInterval = window.setInterval(() => {
     activeTipIndex.value = (activeTipIndex.value + 1) % wellnessTips.length
   }, 10000)
+  serviceInterval = window.setInterval(() => {
+    if (hospitalServices.value.length > 0) {
+      activeServiceIndex.value = (activeServiceIndex.value + 1) % hospitalServices.value.length
+    }
+  }, 5000)
 })
 
 onUnmounted(() => {
   window.clearInterval(clockInterval)
   window.clearInterval(tipsInterval)
+  window.clearInterval(serviceInterval)
   window.clearTimeout(flashTimeout)
 })
 
@@ -229,7 +255,7 @@ const snapshotErrorMessage = computed(() => {
   return 'Permintaan snapshot gagal tanpa detail error.'
 })
 
-const { announcing } = useAnnouncementAudio({
+const { announcing, isAudioLocked, unlockAudio } = useAnnouncementAudio({
   items: snapshotItems,
   audioEnabled,
 })
@@ -361,7 +387,7 @@ function formatLoketCode(loketKey: string): string {
         </svg>
         <div class="brand-text-col">
           <h1 class="hospital-main-name">{{ branding.name }}</h1>
-          <span class="hospital-sub-tag">{{ branding.subTag }}</span>
+          <span class="hospital-sub-tag">{{ branding.taglineId }}</span>
         </div>
       </div>
 
@@ -506,31 +532,20 @@ function formatLoketCode(loketKey: string): string {
               <span class="info-orange-icon">ⓘ</span>
               <span class="header-text-title">INFORMASI MEDIS</span>
             </div>
-            <span class="header-link-action">Lihat Semua</span>
           </div>
 
           <div class="simulated-video-container">
-            <div class="video-ecg-watermark" aria-hidden="true">
-              <svg viewBox="0 0 300 100" fill="none" stroke="rgba(59, 130, 246, 0.25)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M0 50 L90 50 L105 30 L115 80 L130 10 L145 70 L155 50 L300 50" />
-              </svg>
-            </div>
-
-            <div class="video-center-play-btn" role="button" aria-label="Putar Video">
-              <svg class="play-triangle-icon" viewBox="0 0 24 24" fill="#F97316">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </div>
-
-            <div class="video-bottom-control-bar">
-              <span class="video-time-label">01:45</span>
-              <div class="video-progress-track">
-                <div class="video-progress-fill" style="width: 58%;"></div>
-              </div>
-              <span class="video-time-label">03:00</span>
-            </div>
+            <video
+              class="real-video-player"
+              :src="videoUrl"
+              autoplay
+              loop
+              muted
+              playsinline
+            >
+              Browser Anda tidak mendukung tag video.
+            </video>
           </div>
-          <div class="video-quality-tag">1080p Full HD</div>
         </div>
 
         <!-- 2. Wellness Tips Card -->
@@ -586,8 +601,12 @@ function formatLoketCode(loketKey: string): string {
           <div class="stat-column">
             <div class="stat-icon-wrapper">
               <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+                <!-- Board body -->
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                <!-- Clip -->
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                <!-- Pen writing diagonal -->
+                <path d="M10.4 11.6L16 6l2.8 2.8-5.6 5.6H10.4v-2.8z" />
               </svg>
             </div>
             <span class="stat-count-value">{{ inServiceCount }}</span>
@@ -620,8 +639,14 @@ function formatLoketCode(loketKey: string): string {
           </svg>
         </div>
         <div class="banner-text-block">
-          <h4 class="banner-main-title">Selamat Datang di Rumah Sakit Sehat Waluyo</h4>
-          <p class="banner-sub-text">Harap persiapkan kartu identitas diri (KTP/KIA), Kartu BPJS Kesehatan, dan Surat Rujukan (jika ada).</p>
+          <h4 class="banner-main-title">Selamat Datang di {{ branding.name }}</h4>
+          <div class="carousel-container-vertical">
+            <Transition name="slide-up" mode="out-in">
+              <p :key="activeServiceIndex" class="banner-sub-text">
+                {{ hospitalServices[activeServiceIndex] }}
+              </p>
+            </Transition>
+          </div>
         </div>
       </div>
 
@@ -645,6 +670,19 @@ function formatLoketCode(loketKey: string): string {
         </svg>
       </div>
     </footer>
+
+    <!-- Autoplay Audio Blocked Banner -->
+    <div v-if="isAudioLocked" class="audio-blocked-banner" @click="unlockAudio">
+      <div class="audio-blocked-content">
+        <svg class="warning-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span>Browser memblokir suara otomatis. Klik untuk mengaktifkan suara pemanggilan.</span>
+      </div>
+      <button class="btn-enable-audio">Aktifkan</button>
+    </div>
   </main>
 </template>
 

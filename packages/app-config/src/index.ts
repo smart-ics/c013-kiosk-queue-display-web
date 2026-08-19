@@ -15,6 +15,7 @@ export const mappingJmnLayananKarcisSchema = z.object({
 
 export const appConfigSchema = z.object({
   bilregApiBase: z.string().min(1, 'bilregApiBase must not be empty'),
+  bilregApiHubBase: z.string().optional(),
   jetliApiBase: z.string().optional(),
   mediaInfoDir: z.string().optional(),
   kioskDefaultKarcisId: z.string().optional(),

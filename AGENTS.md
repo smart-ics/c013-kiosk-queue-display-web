@@ -135,3 +135,32 @@ Vue 3 + Vite + TypeScript + Zod + TanStack Query.
 - Props are read-only — communicate upward via `emit`, never mutate
 - No comments unless explaining non-obvious intent
 - Format with Prettier on modified files only
+
+## Agent Workflow
+
+When executing complex tasks or styling/UI changes, follow this systematic workflow:
+
+1. **Research & Plan**:
+   - Inspect existing components, configuration, and stylesheets.
+   - Draft an implementation plan (`/plan`) detailing modified files, new features, and changes to CSS styling.
+   - Document any changes to `global_config.json` configurations.
+   - Seek user approval before starting execution.
+
+2. **Implement & Refine**:
+   - Make single contiguous edits using `replace_file_content` or `write_to_file`.
+   - Update config templates (`global_config.json`) and service logic (`src/lib/branding.ts`) to handle configuration dynamically.
+   - Follow clean code and CSS practices (e.g. use fluid styling like `clamp()`, and reduce text density/font-weight where appropriate to ensure elegance).
+
+3. **Verify & Stage**:
+   - Write/update tests for newly introduced functions or fields (e.g. inside `__tests__` directories).
+   - Test changes using Vitest and verify builds compile without error:
+     ```bash
+     pnpm --filter <app-name> run build
+     pnpm --filter <app-name> test
+     ```
+   - Review git changes with `git status` and `git diff` before staging.
+
+4. **Commit & Push**:
+   - Stage modified files (excluding temporary files like workspace configuration and untracked drafts).
+   - Commit with a descriptive message specifying scope (e.g., `feat(display-web): ...`).
+   - Push to the remote branch and use GitHub CLI (`gh pr create --head <branch>`) to create a PR.

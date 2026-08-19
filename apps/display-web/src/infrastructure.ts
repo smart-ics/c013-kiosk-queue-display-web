@@ -60,7 +60,11 @@ export function getHisApi(): HisApi {
 }
 
 export function getAdmissionQueueHubUrl(): string {
-  const baseUrl = configService.getConfig().bilregApiBase
+  const config = configService.getConfig()
+  if (config.bilregApiHubBase) {
+    return config.bilregApiHubBase
+  }
+  const baseUrl = config.bilregApiBase
   if (!baseUrl) {
     throw new Error('bilregApiBase is not configured in global_config.json')
   }

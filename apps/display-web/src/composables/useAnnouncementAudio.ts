@@ -1,47 +1,118 @@
 import { ref, watch, type Ref } from 'vue'
 import {
   applyAnnouncementGate,
-  buildAnnouncementUtterance,
+  buildAudioQueue,
   type AnnouncementCandidate,
 } from '../lib/announcementGate'
 import type { CurrentLoketDisplayItem } from '@aq/shared-types'
 
-export type SpeakFn = (text: string) => Promise<void>
+export type PlayQueueFn = (files: string[]) => Promise<void>
 
-function defaultSpeak(text: string): Promise<void> {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+export function defaultPlayQueue(
+  files: string[],
+  onPlayBlocked?: () => void
+): Promise<void> {
+  return new Promise(async (resolve) => {
+    if (typeof window === 'undefined') {
       resolve()
       return
     }
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'id-ID'
-    utterance.onend = () => resolve()
-    utterance.onerror = () => resolve()
-    window.speechSynthesis.speak(utterance)
+    const baseUrl = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+    const audioBase = `${baseUrl}/audio`
+
+    for (const file of files) {
+      const url = `${audioBase}/${file}`
+      await new Promise<void>((next) => {
+        const audio = new Audio(url)
+        let resolved = false
+        const done = () => {
+          if (!resolved) {
+            resolved = true
+            next()
+          }
+        }
+        audio.onended = () => done()
+        audio.onerror = (e) => {
+          console.warn(`Failed to play audio file: ${url}`, e)
+          done()
+        }
+        audio.play()
+          .then(() => {
+            if (file === 'soundrs.m4a') {
+              setTimeout(() => {
+                done()
+              }, 1500)
+            }
+          })
+          .catch((err) => {
+            console.warn(`Audio play failed: ${url}`, err)
+            if (err && (err.name === 'NotAllowedError' || String(err).includes('NotAllowedError'))) {
+              onPlayBlocked?.()
+            }
+            done()
+          })
+      })
+    }
+    resolve()
   })
 }
 
 export function useAnnouncementAudio(options: {
   items: Ref<CurrentLoketDisplayItem[] | undefined>
   audioEnabled: Ref<boolean>
-  speak?: SpeakFn
+  playQueue?: PlayQueueFn
 }) {
   const lastVersions = ref(new Map<string, number>())
   const seeded = ref(false)
   const announcing = ref(false)
-  const speak = options.speak ?? defaultSpeak
+  const isAudioLocked = ref(false)
 
-  async function announceAll(candidates: AnnouncementCandidate[]) {
-    if (!candidates.length) return
+  const playQueueImpl = options.playQueue ?? ((files) => defaultPlayQueue(files, () => {
+    isAudioLocked.value = true
+  }))
+
+  const lastCandidates = ref<AnnouncementCandidate[]>([])
+  const announcementQueue: AnnouncementCandidate[][] = []
+  let isProcessingQueue = false
+
+  async function processQueue() {
+    if (isProcessingQueue) return
+    isProcessingQueue = true
     announcing.value = true
     try {
-      for (const candidate of candidates) {
-        await speak(buildAnnouncementUtterance(candidate))
+      while (announcementQueue.length > 0) {
+        const candidates = announcementQueue.shift()
+        if (candidates) {
+          for (const candidate of candidates) {
+            const queue = buildAudioQueue(candidate)
+            await playQueueImpl(queue)
+          }
+        }
       }
     } finally {
+      isProcessingQueue = false
       announcing.value = false
+    }
+  }
+
+  function announceAll(candidates: AnnouncementCandidate[]) {
+    if (!candidates.length) return
+    lastCandidates.value = candidates
+    announcementQueue.push(candidates)
+    void processQueue()
+  }
+
+  function unlockAudio() {
+    isAudioLocked.value = false
+    if (typeof window !== 'undefined') {
+      const audio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAAA')
+      audio.play()
+        .then(() => {
+          if (lastCandidates.value.length > 0) {
+            void announceAll(lastCandidates.value)
+          }
+        })
+        .catch((err) => console.warn('Unlock audio failed:', err))
     }
   }
 
@@ -66,12 +137,15 @@ export function useAnnouncementAudio(options: {
     lastVersions.value = new Map()
     seeded.value = false
     announcing.value = false
+    announcementQueue.length = 0
   }
 
   return {
     announcing,
     seeded,
     lastVersions,
+    isAudioLocked,
+    unlockAudio,
     resetAnnouncementState,
   }
 }
