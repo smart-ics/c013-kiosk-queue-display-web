@@ -13,6 +13,12 @@
       "layananId": "00025",
       "karcisId": "25",
       "name": "Umum - Layanan CST"
+    },
+    {
+      "tipeJaminanId": "00000",
+      "layananId": "*",
+      "karcisId": "X7",
+      "name": "Umum - Semua Layanan"
     }
   ],
   "branding": {

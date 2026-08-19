@@ -639,4 +639,87 @@ describe('useKioskRegistration gap closure features', () => {
       karcisId: 'K-MAP-LAY',
     }))
   })
+
+  it('resolves karcis via mappingJmnLayananKarcis wildcard matching and prioritizing specific matches', async () => {
+    const deps = makeDeps({
+      appConfig: {
+        bilregApiBase: '',
+        kioskDefaultKarcisId: 'K-DEFAULT',
+        mappingJmnLayananKarcis: [
+          { tipeJaminanId: 'BPJS', layananId: '', karcisId: 'K-BPJS-WILDCARD' },
+          { tipeJaminanId: 'BPJS', layananId: 'LY1', karcisId: 'K-BPJS-SPECIFIC' }
+        ]
+      },
+      listKarcis: vi.fn(async () => [
+        { id: 'K-DEFAULT', name: 'Default' },
+        { id: 'K-BPJS-WILDCARD', name: 'BPJS Wildcard' },
+        { id: 'K-BPJS-SPECIFIC', name: 'BPJS Specific' }
+      ])
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    await reg.confirmBooking()
+
+    expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
+    expect(deps.registerBooking).toHaveBeenCalledWith(expect.objectContaining({
+      karcisId: 'K-BPJS-SPECIFIC',
+    }))
+  })
+
+  it('resolves karcis via mappingJmnLayananKarcis wildcard when no specific match is found', async () => {
+    const deps = makeDeps({
+      appConfig: {
+        bilregApiBase: '',
+        kioskDefaultKarcisId: 'K-DEFAULT',
+        mappingJmnLayananKarcis: [
+          { tipeJaminanId: 'BPJS', layananId: '', karcisId: 'K-BPJS-WILDCARD' },
+          { tipeJaminanId: 'BPJS', layananId: 'LY1', karcisId: 'K-BPJS-SPECIFIC' }
+        ]
+      },
+      getBookingDetail: vi.fn(async () => ({
+        ...bpjsDetail,
+        layanan: { layananId: 'LY2', layananName: 'Poli Gigi' },
+      })),
+      listKarcis: vi.fn(async () => [
+        { id: 'K-DEFAULT', name: 'Default' },
+        { id: 'K-BPJS-WILDCARD', name: 'BPJS Wildcard' },
+        { id: 'K-BPJS-SPECIFIC', name: 'BPJS Specific' }
+      ])
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    await reg.confirmBooking()
+
+    expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
+    expect(deps.registerBooking).toHaveBeenCalledWith(expect.objectContaining({
+      karcisId: 'K-BPJS-WILDCARD',
+    }))
+  })
+
+  it('resolves karcis via mappingJmnLayananKarcis asterisk wildcard', async () => {
+    const deps = makeDeps({
+      appConfig: {
+        bilregApiBase: '',
+        kioskDefaultKarcisId: 'K-DEFAULT',
+        mappingJmnLayananKarcis: [
+          { tipeJaminanId: 'BPJS', layananId: '*', karcisId: 'K-BPJS-ASTERISK' }
+        ]
+      },
+      listKarcis: vi.fn(async () => [
+        { id: 'K-DEFAULT', name: 'Default' },
+        { id: 'K-BPJS-ASTERISK', name: 'BPJS Asterisk' }
+      ])
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    await reg.confirmBooking()
+
+    expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
+    expect(deps.registerBooking).toHaveBeenCalledWith(expect.objectContaining({
+      karcisId: 'K-BPJS-ASTERISK',
+    }))
+  })
 })
