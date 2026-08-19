@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.3] - 2026-08-19
+
+### Added
+
+- **BPJS/JKN Walk-in Guarantee step (kiosk-web)**: Introduces a dynamic 5-step stepper wizard (Identifikasi, Jaminan, Layanan, Konfirmasi, Selesai) with card-based touchscreen-optimized selections. Allows patients to choose registered BPJS policies or general payment ("Umum"), and handles redirection for unregistered BPJS cases.
+- **Autoplay Audio Unblocker (display-web)**: Interactive banner overlays automatically if the browser blocks audio autoplay, letting users restore voice calling with a single click.
+- **Audio Letter Assets (display-web)**: Fully staged and added WAV files for letters A through Z to pronounce queue prefixes.
+- **HTML5 Video Player (display-web)**: Replaces simulated controls with a real auto-looping, muted HTML5 video player for medical/educational files.
+- **Footer Info Carousel (display-web)**: Added a vertical sliding info carousel at the bottom of the screen to cycle through hospital services loaded dynamically from config.
+
+### Changed
+
+- **Announcement Voice System (display-web)**: Replaced SpeechSynthesis (text-to-speech) with sequential playing of recorded `.wav`/`.m4a` files for custom voice building (chime -> letter -> decomposed digits -> loket numbers).
+- **Legibility Updates (display-web)**: Reduced queue number font weights from 900 to 700, and changed formatting to use tabular-nums with increased character spacing.
+- **Branding Alignment**: Aligned kiosk and display identity configurations in `global_config.json` and Zod schemas to use standard properties (`name`, `taglineId`, `taglineEn`, `timeZoneLabel`).
+- **Success Screen Auto-Home (kiosk-web)**: Removed auto-home timers from the success and assistance screens, allowing users to exit manually at their own pace.
+
 ## [0.2.2] - 2026-08-15
 
 ### Fixed
