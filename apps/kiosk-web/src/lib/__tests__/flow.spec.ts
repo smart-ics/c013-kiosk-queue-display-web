@@ -14,8 +14,8 @@ describe('canTransition', () => {
     expect(canTransition('WALKIN_CONFIRM', 'REGISTRATION_SUCCESS')).toBe(true)
   })
 
-  it('allows patient context confirm → walk-in service selection', () => {
-    expect(canTransition('PATIENT_CONTEXT_CONFIRM', 'WALKIN_SELECT_SERVICE')).toBe(true)
+  it('allows patient context confirm → walk-in guarantee selection', () => {
+    expect(canTransition('PATIENT_CONTEXT_CONFIRM', 'WALKIN_SELECT_GUARANTEE')).toBe(true)
   })
 
   it('rejects back-navigation from walk-in steps to home', () => {

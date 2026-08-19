@@ -334,7 +334,7 @@ describe('useKioskRegistration patient context cascade', () => {
     await reg.submitBookingKeyword('Budi')
     expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
     await reg.confirmPatientContext(contextItem)
-    expect(reg.flow.value).toBe('WALKIN_SELECT_SERVICE')
+    expect(reg.flow.value).toBe('WALKIN_SELECT_GUARANTEE')
     expect(reg.selectedPatient.value?.pasienId).toBe('PT1')
     expect(reg.selectedPatient.value?.pasienName).toBe('Budi')
   })
@@ -384,6 +384,12 @@ describe('useKioskRegistration goshow walk-in flow', () => {
     const reg = useKioskRegistration(deps)
     await reachContextConfirm(reg)
     await reg.confirmPatientContext(contextItem)
+    expect(reg.flow.value).toBe('WALKIN_SELECT_GUARANTEE')
+    await reg.selectWalkinGuarantee({
+      tipeJaminanId: '00000',
+      tipeJaminanName: 'Umum',
+      noPeserta: null,
+    })
     expect(reg.flow.value).toBe('WALKIN_SELECT_SERVICE')
     expect(deps.getGroupJaminanMap).not.toHaveBeenCalled()
     expect(reg.walkinEligibility.value?.needsEligibility).toBe(false)
@@ -394,6 +400,12 @@ describe('useKioskRegistration goshow walk-in flow', () => {
     const reg = useKioskRegistration(deps)
     await reachContextConfirm(reg)
     await reg.confirmPatientContext(contextItem)
+    expect(reg.flow.value).toBe('WALKIN_SELECT_GUARANTEE')
+    await reg.selectWalkinGuarantee({
+      tipeJaminanId: 'BPJS',
+      tipeJaminanName: 'BPJS',
+      noPeserta: '000123456',
+    })
     expect(reg.flow.value).toBe('WALKIN_SELECT_SERVICE')
     expect(reg.walkinEligibility.value?.needsEligibility).toBe(true)
     reg.selectService({
@@ -428,6 +440,13 @@ describe('useKioskRegistration goshow walk-in flow', () => {
     const reg = useKioskRegistration(deps)
     await reachContextConfirm(reg)
     await reg.confirmPatientContext(contextItem)
+    expect(reg.flow.value).toBe('WALKIN_SELECT_GUARANTEE')
+    await reg.selectWalkinGuarantee({
+      tipeJaminanId: '00000',
+      tipeJaminanName: 'Umum',
+      noPeserta: null,
+    })
+    expect(reg.flow.value).toBe('WALKIN_SELECT_SERVICE')
     expect(reg.walkinEligibility.value?.needsEligibility).toBe(false)
     reg.selectService({
       poli: { id: 'PO1', name: 'Poli Jantung' },
