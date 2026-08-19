@@ -97,9 +97,18 @@ function resolveDefaultKarcisId(
   layananId: string,
 ): string {
   if (appConfig.mappingJmnLayananKarcis) {
-    const match = appConfig.mappingJmnLayananKarcis.find(
+    // 1. Specific match (both tipeJaminanId and layananId match exactly)
+    let match = appConfig.mappingJmnLayananKarcis.find(
       (m) => m.tipeJaminanId === tipeJaminanId && m.layananId === layananId,
     )
+    // 2. Wildcard match (tipeJaminanId matches, and layananId is empty, "*" or omitted)
+    if (!match) {
+      match = appConfig.mappingJmnLayananKarcis.find(
+        (m) =>
+          m.tipeJaminanId === tipeJaminanId &&
+          (!m.layananId || m.layananId === '*'),
+      )
+    }
     if (match) return match.karcisId
   }
   if (appConfig.mappingLayananKarcis) {

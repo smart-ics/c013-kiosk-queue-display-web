@@ -8,7 +8,7 @@ export const mappingLayananKarcisSchema = z.object({
 
 export const mappingJmnLayananKarcisSchema = z.object({
   tipeJaminanId: z.string(),
-  layananId: z.string(),
+  layananId: z.string().optional(),
   karcisId: z.string(),
   name: z.string().optional(),
 })
