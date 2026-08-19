@@ -89,3 +89,45 @@ export const FLOW_TRANSITIONS = {
 * **Idle State:** Kiosk automatically resets to `HOME` after **60 seconds** of inactivity.
 * **Success/Assistance State:** Kiosk resets to `HOME` after **10 seconds** on `REGISTRATION_SUCCESS` and **15 seconds** on `ASSISTANCE_QUEUE`.
 * **State Purge:** Auto-reset clears all local reactive states (`selectedBooking`, `selectedPatient`, `walkinEligibility`, `biometricVerdict`, `errorContext`) to protect patient privacy.
+
+---
+
+## 6. Ticket (Karcis) Mapping & Fallback Resolution
+
+To comply with the HIS billing system, every kiosk registration requires an administrative ticket/fee ID (`karcisId`). The kiosk automatically resolves `karcisId` using the helper function `resolveDefaultKarcisId` based on the selected patient guarantee/insurance (`tipeJaminanId`) and clinic/service department (`layananId`).
+
+### 6.1 Fallback Resolution Order
+The resolution logic processes rules in the following order of precedence:
+
+1. **Specific Guarantee Match:** Look for an exact match for both `tipeJaminanId` and `layananId` in `mappingJmnLayananKarcis`.
+2. **Guarantee Wildcard Fallback:** If no specific match is found, look for a wildcard entry in `mappingJmnLayananKarcis` where `tipeJaminanId` matches and `layananId` is set to `""` (empty string), `"*"` (asterisk), or is omitted entirely.
+3. **Service Match Fallback:** If there is no guarantee-specific match, check `mappingLayananKarcis` for an entry matching the `layananId` (ignoring the guarantee type).
+4. **Global Default:** Fallback to the kiosk-wide default ticket ID defined in `kioskDefaultKarcisId`.
+
+### 6.2 Configuration Examples (`global_config.json`)
+```json
+{
+  "kioskDefaultKarcisId": "24",
+  "mappingLayananKarcis": [
+    {
+      "layananId": "00111",
+      "karcisId": "21"
+    }
+  ],
+  "mappingJmnLayananKarcis": [
+    {
+      "tipeJaminanId": "BPJS",
+      "layananId": "00025",
+      "karcisId": "25",
+      "name": "BPJS - Layanan CST"
+    },
+    {
+      "tipeJaminanId": "BPJS",
+      "layananId": "*",
+      "karcisId": "99",
+      "name": "BPJS - Semua Layanan Lainnya (Wildcard)"
+    }
+  ]
+}
+```
+
