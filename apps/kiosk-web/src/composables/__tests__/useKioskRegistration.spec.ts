@@ -1,12 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { ApiClientError } from '@aq/api-client'
-import type {
-  BookingDetail,
-  BookingSearchItem,
-  GroupJaminanMap,
-  Polis,
-} from '@aq/shared-types'
+import type { BookingDetail, BookingSearchItem, GroupJaminanMap, Polis } from '@aq/shared-types'
 import { useKioskRegistration, type KioskRegistrationDeps } from '../useKioskRegistration'
 
 const bookingItem: BookingSearchItem = {
@@ -40,7 +35,11 @@ const bpjsPolis: Polis = {
   tglExpired: null,
 }
 
-const group: GroupJaminanMap = { tipeJaminanId: 'BPJS', groupJaminanId: 'G1', groupJaminanName: 'BPJS' }
+const group: GroupJaminanMap = {
+  tipeJaminanId: 'BPJS',
+  groupJaminanId: 'G1',
+  groupJaminanName: 'BPJS',
+}
 
 const contextItem = {
   kind: 'Patient' as const,
@@ -92,6 +91,7 @@ function makeDeps(overrides: Partial<KioskRegistrationDeps> = {}): KioskRegistra
     })),
     appConfig: { bilregApiBase: '', kioskDefaultKarcisId: 'K-TEST' },
     verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
+    deepSearchPasien: vi.fn(async () => []),
     listKarcis: vi.fn(async () => [{ id: 'K-TEST', name: 'Karcis Test' }]),
     getRujukanSkpd: vi.fn(async () => ({
       peserta: {
@@ -105,13 +105,27 @@ function makeDeps(overrides: Partial<KioskRegistrationDeps> = {}): KioskRegistra
         tglTat: '2026-08-06',
         tglLahir: '1990-01-01',
       },
-      rujukan: { noRujukan: 'REF1', tglRujukan: '2026-08-01', diagnosa: { kode: 'Z00.0', name: 'DM' } },
+      rujukan: {
+        noRujukan: 'REF1',
+        tglRujukan: '2026-08-01',
+        diagnosa: { kode: 'Z00.0', name: 'DM' },
+      },
       listSkdp: [],
     })),
     registerBooking: vi.fn(async () => ({ regId: 'R1', noAntrian: 12 })),
     registerWalkin: vi.fn(async () => ({ regId: 'R2', noAntrian: 13 })),
-    createSep: vi.fn(async () => ({ sepId: 'sep-1', sepNo: '0112R', noPeserta: '123', namaPeserta: 'A' })),
-    uploadSep: vi.fn(async () => ({ sepId: 'sep-1', sepNo: '0112R', noPeserta: '123', namaPeserta: 'A' })),
+    createSep: vi.fn(async () => ({
+      sepId: 'sep-1',
+      sepNo: '0112R',
+      noPeserta: '123',
+      namaPeserta: 'A',
+    })),
+    uploadSep: vi.fn(async () => ({
+      sepId: 'sep-1',
+      sepNo: '0112R',
+      noPeserta: '123',
+      namaPeserta: 'A',
+    })),
     setDataEligibility: vi.fn(async () => 'OK'),
     bookingAssistance: vi.fn(async () => ({
       antrianId: 'B1',
@@ -518,7 +532,11 @@ describe('useKioskRegistration gap closure features', () => {
           tglTat: '2026-08-06',
           tglLahir: '2015-01-01', // 11 years old relative to 2026-08-03
         },
-        rujukan: { noRujukan: 'REF_CHILD', tglRujukan: '2026-08-01', diagnosa: { kode: 'Z00.0', name: 'Checkup' } },
+        rujukan: {
+          noRujukan: 'REF_CHILD',
+          tglRujukan: '2026-08-01',
+          diagnosa: { kode: 'Z00.0', name: 'Checkup' },
+        },
         listSkdp: [],
       })),
       verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
@@ -527,13 +545,15 @@ describe('useKioskRegistration gap closure features', () => {
     reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
-    
+
     expect(deps.verifyBiometric).not.toHaveBeenCalled()
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
-    expect(deps.registerBooking).toHaveBeenCalledWith(expect.objectContaining({
-      rujukanId: 'REF_CHILD',
-      caraMasukDkId: '1',
-    }))
+    expect(deps.registerBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rujukanId: 'REF_CHILD',
+        caraMasukDkId: '1',
+      }),
+    )
   })
 
   it('falls back to SKDP if rujukan is null and listSkdp is populated', async () => {
@@ -551,7 +571,13 @@ describe('useKioskRegistration gap closure features', () => {
           tglLahir: '1980-01-01', // 46 years old
         },
         rujukan: null,
-        listSkdp: [{ noSkdp: 'SKDP_99', tglMulai: '2026-08-01', diagnosa: { kode: 'I10', name: 'Hypertension' } }],
+        listSkdp: [
+          {
+            noSkdp: 'SKDP_99',
+            tglMulai: '2026-08-01',
+            diagnosa: { kode: 'I10', name: 'Hypertension' },
+          },
+        ],
       })),
       verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
     })
@@ -562,10 +588,12 @@ describe('useKioskRegistration gap closure features', () => {
 
     expect(deps.verifyBiometric).toHaveBeenCalled()
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
-    expect(deps.registerBooking).toHaveBeenCalledWith(expect.objectContaining({
-      rujukanId: 'SKDP_99',
-      caraMasukDkId: '1',
-    }))
+    expect(deps.registerBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rujukanId: 'SKDP_99',
+        caraMasukDkId: '1',
+      }),
+    )
   })
 
   it('fails registration if both rujukan and listSkdp are empty/null', async () => {
@@ -592,7 +620,9 @@ describe('useKioskRegistration gap closure features', () => {
     await reg.confirmBooking()
 
     expect(reg.flow.value).toBe('FAILURE')
-    expect(reg.errorContext.value?.message).toContain('Rujukan atau SKDP BPJS tidak aktif/tidak ditemukan')
+    expect(reg.errorContext.value?.message).toContain(
+      'Rujukan atau SKDP BPJS tidak aktif/tidak ditemukan',
+    )
   })
 
   it('resolves karcis via mappingJmnLayananKarcis and fails if inactive', async () => {
@@ -601,10 +631,10 @@ describe('useKioskRegistration gap closure features', () => {
         bilregApiBase: '',
         kioskDefaultKarcisId: 'K-DEFAULT',
         mappingJmnLayananKarcis: [
-          { tipeJaminanId: 'BPJS', layananId: 'LY1', karcisId: 'K-MAP-JMN' }
-        ]
+          { tipeJaminanId: 'BPJS', layananId: 'LY1', karcisId: 'K-MAP-JMN' },
+        ],
       },
-      listKarcis: vi.fn(async () => [{ id: 'K-DEFAULT', name: 'Default' }])
+      listKarcis: vi.fn(async () => [{ id: 'K-DEFAULT', name: 'Default' }]),
     })
     const reg = useKioskRegistration(deps)
     reg.startBookingFlow()
@@ -620,14 +650,12 @@ describe('useKioskRegistration gap closure features', () => {
       appConfig: {
         bilregApiBase: '',
         kioskDefaultKarcisId: 'K-DEFAULT',
-        mappingLayananKarcis: [
-          { layananId: 'LY1', karcisId: 'K-MAP-LAY' }
-        ]
+        mappingLayananKarcis: [{ layananId: 'LY1', karcisId: 'K-MAP-LAY' }],
       },
       listKarcis: vi.fn(async () => [
         { id: 'K-DEFAULT', name: 'Default' },
-        { id: 'K-MAP-LAY', name: 'Mapped Layanan Karcis' }
-      ])
+        { id: 'K-MAP-LAY', name: 'Mapped Layanan Karcis' },
+      ]),
     })
     const reg = useKioskRegistration(deps)
     reg.startBookingFlow()
@@ -635,9 +663,11 @@ describe('useKioskRegistration gap closure features', () => {
     await reg.confirmBooking()
 
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
-    expect(deps.registerBooking).toHaveBeenCalledWith(expect.objectContaining({
-      karcisId: 'K-MAP-LAY',
-    }))
+    expect(deps.registerBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        karcisId: 'K-MAP-LAY',
+      }),
+    )
   })
 
   it('resolves karcis via mappingJmnLayananKarcis wildcard matching and prioritizing specific matches', async () => {
@@ -647,14 +677,14 @@ describe('useKioskRegistration gap closure features', () => {
         kioskDefaultKarcisId: 'K-DEFAULT',
         mappingJmnLayananKarcis: [
           { tipeJaminanId: 'BPJS', layananId: '', karcisId: 'K-BPJS-WILDCARD' },
-          { tipeJaminanId: 'BPJS', layananId: 'LY1', karcisId: 'K-BPJS-SPECIFIC' }
-        ]
+          { tipeJaminanId: 'BPJS', layananId: 'LY1', karcisId: 'K-BPJS-SPECIFIC' },
+        ],
       },
       listKarcis: vi.fn(async () => [
         { id: 'K-DEFAULT', name: 'Default' },
         { id: 'K-BPJS-WILDCARD', name: 'BPJS Wildcard' },
-        { id: 'K-BPJS-SPECIFIC', name: 'BPJS Specific' }
-      ])
+        { id: 'K-BPJS-SPECIFIC', name: 'BPJS Specific' },
+      ]),
     })
     const reg = useKioskRegistration(deps)
     reg.startBookingFlow()
@@ -662,9 +692,11 @@ describe('useKioskRegistration gap closure features', () => {
     await reg.confirmBooking()
 
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
-    expect(deps.registerBooking).toHaveBeenCalledWith(expect.objectContaining({
-      karcisId: 'K-BPJS-SPECIFIC',
-    }))
+    expect(deps.registerBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        karcisId: 'K-BPJS-SPECIFIC',
+      }),
+    )
   })
 
   it('resolves karcis via mappingJmnLayananKarcis wildcard when no specific match is found', async () => {
@@ -674,8 +706,8 @@ describe('useKioskRegistration gap closure features', () => {
         kioskDefaultKarcisId: 'K-DEFAULT',
         mappingJmnLayananKarcis: [
           { tipeJaminanId: 'BPJS', layananId: '', karcisId: 'K-BPJS-WILDCARD' },
-          { tipeJaminanId: 'BPJS', layananId: 'LY1', karcisId: 'K-BPJS-SPECIFIC' }
-        ]
+          { tipeJaminanId: 'BPJS', layananId: 'LY1', karcisId: 'K-BPJS-SPECIFIC' },
+        ],
       },
       getBookingDetail: vi.fn(async () => ({
         ...bpjsDetail,
@@ -684,8 +716,8 @@ describe('useKioskRegistration gap closure features', () => {
       listKarcis: vi.fn(async () => [
         { id: 'K-DEFAULT', name: 'Default' },
         { id: 'K-BPJS-WILDCARD', name: 'BPJS Wildcard' },
-        { id: 'K-BPJS-SPECIFIC', name: 'BPJS Specific' }
-      ])
+        { id: 'K-BPJS-SPECIFIC', name: 'BPJS Specific' },
+      ]),
     })
     const reg = useKioskRegistration(deps)
     reg.startBookingFlow()
@@ -693,9 +725,11 @@ describe('useKioskRegistration gap closure features', () => {
     await reg.confirmBooking()
 
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
-    expect(deps.registerBooking).toHaveBeenCalledWith(expect.objectContaining({
-      karcisId: 'K-BPJS-WILDCARD',
-    }))
+    expect(deps.registerBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        karcisId: 'K-BPJS-WILDCARD',
+      }),
+    )
   })
 
   it('resolves karcis via mappingJmnLayananKarcis asterisk wildcard', async () => {
@@ -704,13 +738,13 @@ describe('useKioskRegistration gap closure features', () => {
         bilregApiBase: '',
         kioskDefaultKarcisId: 'K-DEFAULT',
         mappingJmnLayananKarcis: [
-          { tipeJaminanId: 'BPJS', layananId: '*', karcisId: 'K-BPJS-ASTERISK' }
-        ]
+          { tipeJaminanId: 'BPJS', layananId: '*', karcisId: 'K-BPJS-ASTERISK' },
+        ],
       },
       listKarcis: vi.fn(async () => [
         { id: 'K-DEFAULT', name: 'Default' },
-        { id: 'K-BPJS-ASTERISK', name: 'BPJS Asterisk' }
-      ])
+        { id: 'K-BPJS-ASTERISK', name: 'BPJS Asterisk' },
+      ]),
     })
     const reg = useKioskRegistration(deps)
     reg.startBookingFlow()
@@ -718,8 +752,214 @@ describe('useKioskRegistration gap closure features', () => {
     await reg.confirmBooking()
 
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
-    expect(deps.registerBooking).toHaveBeenCalledWith(expect.objectContaining({
-      karcisId: 'K-BPJS-ASTERISK',
-    }))
+    expect(deps.registerBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        karcisId: 'K-BPJS-ASTERISK',
+      }),
+    )
+  })
+
+  describe('BPJS Rujukan & SKDP Multiple Reference and Cascade Search', () => {
+    it('prioritizes SKDPs over Rujukan in the reference list', async () => {
+      const mockRujukanSkpd = {
+        peserta: {
+          noPeserta: '000123456',
+          nama: 'Andi',
+          hakKelas: { kode: '3', nama: 'Kelas 3' },
+          status: { kode: '1', info: 'AKTIF' },
+          jenisPeserta: { kode: 'PNS', nama: 'PNS' },
+          provider: { kode: 'P1', nama: 'RS A' },
+          prbInfo: null,
+          tglTat: '2026-08-06',
+          tglLahir: '1990-01-01',
+        },
+        rujukan: {
+          noRujukan: 'RUJ-999',
+          tglRujukan: '2026-08-01',
+          diagnosa: { kode: 'Z00.0', nama: 'DM' },
+        },
+        listSkdp: [
+          {
+            noSkdp: 'SKDP-111',
+            tglMulai: '2026-08-02',
+            diagnosa: { kode: 'I10', nama: 'Hipertensi' },
+          },
+          {
+            noSkdp: 'SKDP-222',
+            tglMulai: '2026-08-03',
+            diagnosa: { kode: 'E11', nama: 'Diabetes' },
+          },
+        ],
+      }
+      const deps = makeDeps({
+        getRujukanSkpd: vi.fn(async () => mockRujukanSkpd),
+      })
+      const reg = useKioskRegistration(deps)
+
+      reg.selectedPatient.value = {
+        pasienId: 'PT1',
+        pasienName: 'Andi',
+        nik: '123',
+        noMR: 'MR1',
+        tglLahir: '1990-01-01',
+      }
+      reg.flow.value = 'WALKIN_SELECT_GUARANTEE'
+      reg.mode.value = 'walkin'
+
+      await reg.selectWalkinGuarantee({
+        tipeJaminanId: 'BPJS',
+        tipeJaminanName: 'BPJS Kesehatan',
+        noPeserta: '000123456',
+      })
+
+      expect(reg.bpjsReferences.value).toHaveLength(3)
+      expect(reg.bpjsReferences.value[0].id).toBe('SKDP-111')
+      expect(reg.bpjsReferences.value[0].type).toBe('skdp')
+      expect(reg.bpjsReferences.value[1].id).toBe('SKDP-222')
+      expect(reg.bpjsReferences.value[1].type).toBe('skdp')
+      expect(reg.bpjsReferences.value[2].id).toBe('RUJ-999')
+      expect(reg.bpjsReferences.value[2].type).toBe('rujukan')
+    })
+
+    it('transitions to BPJS_SELECT_REFERENCE after biometric verification when multiple references exist', async () => {
+      const mockRujukanSkpd = {
+        peserta: {
+          noPeserta: '000123456',
+          nama: 'Andi',
+          hakKelas: { kode: '3', nama: 'Kelas 3' },
+          status: { kode: '1', info: 'AKTIF' },
+          jenisPeserta: { kode: 'PNS', nama: 'PNS' },
+          provider: { kode: 'P1', nama: 'RS A' },
+          prbInfo: null,
+          tglTat: '2026-08-06',
+          tglLahir: '1990-01-01',
+        },
+        rujukan: {
+          noRujukan: 'RUJ-999',
+          tglRujukan: '2026-08-01',
+          diagnosa: { kode: 'Z00.0', nama: 'DM' },
+        },
+        listSkdp: [
+          {
+            noSkdp: 'SKDP-111',
+            tglMulai: '2026-08-02',
+            diagnosa: { kode: 'I10', nama: 'Hipertensi' },
+          },
+        ],
+      }
+      const deps = makeDeps({
+        getRujukanSkpd: vi.fn(async () => mockRujukanSkpd),
+        verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
+      })
+      const reg = useKioskRegistration(deps)
+
+      reg.selectedPatient.value = {
+        pasienId: 'PT1',
+        pasienName: 'Andi',
+        nik: '123',
+        noMR: 'MR1',
+        tglLahir: '1990-01-01',
+      }
+      reg.flow.value = 'WALKIN_SELECT_GUARANTEE'
+      reg.mode.value = 'walkin'
+
+      await reg.selectWalkinGuarantee({
+        tipeJaminanId: 'BPJS',
+        tipeJaminanName: 'BPJS Kesehatan',
+        noPeserta: '000123456',
+      })
+
+      expect(reg.flow.value).toBe('BPJS_SELECT_REFERENCE')
+
+      await reg.selectBpjsReference(reg.bpjsReferences.value[0])
+      expect(reg.flow.value).toBe('WALKIN_SELECT_SERVICE')
+      expect(reg.selectedBpjsReference.value?.id).toBe('SKDP-111')
+    })
+
+    it('bypasses BPJS_SELECT_REFERENCE when only exactly 1 reference exists', async () => {
+      const mockRujukanSkpd = {
+        peserta: {
+          noPeserta: '000123456',
+          nama: 'Andi',
+          hakKelas: { kode: '3', nama: 'Kelas 3' },
+          status: { kode: '1', info: 'AKTIF' },
+          jenisPeserta: { kode: 'PNS', nama: 'PNS' },
+          provider: { kode: 'P1', nama: 'RS A' },
+          prbInfo: null,
+          tglTat: '2026-08-06',
+          tglLahir: '1990-01-01',
+        },
+        rujukan: {
+          noRujukan: 'RUJ-999',
+          tglRujukan: '2026-08-01',
+          diagnosa: { kode: 'Z00.0', nama: 'DM' },
+        },
+        listSkdp: [],
+      }
+      const deps = makeDeps({
+        getRujukanSkpd: vi.fn(async () => mockRujukanSkpd),
+        verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
+      })
+      const reg = useKioskRegistration(deps)
+
+      reg.selectedPatient.value = {
+        pasienId: 'PT1',
+        pasienName: 'Andi',
+        nik: '123',
+        noMR: 'MR1',
+        tglLahir: '1990-01-01',
+      }
+      reg.flow.value = 'WALKIN_SELECT_GUARANTEE'
+      reg.mode.value = 'walkin'
+
+      await reg.selectWalkinGuarantee({
+        tipeJaminanId: 'BPJS',
+        tipeJaminanName: 'BPJS Kesehatan',
+        noPeserta: '000123456',
+      })
+
+      expect(reg.flow.value).toBe('WALKIN_SELECT_SERVICE')
+      expect(reg.selectedBpjsReference.value?.id).toBe('RUJ-999')
+    })
+
+    it('runs deepSearchPasien and transitions to PATIENT_CONTEXT_CONFIRM on booking search miss but deep patient search hit', async () => {
+      const mockDeepSearchResult = {
+        pasienId: 'PT-DEEP',
+        isActive: true,
+        person: {
+          personName: 'Rina Deep',
+          tglLahir: '1995-05-15',
+          gender: 'P' as const,
+          alamat: {
+            alamat: ['Jl. Merdeka 10'],
+            kota: 'Bandung',
+            kodePos: '40111',
+          },
+          contact: {
+            jenisContact: 2,
+            contactDetail: '08123456789',
+          },
+          identity: {
+            jenisId: 'NIK',
+            nomorId: '3273123456789001',
+          },
+        },
+      }
+      const deps = makeDeps({
+        searchBooking: vi.fn(async () => []),
+        deepSearchPasien: vi.fn(async () => [mockDeepSearchResult]),
+      })
+      const reg = useKioskRegistration(deps)
+      reg.startBookingFlow()
+
+      await reg.submitBookingKeyword('08123456789')
+
+      expect(deps.searchBooking).toHaveBeenCalled()
+      expect(deps.deepSearchPasien).toHaveBeenCalledWith('08123456789')
+      expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
+      expect(reg.patientContextResult.value?.patients.items).toHaveLength(1)
+      expect(reg.patientContextResult.value?.patients.items[0].patientName).toBe('Rina Deep')
+      expect(reg.patientContextResult.value?.patients.items[0].patientId).toBe('PT-DEEP')
+    })
   })
 })

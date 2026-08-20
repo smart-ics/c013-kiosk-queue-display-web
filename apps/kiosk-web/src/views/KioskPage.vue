@@ -27,6 +27,7 @@ import BookingConfirmStep from './steps/BookingConfirmStep.vue'
 import PatientContextConfirmStep from './steps/PatientContextConfirmStep.vue'
 import WalkinServiceStep from './steps/WalkinServiceStep.vue'
 import WalkinSelectGuaranteeStep from './steps/WalkinSelectGuaranteeStep.vue'
+import BpjsSelectReferenceStep from './steps/BpjsSelectReferenceStep.vue'
 import WalkinConfirmStep from './steps/WalkinConfirmStep.vue'
 import BiometricStep from './steps/BiometricStep.vue'
 import RegistrationSuccessStep from './steps/RegistrationSuccessStep.vue'
@@ -144,6 +145,7 @@ const registration = useKioskRegistration({
   listPolis: (pasienId) => getHisApi().listPolis(pasienId),
   getGroupJaminanMap: (tipeJaminanId) => getJetliApi().getGroupJaminanMap(tipeJaminanId),
   searchPatientContext: (body) => getHisApi().patientContextSearch(body),
+  deepSearchPasien: (keyword) => getHisApi().deepSearchPasien(keyword),
   appConfig: configService.getConfig(),
   verifyBiometric: () => createBiometricClient({ port: printerProxyPort.value }).verify(),
   listKarcis: (layananId) => getHisApi().listKarcis(layananId),
@@ -328,6 +330,7 @@ const loadingMessage = computed(() => {
               'PATIENT_CONTEXT_SEARCH',
               'PATIENT_CONTEXT_CONFIRM',
               'WALKIN_SELECT_GUARANTEE',
+              'BPJS_SELECT_REFERENCE',
               'WALKIN_SELECT_SERVICE',
               'BOOKING_CONFIRM',
               'WALKIN_CONFIRM',
@@ -351,6 +354,7 @@ const loadingMessage = computed(() => {
                 : [
                     'WALKIN_SELECT_GUARANTEE',
                     'BIOMETRIC_VERIFY',
+                    'BPJS_SELECT_REFERENCE',
                     'WALKIN_SELECT_SERVICE',
                     'WALKIN_CONFIRM',
                     'REGISTRATION_SUCCESS',
@@ -384,10 +388,11 @@ const loadingMessage = computed(() => {
                     'REGISTRATION_SUCCESS',
                     'ASSISTANCE_QUEUE',
                   ].includes(registration.flow.value),
-              active: !isBookingMode && [
-                'WALKIN_SELECT_GUARANTEE',
-                'BIOMETRIC_VERIFY',
-              ].includes(registration.flow.value),
+              active:
+                !isBookingMode &&
+                ['WALKIN_SELECT_GUARANTEE', 'BIOMETRIC_VERIFY', 'BPJS_SELECT_REFERENCE'].includes(
+                  registration.flow.value,
+                ),
             }"
           >
             2. Jaminan
@@ -405,11 +410,9 @@ const loadingMessage = computed(() => {
                     'REGISTRATION_SUCCESS',
                     'ASSISTANCE_QUEUE',
                   ].includes(registration.flow.value)
-                : [
-                    'WALKIN_CONFIRM',
-                    'REGISTRATION_SUCCESS',
-                    'ASSISTANCE_QUEUE',
-                  ].includes(registration.flow.value),
+                : ['WALKIN_CONFIRM', 'REGISTRATION_SUCCESS', 'ASSISTANCE_QUEUE'].includes(
+                    registration.flow.value,
+                  ),
               active: !isBookingMode && registration.flow.value === 'WALKIN_SELECT_SERVICE',
             }"
           >
@@ -490,6 +493,13 @@ const loadingMessage = computed(() => {
             @select="registration.selectWalkinGuarantee"
             @back="onHome"
           />
+          <BpjsSelectReferenceStep
+            v-else-if="registration.flow.value === 'BPJS_SELECT_REFERENCE'"
+            :references="registration.bpjsReferences.value"
+            :pending="registration.submitting.value"
+            @select="registration.selectBpjsReference"
+            @back="onHome"
+          />
           <WalkinServiceStep
             v-else-if="registration.flow.value === 'WALKIN_SELECT_SERVICE'"
             :catalog="catalog"
@@ -562,7 +572,7 @@ const loadingMessage = computed(() => {
             v-if="loadingMessage"
             class="status"
             :class="{ error: !!servicePointsQuery.isError.value }"
-            style="text-align: center;"
+            style="text-align: center"
           >
             {{ loadingMessage }}
           </p>
@@ -572,12 +582,12 @@ const loadingMessage = computed(() => {
             class="status error"
             :class="{ uncertain: errorUncertain }"
             data-testid="intake-error"
-            style="text-align: center;"
+            style="text-align: center"
           >
             {{ errorMessage }}
           </p>
 
-          <div class="scrollable-content" style="padding-bottom: 24px;">
+          <div class="scrollable-content" style="padding-bottom: 24px">
             <div v-if="offerings.length" class="kiosk-grid-2x2">
               <button
                 v-for="sp in offerings"
@@ -587,24 +597,44 @@ const loadingMessage = computed(() => {
                 :disabled="!canSubmit"
                 :data-testid="`sp-${sp.servicePointId}`"
                 @click="submitIntake(sp.servicePointId)"
-                style="min-height: 88px;"
+                style="min-height: 88px"
               >
                 <!-- Card Icon -->
                 <div
                   class="radio-card-icon"
                   :style="{
                     background: isBpjs(sp) ? 'var(--green-soft)' : 'var(--brand-soft)',
-                    color: isBpjs(sp) ? 'var(--green-strong)' : 'var(--brand-strong)'
+                    color: isBpjs(sp) ? 'var(--green-strong)' : 'var(--brand-strong)',
                   }"
                 >
                   <!-- Card/BPJS Icon vs Patient Icon -->
-                  <svg v-if="isBpjs(sp)" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    v-if="isBpjs(sp)"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <rect x="3" y="4" width="18" height="16" rx="2" />
                     <line x1="7" y1="8" x2="17" y2="8" />
                     <line x1="7" y1="12" x2="17" y2="12" />
                     <line x1="7" y1="16" x2="13" y2="16" />
                   </svg>
-                  <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    v-else
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                   </svg>
@@ -621,10 +651,19 @@ const loadingMessage = computed(() => {
                   class="select-arrow"
                   :style="{
                     background: isBpjs(sp) ? 'var(--green-soft)' : '',
-                    color: isBpjs(sp) ? 'var(--green-strong)' : ''
+                    color: isBpjs(sp) ? 'var(--green-strong)' : '',
                   }"
                 >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <polyline points="13 17 18 12 13 7"></polyline>
                     <polyline points="6 17 11 12 6 7"></polyline>
                   </svg>
@@ -633,14 +672,18 @@ const loadingMessage = computed(() => {
             </div>
           </div>
 
-          <div v-if="errorMessage" class="actions" style="margin-top: 16px; justify-content: center;">
+          <div
+            v-if="errorMessage"
+            class="actions"
+            style="margin-top: 16px; justify-content: center"
+          >
             <button
               type="button"
               class="secondary-btn"
               :disabled="pending"
               data-testid="retry-intake"
               @click="retryLast"
-              style="min-width: 160px;"
+              style="min-width: 160px"
             >
               Coba lagi
             </button>
@@ -656,12 +699,21 @@ const loadingMessage = computed(() => {
               border-top: 1px solid var(--border);
             "
           >
-            <button type="button" class="secondary-btn" @click="onHome" style="min-width: 200px;">
+            <button type="button" class="secondary-btn" @click="onHome" style="min-width: 200px">
               Kembali ke menu
             </button>
           </div>
 
-          <p v-if="pending" class="status" style="text-align: center; margin-top: 12px; font-weight: 600; color: var(--text-secondary);">
+          <p
+            v-if="pending"
+            class="status"
+            style="
+              text-align: center;
+              margin-top: 12px;
+              font-weight: 600;
+              color: var(--text-secondary);
+            "
+          >
             Sedang mengambil nomor…
           </p>
         </section>

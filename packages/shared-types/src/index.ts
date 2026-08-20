@@ -277,9 +277,7 @@ export const replaceKioskServicePointsBodySchema = z.object({
   servicePoints: z.array(kioskServicePointMappingSchema),
   rowVersion: z.string().min(1),
 })
-export type ReplaceKioskServicePointsBody = z.infer<
-  typeof replaceKioskServicePointsBodySchema
->
+export type ReplaceKioskServicePointsBody = z.infer<typeof replaceKioskServicePointsBodySchema>
 
 export const kioskBootConfigSchema = z.object({
   deviceId: z.string(),
@@ -371,7 +369,9 @@ export const payloadDirectRegisterRajalWalkInSchema = z.object({
   karcisId: z.string().min(1),
   pesertaJaminanId: z.string(),
 })
-export type PayloadDirectRegisterRajalWalkIn = z.infer<typeof payloadDirectRegisterRajalWalkInSchema>
+export type PayloadDirectRegisterRajalWalkIn = z.infer<
+  typeof payloadDirectRegisterRajalWalkInSchema
+>
 
 export const payloadDirectRegisterRajalByBookingSchema = z.object({
   bookingId: z.string().min(1),
@@ -382,7 +382,9 @@ export const payloadDirectRegisterRajalByBookingSchema = z.object({
   tipeJaminanId: z.string().min(1),
   pesertaJaminanId: z.string(),
 })
-export type PayloadDirectRegisterRajalByBooking = z.infer<typeof payloadDirectRegisterRajalByBookingSchema>
+export type PayloadDirectRegisterRajalByBooking = z.infer<
+  typeof payloadDirectRegisterRajalByBookingSchema
+>
 
 export const payloadSetDataEligibilitySchema = z.object({
   regId: z.string().min(1),
@@ -685,3 +687,5 @@ export const patientContextSearchResponseSchema = z.object({
   canCreatePatient: z.boolean(),
 })
 export type PatientContextSearchResponse = z.infer<typeof patientContextSearchResponseSchema>
+
+export * from './pasien'

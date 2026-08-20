@@ -43,6 +43,8 @@ import {
   type SepCreateBody,
   type SepUploadBody,
   type ServiceItem,
+  deepSearchResultSchema,
+  type DeepSearchResult,
 } from '@aq/shared-types'
 import type { AdmissionQueueClient } from './http'
 
@@ -81,58 +83,68 @@ export function createHisApi(client: AdmissionQueueClient) {
     },
 
     listPoli(): Promise<ServiceItem[]> {
-      return client.getJson(
-        'Layanan/2/list',
-        z.array(
-          z.object({
-            layananId: z.string(),
-            layananName: z.string(),
-            isAktif: z.boolean(),
-            instalasiId: z.string(),
-            instalasiName: z.string(),
-            poliBpjsId: z.string().nullable().optional(),
-            poliBpjsName: z.string().nullable().optional(),
-          }),
-        ),
-      )
-        .then(list =>
+      return client
+        .getJson(
+          'Layanan/2/list',
+          z.array(
+            z.object({
+              layananId: z.string(),
+              layananName: z.string(),
+              isAktif: z.boolean(),
+              instalasiId: z.string(),
+              instalasiName: z.string(),
+              poliBpjsId: z.string().nullable().optional(),
+              poliBpjsName: z.string().nullable().optional(),
+            }),
+          ),
+        )
+        .then((list) =>
           list
-            .filter(item => item.isAktif)
-            .map(item => ({ id: item.layananId, name: item.layananName })),
+            .filter((item) => item.isAktif)
+            .map((item) => ({ id: item.layananId, name: item.layananName })),
         )
     },
 
     listDokter(poliId: string): Promise<ServiceItem[]> {
-      return client.getJson(
-        `JadwalPraktek/layanan/${encodeURIComponent(poliId)}`,
-        z.array(
-          z.object({
-            dokterId: z.string(),
-            dokterName: z.string(),
-            layananId: z.string(),
-            layananName: z.string(),
-            ruangId: z.string(),
-            ruangName: z.string(),
-            listHari: z.array(
-              z.object({
-                jadwalPraktekId: z.string(),
-                hari: z.string(),
-                jamMulai: z.string(),
-                jamSelesai: z.string(),
-                maxPasien: z.number(),
-              }),
-            ),
-          }),
-        ),
-      )
-        .then(list => {
+      return client
+        .getJson(
+          `JadwalPraktek/layanan/${encodeURIComponent(poliId)}`,
+          z.array(
+            z.object({
+              dokterId: z.string(),
+              dokterName: z.string(),
+              layananId: z.string(),
+              layananName: z.string(),
+              ruangId: z.string(),
+              ruangName: z.string(),
+              listHari: z.array(
+                z.object({
+                  jadwalPraktekId: z.string(),
+                  hari: z.string(),
+                  jamMulai: z.string(),
+                  jamSelesai: z.string(),
+                  maxPasien: z.number(),
+                }),
+              ),
+            }),
+          ),
+        )
+        .then((list) => {
           const dayIndex = new Date().getDay()
-          const ENGLISH_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+          const ENGLISH_DAYS = [
+            'Sunday',
+            'Monday',
+            'Tuesday',
+            'Wednesday',
+            'Thursday',
+            'Friday',
+            'Saturday',
+          ]
           const todayName = ENGLISH_DAYS[dayIndex].toLowerCase()
 
-          return list.map(item => {
+          return list.map((item) => {
             const isPraktekHariIni = item.listHari.some(
-              h => h.hari.trim().toLowerCase() === todayName,
+              (h) => h.hari.trim().toLowerCase() === todayName,
             )
             return {
               id: item.dokterId,
@@ -144,34 +156,35 @@ export function createHisApi(client: AdmissionQueueClient) {
     },
 
     listJadwal(businessDate: string, ppaId: string): Promise<JadwalItem[]> {
-      return client.postJson(
-        'PraktekDokter/dokter',
-        {
-          tglYmdAwal: businessDate,
-          tglYmdAkhir: businessDate,
-          dokterId: ppaId,
-        },
-        z.array(
-          z.object({
-            tanggal: z.string(),
-            dokter: z.object({
-              ppaId: z.string(),
-              ppaName: z.string(),
-              isDefault: z.boolean().nullable().optional(),
+      return client
+        .postJson(
+          'PraktekDokter/dokter',
+          {
+            tglYmdAwal: businessDate,
+            tglYmdAkhir: businessDate,
+            dokterId: ppaId,
+          },
+          z.array(
+            z.object({
+              tanggal: z.string(),
+              dokter: z.object({
+                ppaId: z.string(),
+                ppaName: z.string(),
+                isDefault: z.boolean().nullable().optional(),
+              }),
+              layanan: z.object({
+                layananId: z.string(),
+                layananName: z.string(),
+              }),
+              jamMulaiPraktek: z.string(),
+              jamSelesaiPraktek: z.string(),
+              jumlahPasien: z.number(),
+              maxPasien: z.number(),
             }),
-            layanan: z.object({
-              layananId: z.string(),
-              layananName: z.string(),
-            }),
-            jamMulaiPraktek: z.string(),
-            jamSelesaiPraktek: z.string(),
-            jumlahPasien: z.number(),
-            maxPasien: z.number(),
-          }),
-        ),
-      )
-        .then(list =>
-          list.map(item => ({
+          ),
+        )
+        .then((list) =>
+          list.map((item) => ({
             jadwalId: `${item.dokter.ppaId}-${item.tanggal}-${item.jamMulaiPraktek}`,
             ppaId: item.dokter.ppaId,
             jamPraktek: `${item.jamMulaiPraktek} - ${item.jamSelesaiPraktek}`,
@@ -181,26 +194,32 @@ export function createHisApi(client: AdmissionQueueClient) {
     },
 
     listKarcis(layananId: string): Promise<KarcisItem[]> {
-      return client.getJson(
-        `Karcis/${encodeURIComponent(layananId)}/list`,
-        z.array(
-          z.object({
-            karcisId: z.string(),
-            karcisName: z.string(),
-            layanan: z.object({ layananId: z.string(), layananName: z.string() }).optional(),
-            defaultTarif: z.object({ tarifId: z.string(), tarifName: z.string() }).optional(),
-            nilai: z.number().optional(),
-          }),
-        ),
-      ).then(list => list.map(item => ({ id: item.karcisId, name: item.karcisName })))
+      return client
+        .getJson(
+          `Karcis/${encodeURIComponent(layananId)}/list`,
+          z.array(
+            z.object({
+              karcisId: z.string(),
+              karcisName: z.string(),
+              layanan: z.object({ layananId: z.string(), layananName: z.string() }).optional(),
+              defaultTarif: z.object({ tarifId: z.string(), tarifName: z.string() }).optional(),
+              nilai: z.number().optional(),
+            }),
+          ),
+        )
+        .then((list) => list.map((item) => ({ id: item.karcisId, name: item.karcisName })))
     },
 
-    registerByBookingDirect(body: z.input<typeof payloadDirectRegisterRajalByBookingSchema>): Promise<ReturnCreateWalkIn> {
+    registerByBookingDirect(
+      body: z.input<typeof payloadDirectRegisterRajalByBookingSchema>,
+    ): Promise<ReturnCreateWalkIn> {
       const parsed = payloadDirectRegisterRajalByBookingSchema.parse(body)
       return client.postJson('Reg/rajalByBooking/direct', parsed, returnCreateWalkInSchema)
     },
 
-    registerWalkInDirect(body: z.input<typeof payloadDirectRegisterRajalWalkInSchema>): Promise<ReturnCreateWalkIn> {
+    registerWalkInDirect(
+      body: z.input<typeof payloadDirectRegisterRajalWalkInSchema>,
+    ): Promise<ReturnCreateWalkIn> {
       const parsed = payloadDirectRegisterRajalWalkInSchema.parse(body)
       return client.postJson('Reg/rajalWalkIn/direct', parsed, returnCreateWalkInSchema)
     },
@@ -227,6 +246,13 @@ export function createHisApi(client: AdmissionQueueClient) {
         'v1/admisi-rajal/patient-context-search',
         parsed,
         patientContextSearchResponseSchema,
+      )
+    },
+
+    deepSearchPasien(keyword: string): Promise<DeepSearchResult[]> {
+      return client.getJson(
+        `pasien/search/${encodeURIComponent(keyword)}`,
+        z.array(deepSearchResultSchema),
       )
     },
   }

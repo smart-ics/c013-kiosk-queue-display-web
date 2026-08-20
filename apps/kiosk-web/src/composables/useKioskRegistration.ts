@@ -20,6 +20,7 @@ import type {
   ResponseUploadSep,
   SepCreateBody,
   SepUploadBody,
+  DeepSearchResult,
 } from '@aq/shared-types'
 import type { AppConfig } from '@aq/app-config'
 import { getKodeBookingMjkn } from '../lib/qrCodeDecoder'
@@ -56,6 +57,7 @@ export type KioskRegistrationDeps = {
     keyword: string
     businessDate: string
   }) => Promise<PatientContextSearchResponse>
+  deepSearchPasien: (keyword: string) => Promise<DeepSearchResult[]>
   appConfig: AppConfig
   verifyBiometric: () => Promise<BiometricVerdict>
   listKarcis: (layananId: string) => Promise<KarcisItem[]>
@@ -104,9 +106,7 @@ function resolveDefaultKarcisId(
     // 2. Wildcard match (tipeJaminanId matches, and layananId is empty, "*" or omitted)
     if (!match) {
       match = appConfig.mappingJmnLayananKarcis.find(
-        (m) =>
-          m.tipeJaminanId === tipeJaminanId &&
-          (!m.layananId || m.layananId === '*'),
+        (m) => m.tipeJaminanId === tipeJaminanId && (!m.layananId || m.layananId === '*'),
       )
     }
     if (match) return match.karcisId
@@ -116,6 +116,17 @@ function resolveDefaultKarcisId(
     if (match) return match.karcisId
   }
   return appConfig.kioskDefaultKarcisId ?? ''
+}
+
+export type BpjsReference = {
+  type: 'skdp' | 'rujukan'
+  id: string // noSkdp or noRujukan
+  date: string // tglMulai or tglRujukan
+  diagnosaId: string
+  diagnosaName: string
+  kelasRawatId: string
+  tglLahir: string
+  original: any
 }
 
 export function useKioskRegistration(deps: KioskRegistrationDeps) {
@@ -142,6 +153,8 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   const patientPolicies = ref<Polis[]>([])
   const errorContext = ref<FailureContext | null>(null)
   const biometricVerdict = ref<BiometricVerdict | null>(null)
+  const bpjsReferences = ref<BpjsReference[]>([])
+  const selectedBpjsReference = ref<BpjsReference | null>(null)
   const activeBpjsContext = ref<{
     noRujukan: string
     kelasRawatId: string
@@ -187,6 +200,8 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     selectedContextPatient.value = null
     patientPolicies.value = []
     biometricVerdict.value = null
+    bpjsReferences.value = []
+    selectedBpjsReference.value = null
     activeBpjsContext.value = null
     submitting.value = false
     touch()
@@ -227,6 +242,41 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         const tgl = await ensureBusinessDate()
         const matches = await deps.searchBooking(tgl, decoded)
         if (matches.length === 0) {
+          const deepMatches = await deps.deepSearchPasien(decoded)
+          if (deepMatches.length > 0) {
+            const mapped = deepMatches.map((item) => ({
+              kind: 'Patient' as const,
+              id: item.pasienId,
+              patientName: item.person.personName,
+              patientId: item.pasienId,
+              birthDate: item.person.tglLahir,
+              gender: item.person.gender,
+              locality: item.person.alamat?.kota || null,
+              maskedNik: item.person.identity?.nomorId || null,
+              maskedPhone: item.person.contact?.contactDetail || null,
+              visitDate: null,
+              visitTime: null,
+              serviceName: null,
+              doctorName: null,
+              state: '',
+              bookingId: null,
+              registrationId: null,
+              matchType: 'DeepSearch',
+              isExactMatch: true,
+              rank: 1,
+              warnings: [],
+            }))
+            patientContextResult.value = {
+              businessDate: tgl,
+              bookings: { items: [], total: 0, hasMore: false },
+              registrations: { items: [], total: 0, hasMore: false },
+              patients: { items: mapped, total: mapped.length, hasMore: false },
+              bestMatch: mapped[0] || null,
+              canCreatePatient: false,
+            }
+            transition('PATIENT_CONTEXT_CONFIRM')
+            return
+          }
           await searchPatientContextFor(decoded)
           return
         }
@@ -238,16 +288,21 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         selectedBooking.value = booking
         const detail = await deps.getBookingDetail(booking.bookingId)
         const polisList = await deps.listPolis(detail.reg.pasienId)
-        
-        const hasBpjsPolicy = polisList.some(p => {
+
+        const hasBpjsPolicy = polisList.some((p) => {
           const name = (p.tipeJaminan?.tipeJaminanName || '').toLowerCase()
           const id = (p.tipeJaminan?.tipeJaminanId || '').toLowerCase()
-          return name.includes('bpjs') || name.includes('jkn') || id.includes('bpjs') || id.includes('jkn')
+          return (
+            name.includes('bpjs') ||
+            name.includes('jkn') ||
+            id.includes('bpjs') ||
+            id.includes('jkn')
+          )
         })
         if (detail.coverageInfo?.noPeserta && !hasBpjsPolicy) {
           setFailure(
             'BPJS_VALIDATION_FAILED',
-            'Data kartu BPJS Anda belum terdaftar di rumah sakit ini. Silakan menuju Loket Pendaftaran untuk pendaftaran pertama kali.'
+            'Data kartu BPJS Anda belum terdaftar di rumah sakit ini. Silakan menuju Loket Pendaftaran untuk pendaftaran pertama kali.',
           )
           return
         }
@@ -328,7 +383,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         if (jaminan.tipeJaminanId === 'BPJS_FALLBACK') {
           setFailure(
             'BPJS_VALIDATION_FAILED',
-            'Data kartu BPJS Anda belum terdaftar di rumah sakit ini. Silakan menuju Loket Pendaftaran untuk pendaftaran pertama kali.'
+            'Data kartu BPJS Anda belum terdaftar di rumah sakit ini. Silakan menuju Loket Pendaftaran untuk pendaftaran pertama kali.',
           )
           return
         }
@@ -356,6 +411,64 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     })
   }
 
+  async function fetchAndParseBpjsReferences(noPeserta: string): Promise<string> {
+    const res = await deps.getRujukanSkpd(noPeserta)
+    const parsedRefs: BpjsReference[] = []
+
+    if (res.listSkdp) {
+      for (const skdp of res.listSkdp as any[]) {
+        if (skdp.noSkdp) {
+          parsedRefs.push({
+            type: 'skdp',
+            id: skdp.noSkdp,
+            date: skdp.tglMulai || '',
+            diagnosaId: skdp.diagnosa?.kode || 'Z00.0',
+            diagnosaName: skdp.diagnosa?.nama || '',
+            kelasRawatId: res.peserta.hakKelas.kode,
+            tglLahir: res.peserta.tglLahir,
+            original: skdp,
+          })
+        }
+      }
+    }
+
+    const rujukan = res.rujukan as any
+    if (rujukan && rujukan.noRujukan) {
+      parsedRefs.push({
+        type: 'rujukan',
+        id: rujukan.noRujukan,
+        date: rujukan.tglRujukan || '',
+        diagnosaId: rujukan.diagnosa?.kode || 'Z00.0',
+        diagnosaName: rujukan.diagnosa?.nama || '',
+        kelasRawatId: res.peserta.hakKelas.kode,
+        tglLahir: res.peserta.tglLahir,
+        original: rujukan,
+      })
+    }
+
+    if (parsedRefs.length === 0) {
+      throw new Error(
+        'Rujukan atau SKDP BPJS tidak aktif/tidak ditemukan. Silakan ambil antrian pendaftaran manual.',
+      )
+    }
+
+    bpjsReferences.value = parsedRefs
+
+    if (parsedRefs.length === 1) {
+      selectedBpjsReference.value = parsedRefs[0]
+      activeBpjsContext.value = {
+        noRujukan: parsedRefs[0].id,
+        kelasRawatId: parsedRefs[0].kelasRawatId,
+        diagnosaId: parsedRefs[0].diagnosaId,
+      }
+    } else {
+      selectedBpjsReference.value = null
+      activeBpjsContext.value = null
+    }
+
+    return res.peserta.tglLahir
+  }
+
   async function handleBpjsVerificationAndTransitionToService(
     eligibility: EligibilityStatus,
   ): Promise<void> {
@@ -364,51 +477,17 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       throw new Error('Nomor kartu BPJS tidak ditemukan.')
     }
 
-    const res = await deps.getRujukanSkpd(noPeserta)
-    const rujukan = res.rujukan as Record<string, any> | null
-    let extracted: {
-      noRujukan: string
-      kelasRawatId: string
-      diagnosaId: string
-      tglLahir: string
-    } | null = null
-
-    if (rujukan && rujukan.noRujukan) {
-      extracted = {
-        noRujukan: rujukan.noRujukan as string,
-        kelasRawatId: res.peserta.hakKelas.kode,
-        diagnosaId: (rujukan.diagnosa?.kode || 'Z00.0') as string,
-        tglLahir: res.peserta.tglLahir,
-      }
-    } else {
-      const skdp = res.listSkdp && (res.listSkdp[0] as Record<string, any> | null)
-      if (skdp && skdp.noSkdp) {
-        extracted = {
-          noRujukan: skdp.noSkdp as string,
-          kelasRawatId: res.peserta.hakKelas.kode,
-          diagnosaId: (skdp.diagnosa?.kode || 'Z00.0') as string,
-          tglLahir: res.peserta.tglLahir,
-        }
-      }
-    }
-
-    if (!extracted) {
-      throw new Error(
-        'Rujukan atau SKDP BPJS tidak aktif/tidak ditemukan. Silakan ambil antrian pendaftaran manual.',
-      )
-    }
-
-    activeBpjsContext.value = {
-      noRujukan: extracted.noRujukan,
-      kelasRawatId: extracted.kelasRawatId,
-      diagnosaId: extracted.diagnosaId,
-    }
+    const tglLahir = await fetchAndParseBpjsReferences(noPeserta)
 
     const currentBusinessDate = businessDate.value || (await ensureBusinessDate())
-    const age = calculateAge(extracted.tglLahir, currentBusinessDate)
+    const age = calculateAge(tglLahir, currentBusinessDate)
 
     if (age < 17) {
-      transition('WALKIN_SELECT_SERVICE')
+      if (selectedBpjsReference.value) {
+        transition('WALKIN_SELECT_SERVICE')
+      } else {
+        transition('BPJS_SELECT_REFERENCE')
+      }
     } else {
       transition('BIOMETRIC_VERIFY')
       await runBiometricForWalkin()
@@ -421,7 +500,11 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       const verdict = await deps.verifyBiometric()
       biometricVerdict.value = verdict
       if (verdict.outcome === 'SUCCESS' || verdict.outcome === 'READY') {
-        transition('WALKIN_SELECT_SERVICE')
+        if (selectedBpjsReference.value) {
+          transition('WALKIN_SELECT_SERVICE')
+        } else {
+          transition('BPJS_SELECT_REFERENCE')
+        }
       } else if (verdict.outcome === 'TIMEOUT') {
         setFailure('BIOMETRIC_TIMEOUT', 'Verifikasi biometrik melewati batas waktu.')
       } else {
@@ -468,51 +551,17 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       throw new Error('Nomor kartu BPJS tidak ditemukan.')
     }
 
-    const res = await deps.getRujukanSkpd(noPeserta)
-    const rujukan = res.rujukan as Record<string, any> | null
-    let extracted: {
-      noRujukan: string
-      kelasRawatId: string
-      diagnosaId: string
-      tglLahir: string
-    } | null = null
-
-    if (rujukan && rujukan.noRujukan) {
-      extracted = {
-        noRujukan: rujukan.noRujukan as string,
-        kelasRawatId: res.peserta.hakKelas.kode,
-        diagnosaId: (rujukan.diagnosa?.kode || 'Z00.0') as string,
-        tglLahir: res.peserta.tglLahir,
-      }
-    } else {
-      const skdp = res.listSkdp && (res.listSkdp[0] as Record<string, any> | null)
-      if (skdp && skdp.noSkdp) {
-        extracted = {
-          noRujukan: skdp.noSkdp as string,
-          kelasRawatId: res.peserta.hakKelas.kode,
-          diagnosaId: (skdp.diagnosa?.kode || 'Z00.0') as string,
-          tglLahir: res.peserta.tglLahir,
-        }
-      }
-    }
-
-    if (!extracted) {
-      throw new Error(
-        'Rujukan atau SKDP BPJS tidak aktif/tidak ditemukan. Silakan ambil antrian pendaftaran manual.',
-      )
-    }
-
-    activeBpjsContext.value = {
-      noRujukan: extracted.noRujukan,
-      kelasRawatId: extracted.kelasRawatId,
-      diagnosaId: extracted.diagnosaId,
-    }
+    const tglLahir = await fetchAndParseBpjsReferences(noPeserta)
 
     const currentBusinessDate = businessDate.value || (await ensureBusinessDate())
-    const age = calculateAge(extracted.tglLahir, currentBusinessDate)
+    const age = calculateAge(tglLahir, currentBusinessDate)
 
     if (age < 17) {
-      await register(currentMode)
+      if (selectedBpjsReference.value) {
+        await register(currentMode)
+      } else {
+        transition('BPJS_SELECT_REFERENCE')
+      }
     } else {
       transition('BIOMETRIC_VERIFY')
       await runBiometric(currentMode)
@@ -525,7 +574,11 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       const verdict = await deps.verifyBiometric()
       biometricVerdict.value = verdict
       if (verdict.outcome === 'SUCCESS' || verdict.outcome === 'READY') {
-        await register(currentMode)
+        if (selectedBpjsReference.value) {
+          await register(currentMode)
+        } else {
+          transition('BPJS_SELECT_REFERENCE')
+        }
       } else if (verdict.outcome === 'TIMEOUT') {
         setFailure('BIOMETRIC_TIMEOUT', 'Verifikasi biometrik melewati batas waktu.')
       } else {
@@ -533,6 +586,29 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       }
     } catch (error) {
       setFailure('BACKEND_ERROR', messageFromError(error))
+    }
+  }
+
+  function selectBpjsReference(ref: BpjsReference): Promise<void> {
+    touch()
+    selectedBpjsReference.value = ref
+    activeBpjsContext.value = {
+      noRujukan: ref.id,
+      kelasRawatId: ref.kelasRawatId,
+      diagnosaId: ref.diagnosaId,
+    }
+
+    if (mode.value === 'walkin') {
+      transition('WALKIN_SELECT_SERVICE')
+      return Promise.resolve()
+    } else {
+      return withSubmit(async () => {
+        try {
+          await register('booking')
+        } catch (error) {
+          setFailure(mapErrorToFailureCode(error), messageFromError(error))
+        }
+      })
     }
   }
 
@@ -798,6 +874,8 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     patientPolicies,
     errorContext,
     biometricVerdict,
+    bpjsReferences,
+    selectedBpjsReference,
     startBookingFlow,
     goHome,
     dispose,
@@ -807,6 +885,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     cancelPatientContext,
     selectWalkinGuarantee,
     selectService,
+    selectBpjsReference,
     setWalkinNoPeserta,
     confirmWalkin,
     confirmAssistance,
