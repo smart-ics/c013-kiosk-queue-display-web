@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.4] - 2026-08-21
+
+### Added
+
+- **BPJS Multi-Reference Selection (kiosk-web)**: Introduces a step in the BPJS registration flow (`BpjsSelectReferenceStep`) when a patient has multiple active BPJS references (Rujukan or SKDP control letters), allowing them to select the correct reference for registration.
+- **Deep Patient Search API (api-client)**: Implements a new `deepSearchPasien` API endpoint to query patient demographic details.
+
+### Changed
+
+- **Optimized Video Asset (kiosk-web)**: Replaced `adv-video.mp4` with a highly compressed and optimized version (reduced from 14.5MB to 2.5MB) to save bandwidth and load faster.
+
 ## [0.2.3] - 2026-08-19
 
 ### Added
