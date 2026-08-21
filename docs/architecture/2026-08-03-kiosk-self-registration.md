@@ -22,14 +22,21 @@ graph TD
     SEARCH_PATIENT -->|Ketemu| PATIENT_FOUND["Pasien Ditemukan & Tampilkan Daftar<br/>PATIENT_CONTEXT_CONFIRM"]
     SEARCH_PATIENT -->|Tidak Ketemu| BOOK_ASSIST["Picu Booking Assistance<br/>Failure / SP Picker"]
     
-    PATIENT_FOUND --> SELECT_SERVICE["Pilih Layanan Poli<br/>Poli -> Dr -> Jadwal"]
+    PATIENT_FOUND --> SELECT_GUARANTEE["Pilih Jaminan / Penjamin<br/>WALKIN_SELECT_GUARANTEE"]
     BOOK_ASSIST --> ASSIST_QUEUE["Ambil Antrian Bantuan<br/>ASSISTANCE_QUEUE"]
     
     BOOK_CONFIRM --> ELIGIBILITY["Verifikasi Jaminan & Biometrik BPJS<br/>Jika Diperlukan"]
-    SELECT_SERVICE --> ELIGIBILITY
+    SELECT_GUARANTEE --> ELIGIBILITY
     
-    ELIGIBILITY --> REG_DIRECT["POST Registrasi Direct ke API HIS<br/>/rajalByBooking/direct atau /rajalWalkIn/direct"]
+    ELIGIBILITY --> SELECT_SERVICE["Pilih Layanan Poli<br/>Poli -> Dr -> Jadwal"]
+    SELECT_GUARANTEE -->|Umum / Non-BPJS| SELECT_SERVICE
+    
+    SELECT_SERVICE --> REG_DIRECT["POST Registrasi Direct ke API HIS<br/>/rajalWalkIn/direct"]
+    BOOK_CONFIRM -->|Umum / Non-BPJS| REG_DIRECT_BOOK["POST Registrasi Direct ke API HIS<br/>/rajalByBooking/direct"]
+    ELIGIBILITY --> REG_DIRECT_BOOK
+    
     REG_DIRECT --> PRINT_RECEIPT["Cetak Bukti Registrasi Mandiri"]
+    REG_DIRECT_BOOK --> PRINT_RECEIPT
 ```
 
 ### Detail Tahapan Cascade Search:
@@ -45,6 +52,7 @@ graph TD
    * Endpoint: `POST /api/v1/admisi-rajal/patient-context-search` dengan payload keyword dan businessDate.
    * **Jika ditemukan pasien**: Sistem mengalihkan ke layar **Konfirmasi Pasien** (`PATIENT_CONTEXT_CONFIRM`) yang menampilkan informasi ringkas pasien beserta tombol konfirmasi untuk memulai pendaftaran langsung (Walk-in).
    * **Jika tidak ditemukan pasien**: Sistem langsung menganggap proses pencarian gagal dan masuk ke layar **Failure Step** (`FAILURE`) dengan kode error `BOOKING_NOT_FOUND`, di mana pasien ditawarkan untuk memilih Service Point loket pendaftaran manual.
+   * **Pilihan Jaminan Terlebih Dahulu**: Setelah mengonfirmasi pasien, pasien diarahkan ke layar **Pilih Jaminan** (`WALKIN_SELECT_GUARANTEE`). Pasien harus memilih jenis penjamin (Umum vs BPJS) terlebih dahulu sebelum memilih poliklinik dan dokter. Hal ini memastikan kelayakan asuransi (seperti rujukan/SKDP BPJS dan verifikasi biometrik sidik jari) diverifikasi sejak dini sebelum pasien memilih jadwal praktik.
 
 ---
 
@@ -65,26 +73,30 @@ graph TD
     SEARCH_PATIENT -->|Pasien Ketemu| PATIENT_CONF["Konfirmasi Detail Pasien"]
     SEARCH_PATIENT -->|Pasien Tidak Ketemu| FB_ASSIST["Tampilkan Kegagalan: BOOKING_NOT_FOUND"]
     
-    PATIENT_CONF --> SELECT_SERVICE["Pilih Layanan: Poli -> Dokter -> Jadwal"]
-    SELECT_SERVICE --> GS_CONF["Konfirmasi Layanan & Pasien"]
+    PATIENT_CONF --> SELECT_GUARANTEE["Pilih Jaminan: WALKIN_SELECT_GUARANTEE"]
+    SELECT_GUARANTEE --> BPJS_CHECK_GS{Jaminan BPJS?}
     
     %% Eligibility & Biometric Branch (Same for Booking and Walk-in)
     BOOK_CONF --> BPJS_CHECK_BOOK{Jaminan BPJS?}
-    GS_CONF --> BPJS_CHECK_GS{Jaminan BPJS?}
     
     BPJS_CHECK_BOOK -->|Ya| BIOMETRIC_BOOK["Verifikasi Biometrik: POST /biometrik"]
     BPJS_CHECK_BOOK -->|Tidak / Umum| REG_BOOK["Registrasi Booking: POST /rajalByBooking/direct"]
     
     BPJS_CHECK_GS -->|Ya| BIOMETRIC_GS["Verifikasi Biometrik: POST /biometrik"]
-    BPJS_CHECK_GS -->|Tidak / Umum| REG_GS["Registrasi Walk-in: POST /rajalWalkIn/direct"]
+    BPJS_CHECK_GS -->|Tidak / Umum| SELECT_SERVICE["Pilih Layanan: Poli -> Dokter -> Jadwal"]
     
     BIOMETRIC_BOOK -->|Success / READY| SEP_CREATE_BOOK["Buat SEP BPJS: POST /Sep"]
     BIOMETRIC_BOOK -->|Fail / Timeout| FB_ASSIST
     
-    BIOMETRIC_GS -->|Success / READY| SEP_CREATE_GS["Buat SEP BPJS: POST /Sep"]
-    BIOMETRIC_GS -->|Fail / Timeout| FB_INTAKE["Tampilkan Kegagalan: Walk-in Gagal"]
+    BIOMETRIC_GS -->|Success / READY| SELECT_SERVICE
+    BIOMETRIC_GS -->|Fail / Timeout| FB_ASSIST
     
     SEP_CREATE_BOOK --> REG_BOOK
+    
+    SELECT_SERVICE --> GS_CONF["Konfirmasi Layanan & Pasien: WALKIN_CONFIRM"]
+    GS_CONF --> BPJS_CHECK_GS_POST{Jaminan BPJS?}
+    BPJS_CHECK_GS_POST -->|Ya| SEP_CREATE_GS["Buat SEP BPJS: POST /Sep"]
+    BPJS_CHECK_GS_POST -->|Tidak / Umum| REG_GS["Registrasi Walk-in: POST /rajalWalkIn/direct"]
     SEP_CREATE_GS --> REG_GS
     
     %% Success/Fail Outcomes
@@ -207,7 +219,19 @@ sequenceDiagram
     
     Pasien->>Kiosk: Konfirmasi / Pilih Pasien dari Hasil Pencarian
     Kiosk->>Bilreg: GET /api/polis/list/:pasienId
-    Bilreg-->>Kiosk: List Polis (Ambil yang pertama/active)
+    Bilreg-->>Kiosk: List Polis
+    
+    Kiosk->>Pasien: Tampilkan Pilihan Jaminan (WALKIN_SELECT_GUARANTEE)
+    Pasien->>Kiosk: Pilih Jaminan (Umum / BPJS / dll)
+    
+    alt Jaminan BPJS (needsEligibility)
+        Kiosk->>Bilreg: GET /api/v1/jetli/rujukan-skpd/:noPeserta
+        Bilreg-->>Kiosk: Rujukan/SKPD & biodata
+        alt Pasien >= 17 Tahun
+            Kiosk->>LocalApp: POST /biometrik (noPeserta, timeout)
+            LocalApp-->>Kiosk: Verdict (SUCCESS / READY)
+        end
+    end
     
     Note over Kiosk, Pasien: Flow Pemilihan Poli, Dokter & Jadwal
     Kiosk->>Bilreg: GET /api/Layanan/2/list
@@ -222,17 +246,19 @@ sequenceDiagram
     Bilreg-->>Kiosk: JadwalItem[] (Jadwal Praktek)
     Pasien->>Kiosk: Pilih Jadwal Praktek
     
-    Pasien->>Kiosk: Konfirmasi Pendaftaran Walk-in
+    Pasien->>Kiosk: Konfirmasi Pendaftaran Walk-in (WALKIN_CONFIRM)
     
-    alt Jaminan Non-BPJS (Umum)
-        Kiosk->>Bilreg: POST /api/Reg/rajalWalkIn/direct (pasienId, ppaId, jadwalId, tipeJaminanId)
-        Bilreg-->>Kiosk: { regId, noAntrian }
-    else Jaminan BPJS
-        Note over Kiosk, Bilreg: Menjalankan Biometrik & SEP (mirip flow booking BPJS)
-        Kiosk->>LocalApp: POST /biometrik
-        LocalApp-->>Kiosk: Verdict SUCCESS
-        Kiosk->>Bilreg: POST /api/Reg/rajalWalkIn/direct (...)
-        Bilreg-->>Kiosk: (regId, noAntrian)
+    Kiosk->>Bilreg: POST /api/Reg/rajalWalkIn/direct (pasienId, ppaId, jadwalId, tipeJaminanId, pesertaJaminanId)
+    Bilreg-->>Kiosk: { regId, noAntrian }
+    
+    alt Jaminan BPJS (needsEligibility)
+        Note over Kiosk, Bilreg: Pembuatan & Upload SEP BPJS
+        Kiosk->>Bilreg: POST /api/Sep (noPeserta, rujukanId, ...)
+        Bilreg-->>Kiosk: (sepId, sepNo)
+        Kiosk->>Bilreg: POST /api/v1/jetli/upload-sep (sepId, regId)
+        Bilreg-->>Kiosk: success
+        Kiosk->>Bilreg: PATCH /api/reg/setDataEligibility (regId, sepNo)
+        Bilreg-->>Kiosk: success
     end
     
     Kiosk->>LocalApp: POST /print (doctype: 'registrasi', payload)
@@ -293,28 +319,33 @@ Kiosk berpindah layar berdasarkan perubahan state `flow` yang diatur oleh `useKi
    * Ditampilkan jika pencarian booking nihil namun data pasien ditemukan di database HIS.
    * Menampilkan daftar pasien yang cocok dengan keyword pencarian. Pasien diminta menekan tombol konfirmasi di baris datanya untuk menyatakan "Ya, ini saya" untuk masuk ke alur pendaftaran walk-in langsung.
 
-5. **`BIOMETRIC_VERIFY` (`BiometricStep.vue`)**:
+5. **`WALKIN_SELECT_GUARANTEE` (`WalkinSelectGuaranteeStep.vue`)**:
+   * Ditampilkan setelah konfirmasi data pasien walk-in.
+   * Pasien diminta memilih jenis penjamin (Umum / Jaminan Kesehatan aktif yang terdaftar di HIS / BPJS Kesehatan fallback).
+   * Menentukan `needsEligibility` untuk proses eligibility BPJS dan verifikasi biometrik selanjutnya.
+
+6. **`BIOMETRIC_VERIFY` (`BiometricStep.vue`)**:
    * Layar tunggu verifikasi sidik jari. Sistem memanggil local service melalui `POST /biometrik` yang akan mengaktifkan hardware scanner dan menampilkan aplikasi capture bawaan BPJS di atas layar kiosk web.
    * Layar ini memblokir interaksi pengguna lain guna mencegah double-trigger.
 
-6. **`WALKIN_SELECT_SERVICE` (`WalkinServiceStep.vue`)**:
+7. **`WALKIN_SELECT_SERVICE` (`WalkinServiceStep.vue`)**:
    * Wizard pemilihan klinik dan dokter rawat jalan walk-in yang terdiri dari 3 tahapan query internal:
      1. Memilih Poliklinik tujuan.
      2. Memilih Dokter spesialis yang bertugas hari ini pada poliklinik tersebut.
      3. Memilih Jam Jadwal Praktek dokter yang tersedia.
 
-7. **`WALKIN_CONFIRM` (`WalkinConfirmStep.vue`)**:
+8. **`WALKIN_CONFIRM` (`WalkinConfirmStep.vue`)**:
    * Layar rangkuman data pasien walk-in beserta poliklinik, dokter, dan jadwal yang telah dipilih pada step sebelumnya untuk konfirmasi akhir.
 
-8. **`REGISTRATION_SUCCESS` (`RegistrationSuccessStep.vue`)**:
+9. **`REGISTRATION_SUCCESS` (`RegistrationSuccessStep.vue`)**:
    * Menampilkan pesan sukses pendaftaran, nomor rekam medis, dan **Nomor Antrian Poli** yang dicetak oleh HIS.
    * Menampilkan status cetak thermal receipt dan hitung mundur otomatis untuk kembali ke menu utama.
 
-9. **`FAILURE` (`FailureStep.vue`)**:
-   * Menampilkan pesan kegagalan secara detail (misalnya: sidik jari tidak dikenali, jadwal dokter penuh, atau backend error).
-   * Menyediakan daftar Service Point (Loket Pendaftaran) yang aktif di mesin Kiosk saat itu agar pasien dapat memilih salah satu loket bantuan admisi.
+10. **`FAILURE` (`FailureStep.vue`)**:
+    * Menampilkan pesan kegagalan secara detail (misalnya: sidik jari tidak dikenali, jadwal dokter penuh, atau backend error).
+    * Menyediakan daftar Service Point (Loket Pendaftaran) yang aktif di mesin Kiosk saat itu agar pasien dapat memilih salah satu loket bantuan admisi.
 
-10. **`ASSISTANCE_QUEUE` (`AssistanceQueueStep.vue`)**:
+11. **`ASSISTANCE_QUEUE` (`AssistanceQueueStep.vue`)**:
     * Menampilkan nomor tiket bantuan admisi yang berhasil dicetak sebagai tindak lanjut atas kegagalan registrasi mandiri.
 
 ---
@@ -627,6 +658,7 @@ type KioskFlow =
   | 'BOOKING_CONFIRM'
   | 'PATIENT_CONTEXT_SEARCH'
   | 'PATIENT_CONTEXT_CONFIRM'
+  | 'WALKIN_SELECT_GUARANTEE'
   | 'BIOMETRIC_VERIFY'
   | 'WALKIN_SELECT_SERVICE'
   | 'WALKIN_CONFIRM'
@@ -638,12 +670,24 @@ type KioskFlow =
 ### Transisi yang Valid (`FLOW_TRANSITIONS`)
 ```ts
 export const FLOW_TRANSITIONS: Record<KioskFlow, readonly KioskFlow[]> = {
-  HOME: ['BOOKING_SEARCH', 'BOOKING_CONFIRM', 'PATIENT_CONTEXT_SEARCH', 'PATIENT_CONTEXT_CONFIRM', 'FAILURE'],
-  BOOKING_SEARCH: ['BOOKING_CONFIRM', 'PATIENT_CONTEXT_SEARCH', 'FAILURE'],
+  HOME: [
+    'BOOKING_SEARCH',
+    'BOOKING_CONFIRM',
+    'PATIENT_CONTEXT_SEARCH',
+    'PATIENT_CONTEXT_CONFIRM',
+    'FAILURE',
+  ],
+  BOOKING_SEARCH: [
+    'BOOKING_CONFIRM',
+    'PATIENT_CONTEXT_SEARCH',
+    'PATIENT_CONTEXT_CONFIRM',
+    'FAILURE',
+  ],
   BOOKING_CONFIRM: ['BIOMETRIC_VERIFY', 'REGISTRATION_SUCCESS', 'FAILURE'],
   PATIENT_CONTEXT_SEARCH: ['PATIENT_CONTEXT_CONFIRM', 'FAILURE'],
-  PATIENT_CONTEXT_CONFIRM: ['WALKIN_SELECT_SERVICE', 'FAILURE', 'HOME'],
-  BIOMETRIC_VERIFY: ['REGISTRATION_SUCCESS', 'FAILURE'],
+  PATIENT_CONTEXT_CONFIRM: ['WALKIN_SELECT_GUARANTEE', 'FAILURE', 'HOME'],
+  WALKIN_SELECT_GUARANTEE: ['WALKIN_SELECT_SERVICE', 'BIOMETRIC_VERIFY', 'FAILURE', 'HOME'],
+  BIOMETRIC_VERIFY: ['REGISTRATION_SUCCESS', 'WALKIN_SELECT_SERVICE', 'FAILURE'],
   WALKIN_SELECT_SERVICE: ['WALKIN_CONFIRM', 'FAILURE'],
   WALKIN_CONFIRM: ['BIOMETRIC_VERIFY', 'REGISTRATION_SUCCESS', 'FAILURE'],
   REGISTRATION_SUCCESS: ['HOME'],

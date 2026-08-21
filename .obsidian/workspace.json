@@ -79,7 +79,8 @@
               "title": "Bookmarks"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -190,6 +191,9 @@
   },
   "active": "497434a0ad7c63dd",
   "lastOpenFiles": [
+    "apps/kiosk-web/src/views/steps/BpjsSelectReferenceStep.vue",
+    "packages/shared-types/src/pasien.ts",
+    "apps/kiosk-web/src/views/steps/WalkinSelectRujukanStep.vue",
     "apps/kiosk-web/public/logo.jpg",
     "apps/kiosk-web/src/composables/__tests__/inspect.spec.ts",
     "docs/architecture/KioskWinform.exe.config",
@@ -223,8 +227,6 @@
     "docs/archive/superpowers/specs",
     "docs/archive/superpowers/plans",
     "docs/archive/superpowers",
-    "docs/archive/reports",
-    "docs/archive/plans",
-    "docs/archive"
+    "docs/archive/reports"
   ]
 }
