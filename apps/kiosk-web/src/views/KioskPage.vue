@@ -147,7 +147,7 @@ const registration = useKioskRegistration({
   searchPatientContext: (body) => getHisApi().patientContextSearch(body),
   deepSearchPasien: (keyword) => getHisApi().deepSearchPasien(keyword),
   appConfig: configService.getConfig(),
-  verifyBiometric: () => createBiometricClient({ port: printerProxyPort.value }).verify(),
+  verifyBiometric: (noka) => createBiometricClient({ port: printerProxyPort.value }).verify(noka),
   listKarcis: (layananId) => getHisApi().listKarcis(layananId),
   getRujukanSkpd: (noPeserta) => getJetliApi().getRujukanSkpd(noPeserta),
   registerBooking: (ctx) => getHisApi().registerByBookingDirect(ctx),

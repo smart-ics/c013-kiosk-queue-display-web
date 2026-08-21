@@ -199,6 +199,7 @@ describe('useKioskRegistration booking flow', () => {
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
     expect(deps.verifyBiometric).toHaveBeenCalledTimes(1)
+    expect(deps.verifyBiometric).toHaveBeenCalledWith('000123456')
     expect(deps.registerBooking).toHaveBeenCalledTimes(1)
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
   })
@@ -444,6 +445,47 @@ describe('useKioskRegistration goshow walk-in flow', () => {
     })
   })
 
+  it('runs biometric before walk-in service selection if patient is an adult', async () => {
+    const deps = makeContextDeps({
+      getRujukanSkpd: vi.fn(async () => ({
+        peserta: {
+          noPeserta: '000123456',
+          nama: 'Andi',
+          hakKelas: { kode: '3', nama: 'Kelas 3' },
+          status: { kode: '1', info: 'AKTIF' },
+          jenisPeserta: { kode: 'PNS', nama: 'PNS' },
+          provider: { kode: 'P1', nama: 'RS A' },
+          prbInfo: null,
+          tglTat: '2026-08-06',
+          tglLahir: '1980-08-01',
+        },
+        rujukan: null,
+        listSkdp: [
+          {
+            noSkdp: 'SKDP_99',
+            tglMulai: '2026-08-01',
+            diagnosa: { kode: 'I10', name: 'Hypertension' },
+          },
+        ],
+      })),
+      verifyBiometric: vi.fn(async () => {
+        expect(reg.flow.value).toBe('BIOMETRIC_VERIFY')
+        return { outcome: 'SUCCESS' as const }
+      }),
+    })
+    const reg = useKioskRegistration(deps)
+    await reachContextConfirm(reg)
+    await reg.confirmPatientContext(contextItem)
+    expect(reg.flow.value).toBe('WALKIN_SELECT_GUARANTEE')
+    await reg.selectWalkinGuarantee({
+      tipeJaminanId: 'BPJS',
+      tipeJaminanName: 'BPJS',
+      noPeserta: '000123456',
+    })
+    expect(deps.verifyBiometric).toHaveBeenCalledWith('000123456')
+    expect(reg.flow.value).toBe('WALKIN_SELECT_SERVICE')
+  })
+
   it('falls back to intake on walk-in failure', async () => {
     const deps = makeContextDeps({
       listPolis: vi.fn(async () => []),
@@ -586,7 +628,7 @@ describe('useKioskRegistration gap closure features', () => {
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
-    expect(deps.verifyBiometric).toHaveBeenCalled()
+    expect(deps.verifyBiometric).toHaveBeenCalledWith('000123456')
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
     expect(deps.registerBooking).toHaveBeenCalledWith(
       expect.objectContaining({

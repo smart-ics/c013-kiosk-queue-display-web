@@ -59,7 +59,7 @@ export type KioskRegistrationDeps = {
   }) => Promise<PatientContextSearchResponse>
   deepSearchPasien: (keyword: string) => Promise<DeepSearchResult[]>
   appConfig: AppConfig
-  verifyBiometric: () => Promise<BiometricVerdict>
+  verifyBiometric: (noka: string) => Promise<BiometricVerdict>
   listKarcis: (layananId: string) => Promise<KarcisItem[]>
   getRujukanSkpd: (noPeserta: string) => Promise<RujukanSkpdResponse>
   registerBooking: (ctx: PayloadDirectRegisterRajalByBooking) => Promise<ReturnCreateWalkIn>
@@ -490,14 +490,14 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       }
     } else {
       transition('BIOMETRIC_VERIFY')
-      await runBiometricForWalkin()
+      await runBiometricForWalkin(noPeserta)
     }
   }
 
-  async function runBiometricForWalkin(): Promise<void> {
+  async function runBiometricForWalkin(noPeserta: string): Promise<void> {
     biometricVerdict.value = null
     try {
-      const verdict = await deps.verifyBiometric()
+      const verdict = await deps.verifyBiometric(noPeserta)
       biometricVerdict.value = verdict
       if (verdict.outcome === 'SUCCESS' || verdict.outcome === 'READY') {
         if (selectedBpjsReference.value) {
@@ -564,14 +564,14 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       }
     } else {
       transition('BIOMETRIC_VERIFY')
-      await runBiometric(currentMode)
+      await runBiometric(currentMode, noPeserta)
     }
   }
 
-  async function runBiometric(currentMode: FlowMode): Promise<void> {
+  async function runBiometric(currentMode: FlowMode, noPeserta: string): Promise<void> {
     biometricVerdict.value = null
     try {
-      const verdict = await deps.verifyBiometric()
+      const verdict = await deps.verifyBiometric(noPeserta)
       biometricVerdict.value = verdict
       if (verdict.outcome === 'SUCCESS' || verdict.outcome === 'READY') {
         if (selectedBpjsReference.value) {
