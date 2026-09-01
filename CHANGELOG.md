@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.5] - 2026-09-01
+
+### Changed
+
+- **Registration receipt printing (kiosk-web)**: Self-registration tickets are now printed with the queue-ticket document type (`antrian`) instead of `registrasi`, so the print proxy handles the receipt under the same layout as queue tickets.
+
 ## [0.2.4] - 2026-08-21
 
 ### Added

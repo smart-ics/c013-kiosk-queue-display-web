@@ -50,7 +50,7 @@ export function useKioskSelfPrint(options: UseKioskSelfPrintOptions) {
         dokterName: ctx.dokterName,
         stationId: options.stationId.value,
       })
-      const proxyResult = await client.printPng(blob, 'registrasi')
+      const proxyResult = await client.printPng(blob, 'antrian')
       if (!proxyResult.success) {
         printError.value = proxyResult.error ?? 'Cetak gagal'
         printSucceeded.value = false

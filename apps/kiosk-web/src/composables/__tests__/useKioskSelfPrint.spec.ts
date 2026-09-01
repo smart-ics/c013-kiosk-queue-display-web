@@ -9,7 +9,7 @@ function makeTicket(label = 'B-001'): AdmissionQueueIntakeResponse {
 }
 
 describe('useKioskSelfPrint', () => {
-  it('prints a registration receipt with doctype registrasi', async () => {
+  it('prints a registration receipt with doctype antrian', async () => {
     const urls: string[] = []
     const printPng = vi.fn(async (_blob: Blob, doctype: string): Promise<PrintProxyResult> => {
       urls.push(doctype)
@@ -30,7 +30,7 @@ describe('useKioskSelfPrint', () => {
       pasienName: 'Andi',
     })
     expect(result.printed).toBe(true)
-    expect(urls).toEqual(['registrasi'])
+    expect(urls).toEqual(['antrian'])
     expect(print.printSucceeded.value).toBe(true)
   })
 
