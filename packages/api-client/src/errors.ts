@@ -99,17 +99,30 @@ const HTTP_STATUS_MESSAGES_ID: Record<number, string> = {
   503: 'Layanan sementara tidak tersedia. Coba lagi dalam waktu yang singkat.',
 }
 
+function extractDataDetail(body: unknown): string | undefined {
+  if (typeof body === 'object' && body !== null && 'data' in body) {
+    const raw = (body as Record<string, unknown>).data
+    return typeof raw === 'string' ? raw : undefined
+  }
+  return undefined
+}
+
 /**
  * Map an API error to a Bahasa Indonesia user-friendly message.
  * Technical codes are logged only; users see natural-language messages.
+ * When the backend includes a `data` detail string, it is appended for context.
  */
 export function mapBackendErrorToUserMessage(error: unknown): string {
   if (error instanceof ApiClientError) {
     if (error.code && AQ_ERROR_MESSAGES_ID[error.code]) {
-      return AQ_ERROR_MESSAGES_ID[error.code]
+      const base = AQ_ERROR_MESSAGES_ID[error.code]
+      const detail = extractDataDetail(error.body)
+      return detail ? `${base} (${detail})` : base
     }
     if (error.status && HTTP_STATUS_MESSAGES_ID[error.status]) {
-      return HTTP_STATUS_MESSAGES_ID[error.status]
+      const base = HTTP_STATUS_MESSAGES_ID[error.status]
+      const detail = extractDataDetail(error.body)
+      return detail ? `${base} (${detail})` : base
     }
     if (error.message) return error.message
   }
