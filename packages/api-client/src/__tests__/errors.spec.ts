@@ -4,8 +4,25 @@ import {
   AQ_ERROR_CODES,
   isSequenceExhausted,
   isUncertainIntakeError,
+  mapBackendErrorToUserMessage,
   mapIntakeErrorMessage,
 } from '../errors'
+
+describe('mapBackendErrorToUserMessage', () => {
+  it('maps plain Error generic 404 message to Bahasa Indonesia fallback', () => {
+    const error = new Error('Request failed with status 404')
+    expect(mapBackendErrorToUserMessage(error)).toBe(
+      'Data yang dicari tidak ditemukan. Silakan hubungi petugas.',
+    )
+  })
+
+  it('maps plain Error generic 503 message to Bahasa Indonesia fallback', () => {
+    const error = new Error('Request failed with status 503')
+    expect(mapBackendErrorToUserMessage(error)).toBe(
+      'Layanan sementara tidak tersedia. Coba lagi dalam waktu yang singkat.',
+    )
+  })
+})
 
 describe('mapIntakeErrorMessage', () => {
   it('maps sequence exhausted to Bahasa Indonesia without exposing technical code', () => {

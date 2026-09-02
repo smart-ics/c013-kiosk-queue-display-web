@@ -107,6 +107,13 @@ function extractDataDetail(body: unknown): string | undefined {
   return undefined
 }
 
+function extractHttpStatusFromMessage(message: string): number | undefined {
+  const match = message.match(/\bstatus\s+(\d{3})\b/i)
+  if (!match) return undefined
+  const status = Number(match[1])
+  return Number.isFinite(status) ? status : undefined
+}
+
 /**
  * Map an API error to a Bahasa Indonesia user-friendly message.
  * Technical codes are logged only; users see natural-language messages.
@@ -126,7 +133,13 @@ export function mapBackendErrorToUserMessage(error: unknown): string {
     }
     if (error.message) return error.message
   }
-  if (error instanceof Error) return error.message
+  if (error instanceof Error) {
+    const status = extractHttpStatusFromMessage(error.message)
+    if (status && HTTP_STATUS_MESSAGES_ID[status]) {
+      return HTTP_STATUS_MESSAGES_ID[status]
+    }
+    return error.message
+  }
   return 'Terjadi kesalahan. Silakan coba lagi.'
 }
 
