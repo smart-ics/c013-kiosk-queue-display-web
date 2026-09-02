@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import type { DeviceConfig, AdmissionServicePoint } from '@aq/shared-types'
 import { DeviceConfigInvalidError, DeviceConfigNotFoundError } from '@aq/device-config'
+import { mapBackendErrorToUserMessage } from '@aq/api-client'
 import {
   getAdmissionQueueApi,
   getDeviceConfigProvider,
@@ -81,7 +82,7 @@ watch(
         bootError.value = `Konfigurasi tidak valid untuk '${error.deviceId}'.`
         return
       }
-      bootError.value = error instanceof Error ? error.message : 'Boot gagal.'
+      bootError.value = mapBackendErrorToUserMessage(error)
     }
   },
   { immediate: true },
@@ -258,9 +259,7 @@ const loadingMessage = computed(() => {
   if (!deviceConfig.value) return 'Memuat konfigurasi perangkat…'
   if (servicePointsQuery.isPending.value) return 'Memuat Service Point aktif…'
   if (servicePointsQuery.isError.value) {
-    return servicePointsQuery.error.value instanceof Error
-      ? servicePointsQuery.error.value.message
-      : 'Gagal memuat Service Point.'
+    return mapBackendErrorToUserMessage(servicePointsQuery.error.value)
   }
   if (offerings.value.length === 0) {
     return 'Tidak ada Service Point aktif yang cocok dengan konfigurasi station ini.'

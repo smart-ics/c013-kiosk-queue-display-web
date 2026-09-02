@@ -32,6 +32,7 @@ import {
 } from '../lib/eligibility'
 import { IDLE_RESET_MS, KIOSK_USER_ID } from '../lib/constants'
 import { mapErrorToFailureCode, type FailureCode } from '../lib/failureCode'
+import { mapBackendErrorToUserMessage } from '@aq/api-client'
 import type { BiometricVerdict } from '../lib/biometric'
 import type { RegistrationPrintContext, RegistrationPrintResult } from './useKioskSelfPrint'
 
@@ -79,7 +80,7 @@ export type KioskRegistrationDeps = {
 }
 
 function messageFromError(error: unknown): string {
-  return error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga.'
+  return mapBackendErrorToUserMessage(error)
 }
 
 function calculateAge(birthDateStr: string, refDateStr: string): number {

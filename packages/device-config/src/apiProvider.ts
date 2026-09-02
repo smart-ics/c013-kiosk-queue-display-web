@@ -16,13 +16,13 @@ export class ApiDeviceConfigurationProvider implements IDeviceConfigurationProvi
 
   async getConfig(deviceId: string): Promise<DeviceConfig> {
     const id = deviceId.trim()
-    if (!id) throw new DeviceConfigInvalidError(deviceId, 'deviceId is required')
+    if (!id) throw new DeviceConfigInvalidError(deviceId, 'deviceId diperlukan')
 
     let boot: DisplayBootConfig
     try {
       boot = await this.options.getDisplayBootConfig(id)
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to load display configuration'
+      const message = error instanceof Error ? error.message : 'Gagal memuat konfigurasi display'
       if (/not found|AQ_DISPLAY_NOT_FOUND/i.test(message)) {
         throw new DeviceConfigNotFoundError(id)
       }
@@ -48,7 +48,7 @@ export class ApiDeviceConfigurationProvider implements IDeviceConfigurationProvi
       throw new DeviceConfigInvalidError(id, parsed.error.message)
     }
     if (parsed.data.deviceId !== id) {
-      throw new DeviceConfigInvalidError(id, 'deviceId mismatch in boot config')
+      throw new DeviceConfigInvalidError(id, 'deviceId tidak cocok dengan konfigurasi boot')
     }
     return parsed.data
   }
