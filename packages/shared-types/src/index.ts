@@ -358,6 +358,19 @@ export const returnCreateWalkInSchema = z.object({
 })
 export type ReturnCreateWalkIn = z.infer<typeof returnCreateWalkInSchema>
 
+export const registrationPrintDataSchema = z.object({
+  regId: z.string(),
+  noAntrian: z.number(),
+  pasienName: z.string(),
+  pasienId: z.string().optional(),
+  tglLahir: z.string().optional(),
+  tipeJaminanName: z.string().optional(),
+  noSep: z.string().optional(),
+  serviceName: z.string().optional(),
+  dokterName: z.string().optional(),
+})
+export type RegistrationPrintData = z.infer<typeof registrationPrintDataSchema>
+
 export const payloadDirectRegisterRajalWalkInSchema = z.object({
   pasienId: z.string().min(1),
   userId: z.string().min(1),

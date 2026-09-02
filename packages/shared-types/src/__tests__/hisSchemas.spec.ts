@@ -3,6 +3,7 @@ import {
   bookingAssistanceBodySchema,
   bookingDetailSchema,
   bookingSearchItemSchema,
+  registrationPrintDataSchema,
   responseCreateSepUnionSchema,
   responseFingerprintSchema,
   responseSepByNoPesertaSchema,
@@ -127,5 +128,25 @@ describe('hisSchemas', () => {
       regId: 'RG12345678',
     })
     expect(responseUploadSepUnionSchema.parse('FAILED')).toBe('FAILED')
+  })
+
+  it('parses complete registration print data', () => {
+    expect(
+      registrationPrintDataSchema.parse({
+        regId: 'RG12345678',
+        noAntrian: 12,
+        pasienName: 'Andi',
+        pasienId: 'PT1',
+        tglLahir: '1990-01-01',
+        tipeJaminanName: 'Umum',
+        noSep: undefined,
+        serviceName: 'Poli Jantung',
+        dokterName: 'Dr. X',
+      }),
+    ).toMatchObject({ regId: 'RG12345678', noAntrian: 12 })
+  })
+
+  it('rejects registration print data without a queue number', () => {
+    expect(() => registrationPrintDataSchema.parse({ regId: 'RG1', pasienName: 'Andi' })).toThrow()
   })
 })
