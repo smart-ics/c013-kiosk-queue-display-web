@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AdmissionServicePoint } from '@aq/shared-types'
 import type { FailureContext } from '../../composables/useKioskRegistration'
+import { getFailureMessage } from '../../lib/failureCode'
 
 defineProps<{
   errorContext: FailureContext
@@ -16,6 +17,10 @@ function isBpjs(sp: AdmissionServicePoint): boolean {
   const name = (sp.displayName || '').toLowerCase()
   const id = (sp.servicePointId || '').toLowerCase()
   return name.includes('bpjs') || name.includes('jkn') || id.includes('bpjs') || id.includes('jkn')
+}
+
+function getDisplayMessage(ctx: FailureContext): string {
+  return ctx.message || getFailureMessage(ctx.code)
 }
 </script>
 
@@ -86,7 +91,7 @@ function isBpjs(sp: AdmissionServicePoint): boolean {
         </div>
         <div style="flex: 1; text-align: left;">
           <p class="status error" data-testid="failure-message" style="margin: 0; font-size: 1.15rem; font-weight: 600; color: var(--danger); line-height: 1.5;">
-            {{ errorContext.message }}
+            {{ getDisplayMessage(errorContext) }}
           </p>
         </div>
       </div>
