@@ -63,7 +63,8 @@ export const admissionQueueIntakeResponseSchema = z.object({
   antrianId: z.string(),
   noUrut: z.number().int(),
   queueLabel: z.string(),
-  createdAt: z.string(),
+  createdAt: z.string().optional(),
+  existing: z.boolean().optional(),
 })
 export type AdmissionQueueIntakeResponse = z.infer<typeof admissionQueueIntakeResponseSchema>
 
