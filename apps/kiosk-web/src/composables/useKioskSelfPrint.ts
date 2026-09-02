@@ -3,6 +3,8 @@ import type { AdmissionQueueIntakeResponse, ReturnCreateWalkIn } from '@aq/share
 import { createPrintProxyClient, type PrintProxyClient } from '../lib/printProxy'
 import { renderQueueTicketPng } from '../lib/queueTicket'
 import { renderRegistrationReceiptPng } from '../lib/registrationReceipt'
+import { brandingService } from '../lib/branding'
+import { generateQrDataUrl } from '../lib/qrCode'
 
 export type RegistrationPrintResult = { printed: boolean; error?: string }
 
@@ -11,6 +13,11 @@ export type RegistrationPrintContext = {
   pasienName: string
   serviceName?: string
   dokterName?: string
+  pasienId?: string
+  tglLahir?: string
+  umur?: string
+  tipeJaminanName?: string
+  noSep?: string
 }
 
 export type UseKioskSelfPrintOptions = {
@@ -19,6 +26,14 @@ export type UseKioskSelfPrintOptions = {
   createClient?: (port?: number) => PrintProxyClient
   renderRegistration?: typeof renderRegistrationReceiptPng
   renderTicket?: typeof renderQueueTicketPng
+}
+
+async function tryGenerateQrDataUrl(text: string): Promise<string> {
+  try {
+    return await generateQrDataUrl(text)
+  } catch {
+    return ''
+  }
 }
 
 export function useKioskSelfPrint(options: UseKioskSelfPrintOptions) {
@@ -42,13 +57,30 @@ export function useKioskSelfPrint(options: UseKioskSelfPrintOptions) {
     printError.value = null
     try {
       const client = createClient(options.printerProxyPort?.value)
+      const now = new Date()
+      const branding = brandingService.getBranding()
       const blob = await renderRegistration({
         noAntrian: ctx.result.noAntrian,
         regId: ctx.result.regId,
         pasienName: ctx.pasienName,
+        pasienId: ctx.pasienId,
+        tglLahir: ctx.tglLahir,
+        umur: ctx.umur,
+        tipeJaminanName: ctx.tipeJaminanName,
+        noSep: ctx.noSep,
         serviceName: ctx.serviceName,
         dokterName: ctx.dokterName,
-        stationId: options.stationId.value,
+        qrCodeReg: await tryGenerateQrDataUrl(ctx.result.regId),
+        rsName: branding.name,
+        rsAddress: branding.address,
+        rsPhone: branding.phone,
+        regDate: now.toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }),
+        jamReg: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        printedAt: now.toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }),
       })
       const proxyResult = await client.printPng(blob, 'antrian')
       if (!proxyResult.success) {

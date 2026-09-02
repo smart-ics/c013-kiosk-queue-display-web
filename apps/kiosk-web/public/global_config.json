@@ -23,6 +23,8 @@
   ],
   "branding": {
     "name": "RS Mekarsari",
+    "address": "",
+    "phone": "",
     "taglineId": "Melayani dengan hati, sehat untuk negeri",
     "taglineEn": "Serving with heart, healthy for the nation",
     "timeZoneLabel": "WIB"

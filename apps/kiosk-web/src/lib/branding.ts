@@ -2,6 +2,8 @@ import { z } from 'zod'
 
 export const brandingSchema = z.object({
   name: z.string().default('RS Sehat Sejahtera'),
+  address: z.string().default(''),
+  phone: z.string().default(''),
   taglineId: z.string().default('Melayani dengan hati, sehat untuk negeri'),
   taglineEn: z.string().default('Serving with heart, healthy for the nation'),
   timeZoneLabel: z.string().default('WIB'),

@@ -93,6 +93,19 @@ function calculateAge(birthDateStr: string, refDateStr: string): number {
   return age
 }
 
+function formatBirthDate(value: string | null | undefined): string | undefined {
+  if (!value) return undefined
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return undefined
+  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function formatAge(birthDateStr: string, refDateStr: string): string | undefined {
+  const age = calculateAge(birthDateStr, refDateStr)
+  if (!Number.isFinite(age) || age < 0) return undefined
+  return String(age)
+}
+
 function resolveDefaultKarcisId(
   appConfig: AppConfig,
   tipeJaminanId: string,
@@ -146,6 +159,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   const selectedService = ref<ServiceSelection | null>(null)
 
   const registrationResult = ref<ReturnCreateWalkIn | null>(null)
+  const sepNo = ref<string | null>(null)
   const assistanceTicket = ref<AdmissionQueueIntakeResponse | null>(null)
   const assistanceServicePointId = ref<string | null>(null)
   const patientContextResult = ref<PatientContextSearchResponse | null>(null)
@@ -193,6 +207,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     walkinNoPeserta.value = ''
     selectedService.value = null
     registrationResult.value = null
+    sepNo.value = null
     assistanceTicket.value = null
     assistanceServicePointId.value = null
     errorContext.value = null
@@ -656,6 +671,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         if (typeof sepRes === 'string') {
           throw new Error(`Gagal membuat SEP: ${sepRes}`)
         }
+        sepNo.value = sepRes.sepNo
         await deps.uploadSep({ sepId: sepRes.sepId, regId: result.regId })
         await deps.setDataEligibility({
           regId: result.regId,
@@ -740,20 +756,28 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   function buildPrintContext(currentMode: FlowMode): RegistrationPrintContext {
     const result = registrationResult.value
     if (!result) throw new Error('Registration result missing')
+
+    const isBooking = currentMode === 'booking'
+    const rawTglLahir = isBooking ? null : (selectedPatient.value?.tglLahir ?? null)
+
     return {
       result,
-      pasienName:
-        currentMode === 'booking'
-          ? (bookingDetail.value?.reg.pasienName ?? '')
-          : (selectedPatient.value?.pasienName ?? ''),
-      serviceName:
-        currentMode === 'booking'
-          ? bookingDetail.value?.layanan.layananName
-          : selectedService.value?.poli.name,
-      dokterName:
-        currentMode === 'booking'
-          ? bookingDetail.value?.dokter.ppaName
-          : selectedService.value?.dokter.name,
+      pasienName: isBooking
+        ? (bookingDetail.value?.reg.pasienName ?? '')
+        : (selectedPatient.value?.pasienName ?? ''),
+      pasienId: isBooking ? bookingDetail.value?.reg.pasienId : selectedPatient.value?.pasienId,
+      tglLahir: formatBirthDate(rawTglLahir),
+      umur: rawTglLahir && businessDate.value ? formatAge(rawTglLahir, businessDate.value) : undefined,
+      tipeJaminanName: isBooking
+        ? bookingEligibility.value?.tipeJaminanName
+        : walkinEligibility.value?.tipeJaminanName,
+      noSep: sepNo.value ?? undefined,
+      serviceName: isBooking
+        ? bookingDetail.value?.layanan.layananName
+        : selectedService.value?.poli.name,
+      dokterName: isBooking
+        ? bookingDetail.value?.dokter.ppaName
+        : selectedService.value?.dokter.name,
     }
   }
 
