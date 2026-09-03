@@ -146,6 +146,7 @@ const registration = useKioskRegistration({
   listPolis: (pasienId) => getHisApi().listPolis(pasienId),
   getGroupJaminanMap: (tipeJaminanId) => getJetliApi().getGroupJaminanMap(tipeJaminanId),
   searchPatientContext: (body) => getHisApi().patientContextSearch(body),
+  getRegistrationPrintData: (regId) => getHisApi().getRegistrationPrintData(regId),
   deepSearchPasien: (keyword) => getHisApi().deepSearchPasien(keyword),
   appConfig: configService.getConfig(),
   verifyBiometric: (noka) => createBiometricClient({ port: printerProxyPort.value }).verify(noka),

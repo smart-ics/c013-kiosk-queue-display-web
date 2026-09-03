@@ -21,6 +21,7 @@ import type {
   SepCreateBody,
   SepUploadBody,
   DeepSearchResult,
+  RegistrationPrintData,
 } from '@aq/shared-types'
 import type { AppConfig } from '@aq/app-config'
 import { getKodeBookingMjkn } from '../lib/qrCodeDecoder'
@@ -58,6 +59,7 @@ export type KioskRegistrationDeps = {
     keyword: string
     businessDate: string
   }) => Promise<PatientContextSearchResponse>
+  getRegistrationPrintData: (regId: string) => Promise<RegistrationPrintData>
   deepSearchPasien: (keyword: string) => Promise<DeepSearchResult[]>
   appConfig: AppConfig
   verifyBiometric: (noka: string) => Promise<BiometricVerdict>
@@ -77,6 +79,20 @@ export type KioskRegistrationDeps = {
   ) => Promise<RegistrationPrintResult>
   offeringsName?: (servicePointId: string) => string | undefined
   now?: () => number
+}
+
+const REGISTRATION_ID_INPUT_PATTERN = /^RG[:-]?(\d{1,8})$/i
+const FULL_REGISTRATION_ID_PATTERN = /^RG\d{8}$/i
+
+function normalizeRegistrationIdKeyword(value: string): string {
+  const trimmed = value.trim()
+  const match = REGISTRATION_ID_INPUT_PATTERN.exec(trimmed)
+  if (!match) return trimmed
+  return `RG${match[1].padStart(8, '0')}`
+}
+
+function isCanonicalRegistrationIdKeyword(value: string): boolean {
+  return FULL_REGISTRATION_ID_PATTERN.test(value)
 }
 
 function messageFromError(error: unknown): string {
@@ -165,6 +181,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   const assistanceServicePointId = ref<string | null>(null)
   const patientContextResult = ref<PatientContextSearchResponse | null>(null)
   const selectedContextPatient = ref<PatientContextItem | null>(null)
+  const registrationReprintData = ref<RegistrationPrintData | null>(null)
   const patientPolicies = ref<Polis[]>([])
   const errorContext = ref<FailureContext | null>(null)
   const biometricVerdict = ref<BiometricVerdict | null>(null)
@@ -214,6 +231,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     errorContext.value = null
     patientContextResult.value = null
     selectedContextPatient.value = null
+    registrationReprintData.value = null
     patientPolicies.value = []
     biometricVerdict.value = null
     bpjsReferences.value = []
@@ -252,13 +270,19 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     const trimmed = keyword.trim()
     if (!trimmed) return Promise.resolve()
     const decoded = getKodeBookingMjkn(trimmed)
+    const normalizedKeyword = normalizeRegistrationIdKeyword(decoded)
     mode.value = 'booking'
+    registrationReprintData.value = null
     return withSubmit(async () => {
       try {
         const tgl = await ensureBusinessDate()
-        const matches = await deps.searchBooking(tgl, decoded)
+        const matches = await deps.searchBooking(tgl, normalizedKeyword)
         if (matches.length === 0) {
-          const deepMatches = await deps.deepSearchPasien(decoded)
+          if (isCanonicalRegistrationIdKeyword(normalizedKeyword)) {
+            await searchPatientContextFor(normalizedKeyword)
+            return
+          }
+          const deepMatches = await deps.deepSearchPasien(normalizedKeyword)
           if (deepMatches.length > 0) {
             const mapped = deepMatches.map((item) => ({
               kind: 'Patient' as const,
@@ -293,7 +317,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
             transition('PATIENT_CONTEXT_CONFIRM')
             return
           }
-          await searchPatientContextFor(decoded)
+          await searchPatientContextFor(normalizedKeyword)
           return
         }
         if (matches.length > 1) {
@@ -350,6 +374,28 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         businessDate: tgl,
       })
       patientContextResult.value = result
+      if (isCanonicalRegistrationIdKeyword(keyword)) {
+        const exactMatches = result.registrations.items.filter(
+          (item) => item.registrationId === keyword,
+        )
+        if (
+          exactMatches.length === 0 &&
+          result.bestMatch?.kind === 'Registration' &&
+          result.bestMatch.registrationId === keyword
+        ) {
+          exactMatches.push(result.bestMatch)
+        }
+        if (exactMatches.length === 1) {
+          const data = await deps.getRegistrationPrintData(keyword)
+          registrationReprintData.value = data
+          transition('REGISTRATION_REPRINT')
+          return
+        }
+        if (exactMatches.length > 1) {
+          setFailure('UNKNOWN_ERROR', 'Ditemukan lebih dari satu registrasi. Hubungi petugas.')
+          return
+        }
+      }
       if (result.bestMatch || result.patients.total > 0) {
         transition('PATIENT_CONTEXT_CONFIRM')
       } else {
@@ -835,6 +881,21 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     await deps.printRegistration(buildPrintContext(mode.value ?? 'booking'))
   }
 
+  async function reprintExistingRegistration(): Promise<void> {
+    const data = registrationReprintData.value
+    if (!data) return
+    await deps.printRegistration({
+      result: { regId: data.regId, noAntrian: data.noAntrian },
+      pasienName: data.pasienName,
+      pasienId: data.pasienId,
+      tglLahir: data.tglLahir,
+      tipeJaminanName: data.tipeJaminanName,
+      noSep: data.noSep,
+      serviceName: data.serviceName,
+      dokterName: data.dokterName,
+    })
+  }
+
   async function reprintQueueTicket() {
     if (!assistanceTicket.value) return
     await deps.printQueueTicket(
@@ -896,6 +957,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     assistanceServicePointId,
     patientContextResult,
     selectedContextPatient,
+    registrationReprintData,
     patientPolicies,
     errorContext,
     biometricVerdict,
@@ -915,6 +977,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     confirmWalkin,
     confirmAssistance,
     reprintRegistration,
+    reprintExistingRegistration,
     reprintQueueTicket,
     startIdleReset,
     stopIdleReset,
