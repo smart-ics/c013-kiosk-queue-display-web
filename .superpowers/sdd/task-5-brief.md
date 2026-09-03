@@ -1,88 +1,37 @@
-### Task 5: `lib/failureCode.ts` (client-side diagnostics)
+### Task 5: Build The Dedicated Reprint Step
 
 **Files:**
-- Create: `apps/kiosk-web/src/lib/failureCode.ts`
-- Create: `apps/kiosk-web/src/lib/__tests__/failureCode.spec.ts`
+- Create: `apps/kiosk-web/src/views/steps/RegistrationReprintStep.vue`
+- Test: `apps/kiosk-web/src/views/steps/__tests__/RegistrationReprintStep.spec.ts`
 
 **Interfaces:**
-- Consumes: `ApiClientError`, `isSequenceExhausted` from `@aq/api-client`
-- Produces: `FAILURE_CODES`, `FailureCode`, `mapErrorToFailureCode(error): FailureCode`
+- Props: `registration: RegistrationPrintData`, `pending: boolean`, `succeeded: boolean`, `error: string | null`.
+- Emits: `reprint: []`, `finish: []`.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write component tests**
 
-Create `apps/kiosk-web/src/lib/__tests__/failureCode.spec.ts`:
+Mount the component and assert Reg ID, queue number, patient, service, and doctor are visible. Assert `reprint` is emitted only by clicking `Cetak ulang`, that the button is disabled while pending, and that `finish` is emitted by `Kembali ke menu`.
 
-```ts
-import { describe, expect, it } from 'vitest'
-import { ApiClientError } from '@aq/api-client'
-import { FAILURE_CODES, mapErrorToFailureCode } from '../failureCode'
+- [ ] **Step 2: Run the component test and verify it fails**
 
-describe('mapErrorToFailureCode', () => {
-  it('maps network errors to BACKEND_ERROR', () => {
-    expect(mapErrorToFailureCode(new ApiClientError('Failed to fetch', 0))).toBe(
-      FAILURE_CODES.BACKEND_ERROR,
-    )
-  })
+Run: `pnpm --filter kiosk-web exec vitest run src/views/steps/__tests__/RegistrationReprintStep.spec.ts`
 
-  it('maps DUPLICATE_REGISTRATION code', () => {
-    const err = new ApiClientError('Already registered', 409, 'DUPLICATE_REGISTRATION')
-    expect(mapErrorToFailureCode(err)).toBe(FAILURE_CODES.DUPLICATE_REGISTRATION)
-  })
+Expected: FAIL because the component does not exist.
 
-  it('maps sequence-exhausted to SCHEDULE_FULL', () => {
-    const err = new ApiClientError('Full', 503)
-    expect(mapErrorToFailureCode(err)).toBe(FAILURE_CODES.SCHEDULE_FULL)
-  })
+- [ ] **Step 3: Implement the focused component**
 
-  it('falls back to UNKNOWN_ERROR', () => {
-    expect(mapErrorToFailureCode(new Error('boom'))).toBe(FAILURE_CODES.UNKNOWN_ERROR)
-  })
-})
-```
+Use the existing `panel`, `status`, `actions`, and button classes. Show explicit copy such as `Cetak Ulang Karcis Registrasi`, display the validated queue number and registration details, and do not invoke printing from lifecycle hooks.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 4: Run the component test and verify it passes**
 
-Run: `pnpm --filter kiosk-web exec vitest run src/lib/__tests__/failureCode.spec.ts`
-Expected: FAIL — cannot find module `../failureCode`.
+Run: `pnpm --filter kiosk-web exec vitest run src/views/steps/__tests__/RegistrationReprintStep.spec.ts`
 
-- [ ] **Step 3: Create `failureCode.ts`**
-
-Create `apps/kiosk-web/src/lib/failureCode.ts`:
-
-```ts
-import { ApiClientError, isSequenceExhausted } from '@aq/api-client'
-
-export const FAILURE_CODES = {
-  BIOMETRIC_FAILED: 'BIOMETRIC_FAILED',
-  BIOMETRIC_TIMEOUT: 'BIOMETRIC_TIMEOUT',
-  BPJS_VALIDATION_FAILED: 'BPJS_VALIDATION_FAILED',
-  BOOKING_NOT_FOUND: 'BOOKING_NOT_FOUND',
-  SCHEDULE_FULL: 'SCHEDULE_FULL',
-  DUPLICATE_REGISTRATION: 'DUPLICATE_REGISTRATION',
-  BACKEND_ERROR: 'BACKEND_ERROR',
-  UNKNOWN_ERROR: 'UNKNOWN_ERROR',
-} as const
-
-export type FailureCode = (typeof FAILURE_CODES)[keyof typeof FAILURE_CODES]
-
-export function mapErrorToFailureCode(error: unknown): FailureCode {
-  if (error instanceof ApiClientError) {
-    if (error.status === 0) return FAILURE_CODES.BACKEND_ERROR
-    if (error.code === 'DUPLICATE_REGISTRATION') return FAILURE_CODES.DUPLICATE_REGISTRATION
-  }
-  if (isSequenceExhausted(error)) return FAILURE_CODES.SCHEDULE_FULL
-  return FAILURE_CODES.UNKNOWN_ERROR
-}
-```
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `pnpm --filter kiosk-web exec vitest run src/lib/__tests__/failureCode.spec.ts`
-Expected: PASS (4 tests).
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add apps/kiosk-web/src/lib/failureCode.ts apps/kiosk-web/src/lib/__tests__/failureCode.spec.ts
-git commit -m "feat(kiosk-web): client-side failure code mapping"
+git add apps/kiosk-web/src/views/steps/RegistrationReprintStep.vue apps/kiosk-web/src/views/steps/__tests__/RegistrationReprintStep.spec.ts
+git commit -m "feat(kiosk-web): add registration reprint step"
 ```
+

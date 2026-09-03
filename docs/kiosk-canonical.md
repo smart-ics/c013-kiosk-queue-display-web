@@ -57,6 +57,7 @@ from the public `/devices/kiosks/{id}` endpoint, then live data follows.
 | 21 | `/Sep/rujukan/{noPeserta}/peserta` (jetli) | GET | BPJS rujukan + SKDP | bearer |
 | 22 | `/Sep` (jetli) | POST | Create SEP | bearer |
 | 23 | `/Sep/upload` (jetli) | PATCH | Upload SEP file | bearer |
+| 24 | `/api/Reg/{id}` | GET | Read registration data for reprint | bearer |
 
 ## 4. Error-Handling Architecture
 
@@ -169,7 +170,85 @@ user-facing messages. Technical codes (e.g. `AQ_RESOURCE_NOT_FOUND`) are
 | `WalkinServiceStep` inline error | Poli/dokter/jadwal load failed | `mapBackendErrorToUserMessage(error)` |
 | `kioskLogin` red screen | Login retry exhausted | Raw red HTML with console hint |
 
-## 7. Conventions & Boundaries
+## 7. Reprint Existing Registration Flow
+
+The kiosk supports reprinting an admission ticket for a registration that
+already exists in HIS. The user enters a Registration ID (e.g. `REG-20260101-001`)
+on the Patient Context search step; when the backend returns an exact
+Registration match, the kiosk fetches the authoritative registration data and
+shows a dedicated reprint screen. The user then explicitly presses
+**"Cetak ulang"** — the kiosk never auto-prints.
+
+### 7.1 Endpoints (additional)
+
+| # | Endpoint | Method | Purpose | Auth |
+|---|---|---|---|---|
+| 24 | `/api/Reg/{id}` | GET | Read authoritative registration data for reprint | bearer |
+
+### 7.2 Flow state
+
+`REGISTRATION_REPRINT` is a new state in `flow.ts` reachable from both
+`HOME` and `PATIENT_CONTEXT_SEARCH`. It is **excluded from the five-step
+stepper** — the patient never sees it as a numbered step.
+
+### 7.3 Routing logic (`useKioskRegistration.searchPatientContextFor`)
+
+1. Call `patient-context-search` with the keyword.
+2. If `registrations.items` contains an exact Reg ID match → fetch via
+   `getRegistrationPrintData(regId)`, set `registrationReprintData`, route to
+   `REGISTRATION_REPRINT`.
+3. Else if `bestMatch` is a `Registration` (from the multi-source picker) →
+   same path.
+4. Else if multiple `Registration` matches → `FAILURE` (force user to narrow).
+5. Else → fall back to existing patient-context flow.
+
+### 7.4 UI surface: `RegistrationReprintStep`
+
+| Field | Source |
+|---|---|
+| Registration ID | `RegistrationPrintData.regId` |
+| Queue number | `RegistrationPrintData.noAntrian` (required `number`, never fabricated) |
+| Patient | `RegistrationPrintData.pasien.nama` + `noRm` |
+| Service | `RegistrationPrintData.layanan.nama` |
+| Doctor | `RegistrationPrintData.dokter.nama` |
+| Guarantee | `RegistrationPrintData.tipeJaminan.nama` |
+| SJP | `RegistrationPrintData.sjpNo` (optional) |
+
+Buttons: **Cetak ulang** (manual reprint, emits `reprint`) and
+**Kembali ke menu** (emits `back` → `goHome()`).
+
+### 7.5 Type contract
+
+```ts
+registrationPrintDataSchema = z.object({
+  regId: z.string().min(1),
+  noAntrian: z.number().int().nonnegative(),
+  pasien: z.object({ nama: z.string(), noRm: z.string() }),
+  layanan: z.object({ nama: z.string() }),
+  doktor: z.object({ nama: z.string() }),
+  tipeJaminan: z.object({ nama: z.string() }),
+  sjpNo: z.string().optional(),
+})
+```
+
+`RegistrationReceiptData.noAntrian` is **required `number`** — the kiosk never
+fabricates queue numbers; reprint inherits the same value from the backend.
+
+### 7.6 Failure modes
+
+| Trigger | UX |
+|---|---|
+| `patient-context-search` returns 0 results with a Reg ID–shaped keyword | `FAILURE` step |
+| Multiple `Registration` matches | `FAILURE` step |
+| `GET /api/Reg/{id}` returns 404 | `FAILURE` step |
+| Print service fails | Inline error with retry |
+
+### 7.7 Design references
+
+- Spec: `docs/superpowers/specs/2026-09-02-kiosk-regid-reprint-design.md`
+- Plan: `docs/superpowers/plans/2026-09-02-kiosk-regid-reprint.md`
+
+## 8. Conventions & Boundaries
 
 - Vue 3 + `<script setup lang="ts">` + Composition API only
 - No Options API, no `watchEffect` (use `watch`)
@@ -179,7 +258,7 @@ user-facing messages. Technical codes (e.g. `AQ_RESOURCE_NOT_FOUND`) are
 - No static JWT embedded; all auth via `IAuthTokenProvider`
 - Fullscreen must be launched at OS/browser level (`chrome.exe --kiosk …`)
 
-## 8. Verification Gate
+## 9. Verification Gate
 
 ```bash
 pnpm turbo run typecheck test
@@ -188,14 +267,14 @@ pnpm turbo run typecheck test
 - Typecheck: `vue-tsc -p tsconfig.app.json --noEmit`
 - Tests: `vitest run` (jsdom, glob `src/**/*.spec.ts`)
 
-## 9. Deployment
+## 10. Deployment
 
 Kiosk apps are launched on Windows via Chrome kiosk mode. Helper scripts
 auto-generate desktop shortcuts:
 
 - `scripts/create-kiosk-shortcut.bat`
 
-## 10. Related Documents
+## 11. Related Documents
 
 - [Domain Model](domain-model.md) — entities, aggregates, value objects
 - [Glossary](glossary.md) — domain terms

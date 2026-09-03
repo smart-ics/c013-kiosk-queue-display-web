@@ -1,69 +1,86 @@
-# Task 3 Report: `@aq/api-client` — HIS + JETLI clients
+# Task 3 Report: Fix Flow Transitions And Receipt Type
 
-## Status: DONE
+**Status: DONE_WITH_CONCERNS**
 
-## What changed
+## Summary
 
-- **Created** `packages/api-client/src/his.ts` (verbatim from brief): `createHisApi(client)` → `HisApi` and `createJetliApi(client)` → `JetliApi`, plus exported types `HisApi` / `JetliApi`. Consumes `AdmissionQueueClient` (`getJson` / `postJson`) and schemas/types from `@aq/shared-types` (all verified present and exported).
-- **Modified** `packages/api-client/src/index.ts`: appended the brief's Step 4 export block (`createHisApi`, `createJetliApi`, `type HisApi`, `type JetliApi` from `./his`) at the end. Existing exports untouched.
-- **Created** `packages/api-client/src/__tests__/his.spec.ts` (verbatim from brief): 3 tests (booking search path, booking-assistance POST + queue ticket parse, nullable group jaminan map).
+- Added `HOME -> REGISTRATION_REPRINT` to `FLOW_TRANSITIONS.HOME` in `apps/kiosk-web/src/lib/flow.ts`.
+- `RegistrationReceiptData.noAntrian` is now required `number`; the renderer uses `String(data.noAntrian)` with no blank fallback.
+- Added focused regression tests in `flow.spec.ts` (HOME transition, terminal-back-to-HOME) and `registrationReceipt.spec.ts` (numeric queue number rendered, required `noAntrian` in the source type).
+- Committed as `560005b`.
 
-No `package.json` changes needed; vitest + test script already configured.
+## Commands Run
 
-## Fail-step output
-
-Command: `pnpm --filter @aq/api-client exec vitest run src/__tests__/his.spec.ts`
-
-```
- RUN  v3.2.7 E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/packages/api-client
-
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-
- FAIL  src/__tests__/his.spec.ts [ src/__tests__/his.spec.ts ]
-Error: Cannot find module '../his' imported from 'E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/packages/api-client/src/__tests__/his.spec.ts'
-  ❯ src/__tests__/his.spec.ts:2:1
-    1| import { describe, expect, it, vi } from 'vitest'
-    2| import { createHisApi, createJetliApi } from '../his'
-     | ^
-    3| import { AdmissionQueueClient } from '../http'
-    4| import type { IAuthTokenProvider } from '@aq/auth'
-
- Test Files  1 failed (1)
-      Tests  no tests
-   Start at 09:22:47
-   Duration 1.25s (transform 220ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 388ms)
-
-Caused by: Error: Failed to load url ../his (resolved id: ../his) in E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/packages/api-client/src/__tests__/his.spec.ts. Does the file exist?
-  ❯ loadAndTransform ../../node_modules/.pnpm/vite@7.3.6_@types+node@24.13.3/node_modules/vite/dist/node/chunks/config.js:22739:33
-```
-
-## Pass-step output
-
-Command: `pnpm --filter @aq/api-client exec vitest run src/__tests__/his.spec.ts`
-
-```
- RUN  v3.2.7 E:/PROJECT/ICS/FE/c013-kiosk-queue-display-web/packages/api-client
-
- ✓ src/__tests__/his.spec.ts (3 tests) 66ms
-
- Test Files  1 passed (1)
-      Tests  3 passed (3)
-   Start at 09:23:20
-   Duration 1.83s (transform 344ms, setup 0ms, collect 642ms, tests 66ms, environment 1ms, prepare 342ms)
-```
-
-## Verification beyond the brief
-
-- Full `@aq/api-client` suite: 4 files / 15 tests all pass (no regressions in errors, admissionQueue, configuration specs).
-- `pnpm --filter @aq/api-client typecheck` (`tsc -p tsconfig.json --noEmit`): clean, no errors.
+1. `pnpm --filter kiosk-web exec vitest run src/lib/__tests__/flow.spec.ts src/lib/__tests__/registrationReceipt.spec.ts` (before fix)
+   - Result: **1 failed / 16 passed** — `allows home → registration reprint` failed (`expected false to be true`), confirming the missing HOME transition. Receipt tests passed (see concerns).
+2. `pnpm --filter kiosk-web exec vitest run src/lib/__tests__/flow.spec.ts src/lib/__tests__/registrationReceipt.spec.ts` (after fix)
+   - Result: **2 files passed, 17 tests passed (0 failed)**.
+3. `pnpm --filter kiosk-web exec vue-tsc -p tsconfig.app.json --noEmit`
+   - Result: passed, no errors.
+4. `pnpm --filter kiosk-web exec vitest run` (full kiosk-web suite)
+   - Result: **24 files passed, 148 tests passed (0 failed)**.
 
 ## Commit
 
-`e326e9bb98f30febd32db77565bc39772a470a69` — `feat(api-client): HIS and JETLI registration clients`
+- `560005b` `fix(kiosk-web): require queue number for registration receipts`
+  - Files: `apps/kiosk-web/src/lib/flow.ts`, `apps/kiosk-web/src/lib/__tests__/flow.spec.ts`, `apps/kiosk-web/src/lib/__tests__/registrationReceipt.spec.ts` (3 files, +25/-1).
 
-Contains exactly 3 files (209 insertions): `src/__tests__/his.spec.ts`, `src/his.ts`, `src/index.ts`. No other files staged or committed.
+## Concerns / Deviations
 
-## Concerns
+1. **`registrationReceipt.ts` not in the commit.** The previous commit `5bae1c8` already contained the fixed version (`noAntrian: number`, `String(data.noAntrian)`). The working tree carried the nullable relaxation (`number | null | undefined`) as an uncommitted change; my edits reverted it to the already-committed fixed state, so the file has **no net diff** vs HEAD~1 and git correctly staged nothing for it. The on-disk file is now correct. The commit therefore contains 3 files, not 4.
+2. **`flow.ts` commit includes pre-existing `REGISTRATION_REPRINT` additions.** The diff vs HEAD~1 also captures `REGISTRATION_REPRINT` entries that were already in the working tree before this task (union type, `BOOKING_SEARCH`, `PATIENT_CONTEXT_SEARCH`, terminal `REGISTRATION_REPRINT: ['HOME']`). I only added the `HOME` entry; I did not alter any other transitions. They were swept in because the brief's own `git add` stages the whole file.
+3. **Receipt type-level regression test does not fail at runtime pre-fix.** Vitest runs via esbuild (no typecheck), so the `RegistrationReceiptData extends { noAntrian: number }` assertion always evaluates `true` at runtime and only fails under `vue-tsc`/`tsc`. The genuinely runtime-failing regression in step 2 was the flow transition test. Enforcement of the type test relies on the repo's `typecheck` gate, which I verified passes post-fix.
+4. Other uncommitted user changes (`useKioskRegistration.ts`, its spec, `.superpowers/sdd/*` briefs/reports, `docs/superpowers/`) were left untouched and unstaged.
 
-- None blocking. Per the brief's own code comments, HIS service-catalog paths and `/direct` payload shapes remain assumed shapes (ADR-006 / ADR-002 open items) and must be confirmed against the real HIS API. `bookingAssistanceBodySchema` validation happens client-side before the POST (`bookingAssistanceBodySchema.parse`), so an out-of-shape body throws ZodError rather than an `ApiClientError`.
-- Test payloads were verified against the actual shared-types schemas before writing; all shapes satisfy the schemas.
+---
+
+## Review Fix Report (Important finding: noAntrian regression test guards nothing)
+
+**Status: FIXED**
+
+### Finding
+
+The test `requires noAntrian to be a number in the receipt source type` used a compile-time
+conditional type assertion (`RegistrationReceiptData extends { noAntrian: number } ? true : false`)
+that always evaluates `true` under vitest's esbuild transform, so it never failed even when
+`noAntrian` was relaxed to nullable/optional.
+
+### Fix
+
+Replaced that test in
+`apps/kiosk-web/src/lib/__tests__/registrationReceipt.spec.ts` with a `@ts-expect-error` assertion on
+a real call through the public function signature:
+
+```ts
+it('rejects a missing queue number through the render function signature', () => {
+  // @ts-expect-error noAntrian is required
+  renderReceiptTemplate(TEMPLATE, { ...baseData(), noAntrian: undefined })
+})
+```
+
+The runtime body is now a genuine call to `renderReceiptTemplate`, and the type guard lives in the
+`// @ts-expect-error` directive on that call — it fails typecheck (TS2578 unused directive) if
+`noAntrian` is ever relaxed, and compiles cleanly while it is a required `number`. No imports were
+left unused: `renderReceiptTemplate`, `RegistrationReceiptData` (via `baseData()`), `describe`,
+`expect`, `it` are all still referenced.
+
+### Commands Run (covering test file: `apps/kiosk-web/src/lib/__tests__/registrationReceipt.spec.ts`)
+
+1. `pnpm --filter kiosk-web exec vitest run src/lib/__tests__/registrationReceipt.spec.ts`
+   - Result: **1 file passed, 8 tests passed, 0 failed.**
+2. `pnpm --filter kiosk-web exec vue-tsc -p tsconfig.app.json --noEmit`
+   - Result: clean, no errors — confirms the `@ts-expect-error` is satisfied (i.e. `noAntrian` is
+     required `number`) and no unused imports remain.
+3. Negative sanity check (reasoned, no source change): `registrationReceipt.ts` was NOT modified.
+   With `noAntrian: number` the call `{ ...baseData(), noAntrian: undefined }` is a type error that
+   the directive suppresses; vue-tsc passing proves an error exists on that line. If `noAntrian`
+   were relaxed to optional/nullable, the same call would compile without error and vue-tsc would
+   report TS2578 ("Unused '@ts-expect-error' directive"), failing typecheck. The regression
+   therefore fails when the requirement is violated and passes when it holds.
+
+### Commit
+
+- `cac1955` `test(kiosk-web): enforce required noAntrian via function signature`
+  - Files: `apps/kiosk-web/src/lib/__tests__/registrationReceipt.spec.ts` only (1 file, +3/-4).
+  - Uncommitted user changes (`useKioskRegistration.ts`, its spec, `.superpowers/sdd/*`,
+    `docs/superpowers/`) left untouched and unstaged.

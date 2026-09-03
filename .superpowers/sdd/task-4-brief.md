@@ -1,169 +1,114 @@
-### Task 4: `lib/constants.ts` + `lib/eligibility.ts` (ADR-002 rule)
+### Task 4: Route Existing Reg IDs In The Registration Composable
 
 **Files:**
-- Create: `apps/kiosk-web/src/lib/constants.ts`
-- Create: `apps/kiosk-web/src/lib/eligibility.ts`
-- Create: `apps/kiosk-web/src/lib/__tests__/eligibility.spec.ts`
+- Modify: `apps/kiosk-web/src/composables/useKioskRegistration.ts`
+- Test: `apps/kiosk-web/src/composables/__tests__/useKioskRegistration.spec.ts`
 
 **Interfaces:**
-- Consumes: `BookingDetail`, `Polis` from `@aq/shared-types`
-- Produces: `KIOSK_USER_ID`, `IDLE_RESET_MS`, `SUCCESS_RESET_MS`, `ASSISTANCE_RESET_MS` from `constants`; `UMAT_TIPE_JAMINAN_ID`, `JaminanStatus`, `computeNeedsEligibility(tipeJaminanId, groupJaminan): boolean`, `deriveBookingJaminan(detail, polisList): JaminanStatus`, `deriveWalkinJaminan(polisList): JaminanStatus` from `eligibility`
+- Extend `KioskRegistrationDeps` with `getRegistrationPrintData(regId: string): Promise<RegistrationPrintData>`.
+- Expose `registrationReprintData: Ref<RegistrationPrintData | null>`.
+- Expose `reprintExistingRegistration(): Promise<void>`; it must call the existing `printRegistration` dependency using `registrationReprintData` and must do nothing when the data ref is null.
+- Preserve existing `reprintRegistration()` for `REGISTRATION_SUCCESS`.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Add failing composable tests**
 
-Create `apps/kiosk-web/src/lib/__tests__/eligibility.spec.ts`:
+Add fixtures and tests for these exact cases:
 
 ```ts
-import { describe, expect, it } from 'vitest'
-import type { BookingDetail, Polis } from '@aq/shared-types'
-import {
-  computeNeedsEligibility,
-  deriveBookingJaminan,
-  deriveWalkinJaminan,
-  UMAT_TIPE_JAMINAN_ID,
-} from '../eligibility'
-
-const bpjsPolis: Polis = {
-  polisId: 'P1',
-  noPolis: '000123456',
-  atasName: 'Andi',
-  pasien: { pasienId: 'PT1' },
-  tipeJaminan: { tipeJaminanId: 'BPJS', tipeJaminanName: 'BPJS' },
-  tglExpired: null,
-}
-
-const booking = {
-  bookingId: 'BK1',
-  bookingDate: '2026-08-03',
-  reg: { regId: 'R0', pasienId: 'PT1', pasienName: 'Andi' },
-  layanan: { layananId: 'LY1', layananName: 'Poli Jantung' },
-  dokter: { ppaId: 'DP1', ppaName: 'Dr. X', isDefault: true },
-  tglBerobat: '2026-08-03',
-  jamPraktek: '08:00',
-  noAntrian: 3,
-  extAppRef: { extAppName: 'APP', reffId: 'REF1', checkInQr: 'QR1' },
-} as BookingDetail
-
-describe('computeNeedsEligibility', () => {
-  it('is false for Umum (00000)', () => {
-    expect(computeNeedsEligibility(UMAT_TIPE_JAMINAN_ID, { groupJaminanId: 'G1' })).toBe(false)
+it('routes an exact registration result from HOME to reprint without registering', async () => {
+  const deps = makeDeps({
+    searchBooking: vi.fn(async () => []),
+    searchPatientContext: vi.fn(async () => ({ ...registrationContextResponse })),
+    getRegistrationPrintData: vi.fn(async () => registrationPrintData),
   })
+  const reg = useKioskRegistration(deps)
 
-  it('is true for BPJS with a group map', () => {
-    expect(computeNeedsEligibility('BPJS', { groupJaminanId: 'G1' })).toBe(true)
-  })
+  await reg.submitBookingKeyword('RG12345678')
 
-  it('is false when group map is null', () => {
-    expect(computeNeedsEligibility('BPJS', null)).toBe(false)
-  })
+  expect(reg.flow.value).toBe('REGISTRATION_REPRINT')
+  expect(reg.registrationReprintData.value).toEqual(registrationPrintData)
+  expect(deps.getRegistrationPrintData).toHaveBeenCalledWith('RG12345678')
+  expect(deps.registerBooking).not.toHaveBeenCalled()
+  expect(deps.registerWalkin).not.toHaveBeenCalled()
+  expect(deps.printRegistration).not.toHaveBeenCalled()
 })
 
-describe('deriveBookingJaminan', () => {
-  it('defaults to Umum when coverageInfo.noPeserta is empty', () => {
-    const detail = { ...booking, coverageInfo: { asuransiName: '', noPeserta: '', noRujukan: '' } }
-    expect(deriveBookingJaminan(detail, [bpjsPolis]).tipeJaminanId).toBe(UMAT_TIPE_JAMINAN_ID)
-  })
-
-  it('derives BPJS from a matching polis', () => {
-    const detail = {
-      ...booking,
-      coverageInfo: { asuransiName: 'BPJS', noPeserta: '000123456', noRujukan: 'REF1' },
-    }
-    const status = deriveBookingJaminan(detail, [bpjsPolis])
-    expect(status.tipeJaminanId).toBe('BPJS')
-    expect(status.noPeserta).toBe('000123456')
-  })
+it('falls back when no exact registration exists', async () => {
+  const reg = useKioskRegistration(makeDeps({ searchBooking: vi.fn(async () => []) }))
+  await reg.submitBookingKeyword('RG12345678')
+  expect(reg.flow.value).not.toBe('REGISTRATION_REPRINT')
 })
 
-describe('deriveWalkinJaminan', () => {
-  it('uses the first polis', () => {
-    const status = deriveWalkinJaminan([bpjsPolis])
-    expect(status.tipeJaminanId).toBe('BPJS')
-    expect(status.noPeserta).toBe('000123456')
+it('fails when multiple exact registration results exist', async () => {
+  const deps = makeDeps({
+    searchBooking: vi.fn(async () => []),
+    searchPatientContext: vi.fn(async () => multipleRegistrationContextResponse),
   })
+  const reg = useKioskRegistration(deps)
+  await reg.submitBookingKeyword('RG12345678')
+  expect(reg.flow.value).toBe('FAILURE')
+  expect(deps.getRegistrationPrintData).not.toHaveBeenCalled()
+})
 
-  it('defaults to Umum when no polis', () => {
-    expect(deriveWalkinJaminan([]).tipeJaminanId).toBe(UMAT_TIPE_JAMINAN_ID)
+it('fails when registration print data has no queue number', async () => {
+  const deps = makeDeps({
+    searchBooking: vi.fn(async () => []),
+    searchPatientContext: vi.fn(async () => registrationContextResponse),
+    getRegistrationPrintData: vi.fn(async () => {
+      throw new Error('Invalid registration print data')
+    }),
   })
+  const reg = useKioskRegistration(deps)
+  await reg.submitBookingKeyword('RG12345678')
+  expect(reg.flow.value).toBe('FAILURE')
+})
+
+it('does not auto-print on the existing-registration path', async () => {
+  const deps = makeDeps({
+    searchBooking: vi.fn(async () => []),
+    searchPatientContext: vi.fn(async () => registrationContextResponse),
+    getRegistrationPrintData: vi.fn(async () => registrationPrintData),
+  })
+  const reg = useKioskRegistration(deps)
+  await reg.submitBookingKeyword('RG12345678')
+  expect(deps.printRegistration).not.toHaveBeenCalled()
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+The tests must also cover a `bestMatch` Registration when it is the exact requested ID, and must reject a `bestMatch` Booking or Patient as a direct-reprint candidate.
 
-Run: `pnpm --filter kiosk-web exec vitest run src/lib/__tests__/eligibility.spec.ts`
-Expected: FAIL — cannot find module `../eligibility`.
+- [ ] **Step 2: Run the focused composable test and verify it fails**
 
-- [ ] **Step 3: Create `constants.ts`**
+Run: `pnpm --filter kiosk-web exec vitest run src/composables/__tests__/useKioskRegistration.spec.ts`
 
-Create `apps/kiosk-web/src/lib/constants.ts`:
+Expected: Type/test failures because the dependency and reprint state do not exist.
 
-```ts
-export const KIOSK_USER_ID = 'hidokkiosk'
-export const IDLE_RESET_MS = 60_000
-export const SUCCESS_RESET_MS = 10_000
-export const ASSISTANCE_RESET_MS = 15_000
-```
+- [ ] **Step 3: Implement exact-match routing**
 
-- [ ] **Step 4: Create `eligibility.ts`**
+Normalize the input as currently done. When the canonical Reg ID path reaches patient-context search, select matching `registrations.items` using the normalized ID and `registrationId`. Apply these rules:
 
-Create `apps/kiosk-web/src/lib/eligibility.ts`:
+- one exact Registration: call `getRegistrationPrintData`, assign `registrationReprintData`, transition from either `HOME` or `PATIENT_CONTEXT_SEARCH` to `REGISTRATION_REPRINT`;
+- zero exact registrations: retain current patient-context fallback;
+- more than one exact registration: call `setFailure('UNKNOWN_ERROR', 'Ditemukan lebih dari satu registrasi. Hubungi petugas.')`;
+- detail lookup rejection or invalid data: map to the existing failure behavior;
+- never call `registerBooking`, `registerWalkin`, or `printRegistration` during lookup.
 
-```ts
-import type { BookingDetail, GroupJaminanMap, Polis } from '@aq/shared-types'
+Clear `registrationReprintData` in `goHome()` and before a new search. Keep the existing `reprintRegistration()` method separate from the new reprint action/data.
 
-export const UMAT_TIPE_JAMINAN_ID = '00000'
+- [ ] **Step 4: Update all test dependency factories**
 
-export type JaminanStatus = {
-  tipeJaminanId: string
-  tipeJaminanName: string
-  noPeserta: string | null
-}
+Provide a default `getRegistrationPrintData` mock in `makeDeps` and any other `KioskRegistrationDeps` factories so existing tests retain their current behavior.
 
-const UMAT: JaminanStatus = {
-  tipeJaminanId: UMAT_TIPE_JAMINAN_ID,
-  tipeJaminanName: 'Umum',
-  noPeserta: null,
-}
+- [ ] **Step 5: Run the composable tests and verify they pass**
 
-export function computeNeedsEligibility(
-  tipeJaminanId: string,
-  groupJaminan: Pick<GroupJaminanMap, 'groupJaminanId'> | null,
-): boolean {
-  return tipeJaminanId !== UMAT_TIPE_JAMINAN_ID && groupJaminan !== null
-}
+Run: `pnpm --filter kiosk-web exec vitest run src/composables/__tests__/useKioskRegistration.spec.ts`
 
-export function deriveBookingJaminan(detail: BookingDetail, polisList: Polis[]): JaminanStatus {
-  const noPeserta = detail.coverageInfo.noPeserta
-  if (!noPeserta) return UMAT
-  const match = polisList.find((p) => p.noPolis === noPeserta || p.polisId === noPeserta)
-  if (!match) return UMAT
-  return {
-    tipeJaminanId: match.tipeJaminan.tipeJaminanId,
-    tipeJaminanName: match.tipeJaminan.tipeJaminanName,
-    noPeserta,
-  }
-}
-
-export function deriveWalkinJaminan(polisList: Polis[]): JaminanStatus {
-  const first = polisList[0]
-  if (!first) return UMAT
-  return {
-    tipeJaminanId: first.tipeJaminan.tipeJaminanId,
-    tipeJaminanName: first.tipeJaminan.tipeJaminanName,
-    noPeserta: first.noPolis,
-  }
-}
-```
-
-- [ ] **Step 5: Run test to verify it passes**
-
-Run: `pnpm --filter kiosk-web exec vitest run src/lib/__tests__/eligibility.spec.ts`
-Expected: PASS (8 tests).
+Expected: PASS, including all existing booking/walk-in tests.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/kiosk-web/src/lib/constants.ts apps/kiosk-web/src/lib/eligibility.ts apps/kiosk-web/src/lib/__tests__/eligibility.spec.ts
-git commit -m "feat(kiosk-web): eligibility decision rule per ADR-002"
+git add apps/kiosk-web/src/composables/useKioskRegistration.ts apps/kiosk-web/src/composables/__tests__/useKioskRegistration.spec.ts
+git commit -m "feat(kiosk-web): route existing registration ids to reprint"
 ```
 
