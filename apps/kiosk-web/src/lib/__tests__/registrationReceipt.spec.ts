@@ -82,9 +82,8 @@ describe('renderReceiptTemplate', () => {
     expect(html).toContain('<div class="queue-number">7</div>')
   })
 
-  it('requires noAntrian to be a number in the receipt source type', () => {
-    type NoAntrianRequired = RegistrationReceiptData extends { noAntrian: number } ? true : false
-    const noAntrianRequired: NoAntrianRequired = true
-    expect(noAntrianRequired).toBe(true)
+  it('rejects a missing queue number through the render function signature', () => {
+    // @ts-expect-error noAntrian is required
+    renderReceiptTemplate(TEMPLATE, { ...baseData(), noAntrian: undefined })
   })
 })
