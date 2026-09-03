@@ -136,9 +136,17 @@ export class AdmissionQueueClient {
 
     if (!response.ok) {
       const fail = jsendFailOrErrorSchema.safeParse(payload)
-      const code = fail.success ? fail.data.code : undefined
       const message =
-        (fail.success && fail.data.message) || `Request failed with status ${response.status}`
+        (fail.success && fail.data.message) ||
+        (typeof payload === 'object' && payload !== null && 'data' in payload &&
+          typeof (payload as Record<string, unknown>).data === 'string'
+          ? (payload as Record<string, string>).data
+          : `Request failed with status ${response.status}`)
+      const code =
+        (fail.success && fail.data.code) ||
+        (typeof payload === 'object' && payload !== null && 'status' in payload
+          ? String((payload as Record<string, unknown>).status)
+          : undefined)
       throw new ApiClientError(message, response.status, code, payload)
     }
 

@@ -1,0 +1,315 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Registration Receipt</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        width: var(--pw, 80mm);
+        line-height: 1.3;
+        margin: 0;
+        padding: 2mm;
+        text-align: center;
+      }
+
+      .header {
+        margin-bottom: 1mm;
+      }
+      .header h1 {
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .header p {
+        font-size: 10px;
+        font-weight: 500;
+        color: #000;
+      }
+
+      .divider {
+        border-bottom: 0.8px solid #000;
+        margin: 1mm 0;
+      }
+
+      .patient {
+        margin-bottom: 2mm;
+      }
+
+      .patient-name {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      .patient-meta {
+        font-size: 10px;
+        font-weight: 500;
+        color: #000;
+      }
+      .patient-meta strong {
+        color: #000;
+        font-weight: 600;
+        font-size: 10px;
+      }
+
+      .queue {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 4mm;
+        margin: 2mm 0;
+      }
+      .queue-info {
+        text-align: center;
+      }
+      .queue-label {
+        font-size: 10px;
+        font-weight: 500;
+        color: #000;
+      }
+      .queue-number {
+        font-size: 32px;
+        font-weight: 600;
+        line-height: 1;
+      }
+      .qr {
+        width: calc(var(--pw, 80mm) * 0.22);
+        height: calc(var(--pw, 80mm) * 0.22);
+        max-width: 25mm;
+        max-height: 25mm;
+        flex-shrink: 0;
+      }
+      .qr img {
+        width: 100%;
+        height: 100%;
+      }
+
+      .service {
+        font-size: 10px;
+        margin: 2mm 0;
+      }
+      .service-name {
+        font-weight: 600;
+        font-size: 10px;
+      }
+      .service-doctor {
+        font-weight: 500;
+        color: #000;
+      }
+
+      .footer {
+        margin-top: 1mm;
+        font-size: 8px;
+        font-weight: 600;
+        color: #000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .footer-note {
+        font-weight: 600;
+        color: #000;
+        margin-bottom: 1mm;
+      }
+      .checklist {
+        width: 100%;
+        text-align: left;
+        margin: 2mm 0;
+        font-size: 9px;
+      }
+
+      .checklist-item {
+        display: flex;
+        align-items: center; /* ← flexbox vertical centering, lebih reliable */
+        gap: 2mm;
+        margin: 1mm 0;
+        min-height: 4mm;
+      }
+      .checklist-box {
+        width: 3mm;
+        height: 3mm;
+        min-width: 3mm;
+        flex-shrink: 0;
+        display: block;
+      }
+
+      .checklist-item span:last-child {
+        margin: 0 5mm;
+        line-height: 1;
+        font-weight: 600;
+      }
+
+      @media print {
+        @page {
+          size: var(--pw, 80mm);
+          margin: 0;
+          padding: 0;
+        }
+        body {
+          padding: 0;
+        }
+        * {
+          print-color-adjust: exact !important;
+          -webkit-print-color-adjust: exact !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>{{ rsName }}</h1>
+      <p>{{ rsAddress }} {{ rsPhone }}</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="patient">
+      <div class="patient-name">{{ pasienName }}</div>
+      {{ umurLine }}
+      <div class="patient-meta">
+        <span>{{ pasienId }}</span>
+        <br />
+        <strong>{{ regId }}</strong> ({{ regDate }} {{ jamReg }})
+        <br />
+        <strong>{{ tipeJaminanName }}</strong>
+        {{ sepLine }}
+      </div>
+    </div>
+
+    <div class="queue">
+      <div class="queue-info">
+        <!-- <div class="queue-label">No. Antrian Poli</div> -->
+        <div class="queue-number">{{ noAntrian }}</div>
+      </div>
+    </div>
+
+    <div class="service">
+      <div class="service-name">{{ layananName }}</div>
+      <div class="service-doctor">{{ dokterName }}</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="checklist">
+      <div class="checklist-item">
+        <svg
+          class="checklist-box"
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <rect
+            x="1"
+            y="1"
+            width="10"
+            height="10"
+            rx="1"
+            fill="none"
+            stroke="#000"
+            stroke-width="1"
+          />
+        </svg>
+        <span>Laboratorium</span>
+      </div>
+      <div class="checklist-item">
+        <svg
+          class="checklist-box"
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <rect
+            x="1"
+            y="1"
+            width="10"
+            height="10"
+            rx="1"
+            fill="none"
+            stroke="#000"
+            stroke-width="1"
+          />
+        </svg>
+        <span>Radiologi</span>
+      </div>
+      <div class="checklist-item">
+        <svg
+          class="checklist-box"
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <rect
+            x="1"
+            y="1"
+            width="10"
+            height="10"
+            rx="1"
+            fill="none"
+            stroke="#000"
+            stroke-width="1"
+          />
+        </svg>
+        <span>Resep</span>
+      </div>
+      <div class="checklist-item">
+        <svg
+          class="checklist-box"
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <rect
+            x="1"
+            y="1"
+            width="10"
+            height="10"
+            rx="1"
+            fill="none"
+            stroke="#000"
+            stroke-width="1"
+          />
+        </svg>
+        <span>Kontrol</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="header">
+      <h1>{{ rsName }}</h1>
+      <p>{{ rsAddress }} {{ rsPhone }}</p>
+    </div>
+
+    <div class="queue">
+      <div class="queue-info">
+        <!-- <div class="queue-label">No. Antrian Poli</div> -->
+        <div class="queue-number">{{ noAntrian }}</div>
+      </div>
+    </div>
+
+    <div class="service">
+      <div class="service-name">{{ layananName }}</div>
+      <div class="service-doctor">{{ dokterName }}</div>
+      <strong>{{ regId }}</strong>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="footer">
+      <div class="qr">
+        <img src="{{ qrCodeReg }}" alt="QR" />
+      </div>
+      <div class="footer-note">Install HiDok App di Playstore</div>
+      <div>Dicetak: {{ printedAt }}</div>
+    </div>
+  </body>
+</html>

@@ -11,7 +11,7 @@ export class DeviceConfigNotFoundError extends Error {
   readonly deviceId: string
 
   constructor(deviceId: string) {
-    super(`Unknown device configuration for '${deviceId}'`)
+    super(`Konfigurasi perangkat tidak dikenal untuk '${deviceId}'`)
     this.name = 'DeviceConfigNotFoundError'
     this.deviceId = deviceId
   }

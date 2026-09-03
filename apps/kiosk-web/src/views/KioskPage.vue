@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import type { DeviceConfig, AdmissionServicePoint } from '@aq/shared-types'
 import { DeviceConfigInvalidError, DeviceConfigNotFoundError } from '@aq/device-config'
+import { mapBackendErrorToUserMessage } from '@aq/api-client'
 import {
   getAdmissionQueueApi,
   getDeviceConfigProvider,
@@ -31,6 +32,7 @@ import BpjsSelectReferenceStep from './steps/BpjsSelectReferenceStep.vue'
 import WalkinConfirmStep from './steps/WalkinConfirmStep.vue'
 import BiometricStep from './steps/BiometricStep.vue'
 import RegistrationSuccessStep from './steps/RegistrationSuccessStep.vue'
+import RegistrationReprintStep from './steps/RegistrationReprintStep.vue'
 import FailureStep from './steps/FailureStep.vue'
 import AssistanceQueueStep from './steps/AssistanceQueueStep.vue'
 
@@ -81,7 +83,7 @@ watch(
         bootError.value = `Konfigurasi tidak valid untuk '${error.deviceId}'.`
         return
       }
-      bootError.value = error instanceof Error ? error.message : 'Boot gagal.'
+      bootError.value = mapBackendErrorToUserMessage(error)
     }
   },
   { immediate: true },
@@ -145,6 +147,7 @@ const registration = useKioskRegistration({
   listPolis: (pasienId) => getHisApi().listPolis(pasienId),
   getGroupJaminanMap: (tipeJaminanId) => getJetliApi().getGroupJaminanMap(tipeJaminanId),
   searchPatientContext: (body) => getHisApi().patientContextSearch(body),
+  getRegistrationPrintData: (regId) => getHisApi().getRegistrationPrintData(regId),
   deepSearchPasien: (keyword) => getHisApi().deepSearchPasien(keyword),
   appConfig: configService.getConfig(),
   verifyBiometric: (noka) => createBiometricClient({ port: printerProxyPort.value }).verify(noka),
@@ -239,6 +242,10 @@ function onReprintRegistration() {
   void registration.reprintRegistration()
 }
 
+function onReprintExistingRegistration() {
+  void registration.reprintExistingRegistration()
+}
+
 function onReprintAssistance() {
   void registration.reprintQueueTicket()
 }
@@ -258,9 +265,7 @@ const loadingMessage = computed(() => {
   if (!deviceConfig.value) return 'Memuat konfigurasi perangkat…'
   if (servicePointsQuery.isPending.value) return 'Memuat Service Point aktif…'
   if (servicePointsQuery.isError.value) {
-    return servicePointsQuery.error.value instanceof Error
-      ? servicePointsQuery.error.value.message
-      : 'Gagal memuat Service Point.'
+    return mapBackendErrorToUserMessage(servicePointsQuery.error.value)
   }
   if (offerings.value.length === 0) {
     return 'Tidak ada Service Point aktif yang cocok dengan konfigurasi station ini.'
@@ -516,6 +521,15 @@ const loadingMessage = computed(() => {
             :error-message="null"
             @confirm="registration.confirmWalkin"
             @back="onHome"
+          />
+          <RegistrationReprintStep
+            v-else-if="registration.flow.value === 'REGISTRATION_REPRINT'"
+            :registration="registration.registrationReprintData.value!"
+            :pending="selfPrint.printPending.value"
+            :succeeded="selfPrint.printSucceeded.value"
+            :error="selfPrint.printError.value"
+            @reprint="onReprintExistingRegistration"
+            @finish="onHome"
           />
           <RegistrationSuccessStep
             v-else-if="registration.flow.value === 'REGISTRATION_SUCCESS'"

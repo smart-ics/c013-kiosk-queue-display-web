@@ -7,7 +7,44 @@ function createAuth(token = 't'): IAuthTokenProvider {
   return { getToken: () => token }
 }
 
+function hisClient(data: unknown) {
+  const fetchImpl = vi.fn(async () =>
+    new Response(JSON.stringify({ status: 'success', data }), { status: 200 }),
+  )
+  const client = new AdmissionQueueClient({
+    baseUrl: 'http://localhost:5000/api',
+    auth: createAuth(),
+    fetchImpl: fetchImpl as unknown as typeof fetch,
+  })
+  return { fetchImpl, api: createHisApi(client) }
+}
+
 describe('createHisApi', () => {
+  it('loads and maps registration print data by registration id', async () => {
+    const { fetchImpl, api } = hisClient({
+      regId: 'RG12345678',
+      noAntrian: 12,
+      pasien: { pasienId: 'PT1', pasienName: 'Andi', tglLahir: '1990-01-01' },
+      tipeJaminan: { tipeJaminanId: '00000', tipeJaminanName: 'Umum' },
+      sjpNo: '',
+      layanan: { layananId: 'LY1', layananName: 'Poli Jantung' },
+      dokter: { ppaId: 'DP1', ppaName: 'Dr. X' },
+    })
+
+    await expect(api.getRegistrationPrintData('RG12345678')).resolves.toEqual({
+      regId: 'RG12345678',
+      noAntrian: 12,
+      pasienName: 'Andi',
+      pasienId: 'PT1',
+      tglLahir: '1990-01-01',
+      tipeJaminanName: 'Umum',
+      noSep: undefined,
+      serviceName: 'Poli Jantung',
+      dokterName: 'Dr. X',
+    })
+    expect(String(fetchImpl.mock.calls[0]?.[0])).toContain('Reg/RG12345678')
+  })
+
   it('searches booking with tglBerobat + keyword in path', async () => {
     const fetchImpl = vi.fn(async () =>
       new Response(

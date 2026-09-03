@@ -21,6 +21,7 @@ import type {
   SepCreateBody,
   SepUploadBody,
   DeepSearchResult,
+  RegistrationPrintData,
 } from '@aq/shared-types'
 import type { AppConfig } from '@aq/app-config'
 import { getKodeBookingMjkn } from '../lib/qrCodeDecoder'
@@ -32,6 +33,7 @@ import {
 } from '../lib/eligibility'
 import { IDLE_RESET_MS, KIOSK_USER_ID } from '../lib/constants'
 import { mapErrorToFailureCode, type FailureCode } from '../lib/failureCode'
+import { mapBackendErrorToUserMessage } from '@aq/api-client'
 import type { BiometricVerdict } from '../lib/biometric'
 import type { RegistrationPrintContext, RegistrationPrintResult } from './useKioskSelfPrint'
 
@@ -57,6 +59,7 @@ export type KioskRegistrationDeps = {
     keyword: string
     businessDate: string
   }) => Promise<PatientContextSearchResponse>
+  getRegistrationPrintData: (regId: string) => Promise<RegistrationPrintData>
   deepSearchPasien: (keyword: string) => Promise<DeepSearchResult[]>
   appConfig: AppConfig
   verifyBiometric: (noka: string) => Promise<BiometricVerdict>
@@ -78,8 +81,22 @@ export type KioskRegistrationDeps = {
   now?: () => number
 }
 
+const REGISTRATION_ID_INPUT_PATTERN = /^RG[:-]?(\d{1,8})$/i
+const FULL_REGISTRATION_ID_PATTERN = /^RG\d{8}$/i
+
+function normalizeRegistrationIdKeyword(value: string): string {
+  const trimmed = value.trim()
+  const match = REGISTRATION_ID_INPUT_PATTERN.exec(trimmed)
+  if (!match) return trimmed
+  return `RG${match[1].padStart(8, '0')}`
+}
+
+function isCanonicalRegistrationIdKeyword(value: string): boolean {
+  return FULL_REGISTRATION_ID_PATTERN.test(value)
+}
+
 function messageFromError(error: unknown): string {
-  return error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga.'
+  return mapBackendErrorToUserMessage(error)
 }
 
 function calculateAge(birthDateStr: string, refDateStr: string): number {
@@ -91,6 +108,19 @@ function calculateAge(birthDateStr: string, refDateStr: string): number {
     age--
   }
   return age
+}
+
+function formatBirthDate(value: string | null | undefined): string | undefined {
+  if (!value) return undefined
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return undefined
+  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function formatAge(birthDateStr: string, refDateStr: string): string | undefined {
+  const age = calculateAge(birthDateStr, refDateStr)
+  if (!Number.isFinite(age) || age < 0) return undefined
+  return String(age)
 }
 
 function resolveDefaultKarcisId(
@@ -146,10 +176,12 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   const selectedService = ref<ServiceSelection | null>(null)
 
   const registrationResult = ref<ReturnCreateWalkIn | null>(null)
+  const sepNo = ref<string | null>(null)
   const assistanceTicket = ref<AdmissionQueueIntakeResponse | null>(null)
   const assistanceServicePointId = ref<string | null>(null)
   const patientContextResult = ref<PatientContextSearchResponse | null>(null)
   const selectedContextPatient = ref<PatientContextItem | null>(null)
+  const registrationReprintData = ref<RegistrationPrintData | null>(null)
   const patientPolicies = ref<Polis[]>([])
   const errorContext = ref<FailureContext | null>(null)
   const biometricVerdict = ref<BiometricVerdict | null>(null)
@@ -193,11 +225,13 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     walkinNoPeserta.value = ''
     selectedService.value = null
     registrationResult.value = null
+    sepNo.value = null
     assistanceTicket.value = null
     assistanceServicePointId.value = null
     errorContext.value = null
     patientContextResult.value = null
     selectedContextPatient.value = null
+    registrationReprintData.value = null
     patientPolicies.value = []
     biometricVerdict.value = null
     bpjsReferences.value = []
@@ -236,13 +270,19 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     const trimmed = keyword.trim()
     if (!trimmed) return Promise.resolve()
     const decoded = getKodeBookingMjkn(trimmed)
+    const normalizedKeyword = normalizeRegistrationIdKeyword(decoded)
     mode.value = 'booking'
+    registrationReprintData.value = null
     return withSubmit(async () => {
       try {
         const tgl = await ensureBusinessDate()
-        const matches = await deps.searchBooking(tgl, decoded)
+        const matches = await deps.searchBooking(tgl, normalizedKeyword)
         if (matches.length === 0) {
-          const deepMatches = await deps.deepSearchPasien(decoded)
+          if (isCanonicalRegistrationIdKeyword(normalizedKeyword)) {
+            await searchPatientContextFor(normalizedKeyword)
+            return
+          }
+          const deepMatches = await deps.deepSearchPasien(normalizedKeyword)
           if (deepMatches.length > 0) {
             const mapped = deepMatches.map((item) => ({
               kind: 'Patient' as const,
@@ -277,7 +317,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
             transition('PATIENT_CONTEXT_CONFIRM')
             return
           }
-          await searchPatientContextFor(decoded)
+          await searchPatientContextFor(normalizedKeyword)
           return
         }
         if (matches.length > 1) {
@@ -334,6 +374,28 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         businessDate: tgl,
       })
       patientContextResult.value = result
+      if (isCanonicalRegistrationIdKeyword(keyword)) {
+        const exactMatches = result.registrations.items.filter(
+          (item) => item.registrationId === keyword,
+        )
+        if (
+          exactMatches.length === 0 &&
+          result.bestMatch?.kind === 'Registration' &&
+          result.bestMatch.registrationId === keyword
+        ) {
+          exactMatches.push(result.bestMatch)
+        }
+        if (exactMatches.length === 1) {
+          const data = await deps.getRegistrationPrintData(keyword)
+          registrationReprintData.value = data
+          transition('REGISTRATION_REPRINT')
+          return
+        }
+        if (exactMatches.length > 1) {
+          setFailure('UNKNOWN_ERROR', 'Ditemukan lebih dari satu registrasi. Hubungi petugas.')
+          return
+        }
+      }
       if (result.bestMatch || result.patients.total > 0) {
         transition('PATIENT_CONTEXT_CONFIRM')
       } else {
@@ -656,6 +718,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         if (typeof sepRes === 'string') {
           throw new Error(`Gagal membuat SEP: ${sepRes}`)
         }
+        sepNo.value = sepRes.sepNo
         await deps.uploadSep({ sepId: sepRes.sepId, regId: result.regId })
         await deps.setDataEligibility({
           regId: result.regId,
@@ -740,20 +803,28 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   function buildPrintContext(currentMode: FlowMode): RegistrationPrintContext {
     const result = registrationResult.value
     if (!result) throw new Error('Registration result missing')
+
+    const isBooking = currentMode === 'booking'
+    const rawTglLahir = isBooking ? null : (selectedPatient.value?.tglLahir ?? null)
+
     return {
       result,
-      pasienName:
-        currentMode === 'booking'
-          ? (bookingDetail.value?.reg.pasienName ?? '')
-          : (selectedPatient.value?.pasienName ?? ''),
-      serviceName:
-        currentMode === 'booking'
-          ? bookingDetail.value?.layanan.layananName
-          : selectedService.value?.poli.name,
-      dokterName:
-        currentMode === 'booking'
-          ? bookingDetail.value?.dokter.ppaName
-          : selectedService.value?.dokter.name,
+      pasienName: isBooking
+        ? (bookingDetail.value?.reg.pasienName ?? '')
+        : (selectedPatient.value?.pasienName ?? ''),
+      pasienId: isBooking ? bookingDetail.value?.reg.pasienId : selectedPatient.value?.pasienId,
+      tglLahir: formatBirthDate(rawTglLahir),
+      umur: rawTglLahir && businessDate.value ? formatAge(rawTglLahir, businessDate.value) : undefined,
+      tipeJaminanName: isBooking
+        ? bookingEligibility.value?.tipeJaminanName
+        : walkinEligibility.value?.tipeJaminanName,
+      noSep: sepNo.value ?? undefined,
+      serviceName: isBooking
+        ? bookingDetail.value?.layanan.layananName
+        : selectedService.value?.poli.name,
+      dokterName: isBooking
+        ? bookingDetail.value?.dokter.ppaName
+        : selectedService.value?.dokter.name,
     }
   }
 
@@ -808,6 +879,21 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   async function reprintRegistration() {
     if (!registrationResult.value) return
     await deps.printRegistration(buildPrintContext(mode.value ?? 'booking'))
+  }
+
+  async function reprintExistingRegistration(): Promise<void> {
+    const data = registrationReprintData.value
+    if (!data) return
+    await deps.printRegistration({
+      result: { regId: data.regId, noAntrian: data.noAntrian },
+      pasienName: data.pasienName,
+      pasienId: data.pasienId,
+      tglLahir: data.tglLahir,
+      tipeJaminanName: data.tipeJaminanName,
+      noSep: data.noSep,
+      serviceName: data.serviceName,
+      dokterName: data.dokterName,
+    })
   }
 
   async function reprintQueueTicket() {
@@ -871,6 +957,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     assistanceServicePointId,
     patientContextResult,
     selectedContextPatient,
+    registrationReprintData,
     patientPolicies,
     errorContext,
     biometricVerdict,
@@ -890,6 +977,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     confirmWalkin,
     confirmAssistance,
     reprintRegistration,
+    reprintExistingRegistration,
     reprintQueueTicket,
     startIdleReset,
     stopIdleReset,

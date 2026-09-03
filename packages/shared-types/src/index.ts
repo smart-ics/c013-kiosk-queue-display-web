@@ -63,7 +63,8 @@ export const admissionQueueIntakeResponseSchema = z.object({
   antrianId: z.string(),
   noUrut: z.number().int(),
   queueLabel: z.string(),
-  createdAt: z.string(),
+  createdAt: z.string().optional(),
+  existing: z.boolean().optional(),
 })
 export type AdmissionQueueIntakeResponse = z.infer<typeof admissionQueueIntakeResponseSchema>
 
@@ -356,6 +357,19 @@ export const returnCreateWalkInSchema = z.object({
   noAntrian: z.number(),
 })
 export type ReturnCreateWalkIn = z.infer<typeof returnCreateWalkInSchema>
+
+export const registrationPrintDataSchema = z.object({
+  regId: z.string(),
+  noAntrian: z.number(),
+  pasienName: z.string(),
+  pasienId: z.string().optional(),
+  tglLahir: z.string().optional(),
+  tipeJaminanName: z.string().optional(),
+  noSep: z.string().optional(),
+  serviceName: z.string().optional(),
+  dokterName: z.string().optional(),
+})
+export type RegistrationPrintData = z.infer<typeof registrationPrintDataSchema>
 
 export const payloadDirectRegisterRajalWalkInSchema = z.object({
   pasienId: z.string().min(1),

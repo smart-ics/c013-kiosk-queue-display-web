@@ -15,13 +15,13 @@ export class ApiKioskDeviceConfigurationProvider implements IDeviceConfiguration
 
   async getConfig(deviceId: string): Promise<DeviceConfig> {
     const id = deviceId.trim()
-    if (!id) throw new DeviceConfigInvalidError(deviceId, 'stationId is required')
+    if (!id) throw new DeviceConfigInvalidError(deviceId, 'stationId diperlukan')
 
     let boot: KioskBootConfig
     try {
       boot = await this.options.getKioskBootConfig(id)
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to load kiosk configuration'
+      const message = error instanceof Error ? error.message : 'Gagal memuat konfigurasi kiosk'
       if (/not found|AQ_KIOSK_NOT_FOUND/i.test(message)) {
         throw new DeviceConfigNotFoundError(id)
       }
@@ -42,7 +42,7 @@ export class ApiKioskDeviceConfigurationProvider implements IDeviceConfiguration
       throw new DeviceConfigInvalidError(id, parsed.error.message)
     }
     if (parsed.data.deviceId !== id) {
-      throw new DeviceConfigInvalidError(id, 'deviceId mismatch in boot config')
+      throw new DeviceConfigInvalidError(id, 'deviceId tidak cocok dengan konfigurasi boot')
     }
     return parsed.data
   }

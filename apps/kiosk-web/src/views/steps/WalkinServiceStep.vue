@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { mapBackendErrorToUserMessage } from '@aq/api-client'
 import type { JadwalItem, ServiceItem, ServiceSelection } from '@aq/shared-types'
 import type { ServiceCatalog } from '../../lib/serviceCatalog'
 import KioskPagination from '../../components/KioskPagination.vue'
@@ -46,7 +47,7 @@ async function loadPolis() {
   try {
     polis.value = await props.catalog.listPoli()
   } catch (error) {
-    loadError.value = error instanceof Error ? error.message : 'Gagal memuat poli.'
+    loadError.value = mapBackendErrorToUserMessage(error)
   } finally {
     loading.value = false
   }
@@ -64,7 +65,7 @@ async function choosePoli(poli: ServiceItem) {
   try {
     dokterList.value = await props.catalog.listDokter(poli.id)
   } catch (error) {
-    loadError.value = error instanceof Error ? error.message : 'Gagal memuat dokter.'
+    loadError.value = mapBackendErrorToUserMessage(error)
   } finally {
     loading.value = false
   }
@@ -95,7 +96,7 @@ async function chooseDokter(dokter: ServiceItem) {
       emit('select', { poli: selectedPoli.value, dokter, jadwal: defaultJadwal })
     }
   } catch (error) {
-    loadError.value = error instanceof Error ? error.message : 'Gagal memuat jadwal.'
+    loadError.value = mapBackendErrorToUserMessage(error)
   } finally {
     loading.value = false
   }

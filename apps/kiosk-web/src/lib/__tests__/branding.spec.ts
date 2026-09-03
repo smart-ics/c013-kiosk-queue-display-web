@@ -6,6 +6,8 @@ describe('kiosk branding', () => {
     const branding = parseBranding({ bilregApiBase: 'http://localhost:5000/api' })
     expect(branding).toEqual({
       name: 'RS Sehat Sejahtera',
+      address: '',
+      phone: '',
       taglineId: 'Melayani dengan hati, sehat untuk negeri',
       taglineEn: 'Serving with heart, healthy for the nation',
       timeZoneLabel: 'WIB',

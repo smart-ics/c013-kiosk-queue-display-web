@@ -28,6 +28,15 @@ describe('canTransition', () => {
     expect(canTransition('FAILURE', 'HOME')).toBe(false)
   })
 
+  it('allows home → registration reprint', () => {
+    expect(canTransition('HOME', 'REGISTRATION_REPRINT')).toBe(true)
+  })
+
+  it('keeps registration reprint terminal back to home', () => {
+    expect(canTransition('REGISTRATION_REPRINT', 'HOME')).toBe(true)
+    expect(canTransition('REGISTRATION_REPRINT', 'REGISTRATION_SUCCESS')).toBe(false)
+  })
+
   it('rejects skipping steps', () => {
     expect(canTransition('HOME', 'REGISTRATION_SUCCESS')).toBe(false)
   })

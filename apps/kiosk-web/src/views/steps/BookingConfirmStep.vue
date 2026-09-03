@@ -44,12 +44,17 @@ defineEmits<{ confirm: []; back: [] }>()
       <button type="button" class="secondary-btn" :disabled="pending" @click="$emit('back')" style="min-width: 160px;">
         Batal
       </button>
-      <button type="button" class="sp-btn" :disabled="pending" data-testid="booking-confirm" @click="$emit('confirm')" style="min-width: 240px;">
-        Konfirmasi Registrasi
+      <button
+        type="button"
+        class="sp-btn"
+        :disabled="pending"
+        data-testid="booking-confirm"
+        @click="$emit('confirm')"
+        style="min-width: 240px;"
+      >
+        {{ pending ? 'Mendaftarkan…' : 'Konfirmasi Registrasi' }}
       </button>
     </div>
-    
-    <p v-if="pending" class="status" style="text-align: center;">Mendaftarkan…</p>
     <p v-if="errorMessage" class="status error" style="text-align: center;">{{ errorMessage }}</p>
   </section>
 </template>

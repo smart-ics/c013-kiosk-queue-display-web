@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.6] - 2026-09-03
+
+### Changed
+
+- **HTML Template for Registration Receipt (kiosk-web)**: Replaced hardcoded canvas-based registration receipt renderer with HTML template `public/templates/antrian_registrasi.html` using `html-to-image` and `qrcode` rendering pipeline.
+- **Branding & Print Config**: Extended branding config with address and phone fields, with conditional hiding of SEP and age/DOB lines when absent.
+- **Registration Reprint Flow**: Added dedicated registration reprint step (`RegistrationReprintStep`) for re-printing registration tickets.
+
 ## [0.2.5] - 2026-09-01
 
 ### Changed

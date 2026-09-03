@@ -73,6 +73,65 @@ const contextResponse = {
   canCreatePatient: true,
 }
 
+const registrationItem = {
+  kind: 'Registration' as const,
+  id: 'RG12345678',
+  patientName: 'Cici',
+  patientId: 'PT2',
+  birthDate: '1985-05-05',
+  gender: 'P',
+  locality: 'Jakarta',
+  maskedNik: null,
+  maskedPhone: null,
+  visitDate: '2026-08-03',
+  visitTime: '08:30',
+  serviceName: 'Poli Saraf',
+  doctorName: 'Dr. Y',
+  state: 'Done',
+  bookingId: null,
+  registrationId: 'RG12345678',
+  matchType: 'Exact',
+  isExactMatch: true,
+  rank: 1,
+  warnings: [],
+}
+
+const registrationContextResponse = {
+  businessDate: '2026-08-03',
+  bookings: { items: [], total: 0, hasMore: false },
+  registrations: { items: [registrationItem], total: 1, hasMore: false },
+  patients: { items: [], total: 0, hasMore: false },
+  bestMatch: registrationItem,
+  canCreatePatient: false,
+}
+
+const multipleRegistrationContextResponse = {
+  businessDate: '2026-08-03',
+  bookings: { items: [], total: 0, hasMore: false },
+  registrations: {
+    items: [
+      { ...registrationItem, id: 'RG12345678-1' },
+      { ...registrationItem, id: 'RG12345678-2' },
+    ],
+    total: 2,
+    hasMore: false,
+  },
+  patients: { items: [], total: 0, hasMore: false },
+  bestMatch: registrationItem,
+  canCreatePatient: false,
+}
+
+const registrationPrintData = {
+  regId: 'RG12345678',
+  noAntrian: 42,
+  pasienName: 'Cici',
+  pasienId: 'PT2',
+  tglLahir: '1985-05-05',
+  tipeJaminanName: 'Umum',
+  serviceName: 'Poli Saraf',
+  dokterName: 'Dr. Y',
+}
+
 function makeDeps(overrides: Partial<KioskRegistrationDeps> = {}): KioskRegistrationDeps {
   return {
     stationId: ref('K01'),
@@ -141,6 +200,7 @@ function makeDeps(overrides: Partial<KioskRegistrationDeps> = {}): KioskRegistra
     })),
     printRegistration: vi.fn(async () => ({ printed: true })),
     printQueueTicket: vi.fn(async () => ({ printed: true })),
+    getRegistrationPrintData: vi.fn(async () => registrationPrintData),
     offeringsName: (id) => id,
     now: () => 1000,
     ...overrides,
@@ -289,6 +349,62 @@ describe('useKioskRegistration patient context cascade', () => {
     expect(reg.patientContextResult.value).toEqual(contextResponse)
   })
 
+  it('skips deep search for canonical registration id and goes straight to patient context', async () => {
+    const searchPatientContext = vi.fn(async () => contextResponse)
+    const deepSearchPasien = vi.fn(async () => [
+      {
+        pasienId: 'PT-DEEP',
+        isActive: true,
+        person: {
+          personName: 'Deep Should Not Be Used',
+          tglLahir: '1990-01-01',
+          gender: 'L' as const,
+          alamat: { alamat: ['Jl. A'], kota: 'Bandung', kodePos: '40111' },
+          contact: { jenisContact: 2, contactDetail: '0812' },
+          identity: { jenisId: 'NIK', nomorId: '3273' },
+        },
+      },
+    ])
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext,
+      deepSearchPasien,
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+
+    await reg.submitBookingKeyword('RG00000891')
+
+    expect(deps.searchBooking).toHaveBeenCalledWith('2026-08-03', 'RG00000891')
+    expect(deps.deepSearchPasien).not.toHaveBeenCalled()
+    expect(deps.searchPatientContext).toHaveBeenCalledWith({
+      keyword: 'RG00000891',
+      businessDate: '2026-08-03',
+    })
+    expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
+  })
+
+  it('normalizes compact registration id before patient-context fallback', async () => {
+    const searchPatientContext = vi.fn(async () => contextResponse)
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext,
+      deepSearchPasien: vi.fn(async () => []),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+
+    await reg.submitBookingKeyword('RG:891')
+
+    expect(deps.searchBooking).toHaveBeenCalledWith('2026-08-03', 'RG00000891')
+    expect(deps.deepSearchPasien).not.toHaveBeenCalled()
+    expect(deps.searchPatientContext).toHaveBeenCalledWith({
+      keyword: 'RG00000891',
+      businessDate: '2026-08-03',
+    })
+    expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
+  })
+
   it('goes to failure when patient context search returns nothing', async () => {
     const emptyContext = {
       businessDate: '2026-08-03',
@@ -362,6 +478,170 @@ describe('useKioskRegistration patient context cascade', () => {
     reg.cancelPatientContext()
     expect(reg.flow.value).toBe('HOME')
     expect(reg.patientContextResult.value).toBeNull()
+  })
+})
+
+describe('useKioskRegistration existing registration reprint', () => {
+  it('routes an exact registration result from HOME to reprint without registering', async () => {
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => ({ ...registrationContextResponse })),
+      getRegistrationPrintData: vi.fn(async () => registrationPrintData),
+    })
+    const reg = useKioskRegistration(deps)
+
+    await reg.submitBookingKeyword('RG12345678')
+
+    expect(reg.flow.value).toBe('REGISTRATION_REPRINT')
+    expect(reg.registrationReprintData.value).toEqual(registrationPrintData)
+    expect(deps.getRegistrationPrintData).toHaveBeenCalledWith('RG12345678')
+    expect(deps.registerBooking).not.toHaveBeenCalled()
+    expect(deps.registerWalkin).not.toHaveBeenCalled()
+    expect(deps.printRegistration).not.toHaveBeenCalled()
+  })
+
+  it('routes via bestMatch Registration when it is the exact requested id', async () => {
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => ({
+        ...registrationContextResponse,
+        registrations: { items: [], total: 0, hasMore: false },
+      })),
+      getRegistrationPrintData: vi.fn(async () => registrationPrintData),
+    })
+    const reg = useKioskRegistration(deps)
+
+    await reg.submitBookingKeyword('RG12345678')
+
+    expect(reg.flow.value).toBe('REGISTRATION_REPRINT')
+    expect(deps.getRegistrationPrintData).toHaveBeenCalledWith('RG12345678')
+    expect(deps.printRegistration).not.toHaveBeenCalled()
+  })
+
+  it('does not route a bestMatch Booking to reprint', async () => {
+    const bookingBestMatch = {
+      ...registrationItem,
+      kind: 'Booking' as const,
+      id: 'BK-EXISTING',
+      bookingId: 'BK-EXISTING',
+      registrationId: null,
+    }
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => ({
+        ...registrationContextResponse,
+        registrations: { items: [], total: 0, hasMore: false },
+        bestMatch: bookingBestMatch,
+      })),
+      getRegistrationPrintData: vi.fn(async () => registrationPrintData),
+    })
+    const reg = useKioskRegistration(deps)
+
+    await reg.submitBookingKeyword('RG12345678')
+
+    expect(reg.flow.value).not.toBe('REGISTRATION_REPRINT')
+    expect(deps.getRegistrationPrintData).not.toHaveBeenCalled()
+  })
+
+  it('does not route a bestMatch Patient to reprint', async () => {
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => ({
+        ...registrationContextResponse,
+        registrations: { items: [], total: 0, hasMore: false },
+        patients: { items: [contextItem], total: 1, hasMore: false },
+        bestMatch: contextItem,
+      })),
+      getRegistrationPrintData: vi.fn(async () => registrationPrintData),
+    })
+    const reg = useKioskRegistration(deps)
+
+    await reg.submitBookingKeyword('RG12345678')
+
+    expect(reg.flow.value).not.toBe('REGISTRATION_REPRINT')
+    expect(deps.getRegistrationPrintData).not.toHaveBeenCalled()
+  })
+
+  it('falls back when no exact registration exists', async () => {
+    const reg = useKioskRegistration(makeDeps({ searchBooking: vi.fn(async () => []) }))
+    await reg.submitBookingKeyword('RG12345678')
+    expect(reg.flow.value).not.toBe('REGISTRATION_REPRINT')
+  })
+
+  it('fails when multiple exact registration results exist', async () => {
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => multipleRegistrationContextResponse),
+    })
+    const reg = useKioskRegistration(deps)
+    await reg.submitBookingKeyword('RG12345678')
+    expect(reg.flow.value).toBe('FAILURE')
+    expect(deps.getRegistrationPrintData).not.toHaveBeenCalled()
+  })
+
+  it('fails when registration print data has no queue number', async () => {
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => registrationContextResponse),
+      getRegistrationPrintData: vi.fn(async () => {
+        throw new Error('Invalid registration print data')
+      }),
+    })
+    const reg = useKioskRegistration(deps)
+    await reg.submitBookingKeyword('RG12345678')
+    expect(reg.flow.value).toBe('FAILURE')
+  })
+
+  it('does not auto-print on the existing-registration path', async () => {
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => registrationContextResponse),
+      getRegistrationPrintData: vi.fn(async () => registrationPrintData),
+    })
+    const reg = useKioskRegistration(deps)
+    await reg.submitBookingKeyword('RG12345678')
+    expect(deps.printRegistration).not.toHaveBeenCalled()
+  })
+
+  it('reprintExistingRegistration prints stored data and no-ops when null', async () => {
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => ({ ...registrationContextResponse })),
+      getRegistrationPrintData: vi.fn(async () => registrationPrintData),
+    })
+    const reg = useKioskRegistration(deps)
+    await reg.submitBookingKeyword('RG12345678')
+    expect(reg.flow.value).toBe('REGISTRATION_REPRINT')
+
+    await reg.reprintExistingRegistration()
+    expect(deps.printRegistration).toHaveBeenCalledWith({
+      result: { regId: 'RG12345678', noAntrian: 42 },
+      pasienName: 'Cici',
+      pasienId: 'PT2',
+      tglLahir: '1985-05-05',
+      tipeJaminanName: 'Umum',
+      noSep: undefined,
+      serviceName: 'Poli Saraf',
+      dokterName: 'Dr. Y',
+    })
+
+    vi.mocked(deps.printRegistration).mockClear()
+    reg.registrationReprintData.value = null
+    await reg.reprintExistingRegistration()
+    expect(deps.printRegistration).not.toHaveBeenCalled()
+  })
+
+  it('clears reprint data on goHome', async () => {
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => ({ ...registrationContextResponse })),
+      getRegistrationPrintData: vi.fn(async () => registrationPrintData),
+    })
+    const reg = useKioskRegistration(deps)
+    await reg.submitBookingKeyword('RG12345678')
+    expect(reg.registrationReprintData.value).toEqual(registrationPrintData)
+    reg.goHome()
+    expect(reg.registrationReprintData.value).toBeNull()
   })
 })
 

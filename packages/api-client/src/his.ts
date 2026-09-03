@@ -22,6 +22,7 @@ import {
   payloadDirectRegisterRajalWalkInSchema,
   payloadDirectRegisterRajalByBookingSchema,
   payloadSetDataEligibilitySchema,
+  registrationPrintDataSchema,
   type AdmissionQueueIntakeResponse,
   type BookingAssistanceBody,
   type BookingDetail,
@@ -33,6 +34,7 @@ import {
   type PasienSearchItem,
   type PatientContextSearchResponse,
   type Polis,
+  type RegistrationPrintData,
   type ResponseCreateSep,
   type ResponseFingerprint,
   type ResponseSepByNoPeserta,
@@ -52,6 +54,28 @@ const bookingSearchArraySchema = z.array(bookingSearchItemSchema)
 const polisArraySchema = z.array(polisSchema)
 const pasienArraySchema = z.array(pasienSearchItemSchema)
 const nullableGroupJaminanSchema = groupJaminanMapSchema.nullable()
+const regGetResponseSchema = z.object({
+  regId: z.string(),
+  noAntrian: z.number(),
+  pasien: z.object({
+    pasienId: z.string(),
+    pasienName: z.string(),
+    tglLahir: z.string(),
+  }),
+  tipeJaminan: z.object({
+    tipeJaminanId: z.string(),
+    tipeJaminanName: z.string(),
+  }),
+  sjpNo: z.string(),
+  layanan: z.object({
+    layananId: z.string(),
+    layananName: z.string(),
+  }),
+  dokter: z.object({
+    ppaId: z.string(),
+    ppaName: z.string(),
+  }),
+})
 
 /**
  * HIS registration endpoints. Service-catalog paths and /direct payloads are
@@ -61,6 +85,24 @@ export function createHisApi(client: AdmissionQueueClient) {
   return {
     getBusinessDate(): Promise<BusinessDate> {
       return client.getPublicJson('system/business-date', businessDateSchema)
+    },
+
+    getRegistrationPrintData(regId: string): Promise<RegistrationPrintData> {
+      return client
+        .getJson(`Reg/${encodeURIComponent(regId)}`, regGetResponseSchema)
+        .then((data) =>
+          registrationPrintDataSchema.parse({
+            regId: data.regId,
+            noAntrian: data.noAntrian,
+            pasienName: data.pasien.pasienName,
+            pasienId: data.pasien.pasienId,
+            tglLahir: data.pasien.tglLahir,
+            tipeJaminanName: data.tipeJaminan.tipeJaminanName,
+            noSep: data.sjpNo || undefined,
+            serviceName: data.layanan.layananName,
+            dokterName: data.dokter.ppaName,
+          }),
+        )
     },
 
     searchBooking(tglBerobat: string, keyword: string): Promise<BookingSearchItem[]> {

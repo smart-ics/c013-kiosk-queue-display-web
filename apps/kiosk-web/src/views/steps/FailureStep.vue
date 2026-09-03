@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AdmissionServicePoint } from '@aq/shared-types'
 import type { FailureContext } from '../../composables/useKioskRegistration'
+import { getFailureMessage } from '../../lib/failureCode'
 
 defineProps<{
   errorContext: FailureContext
@@ -16,6 +17,31 @@ function isBpjs(sp: AdmissionServicePoint): boolean {
   const name = (sp.displayName || '').toLowerCase()
   const id = (sp.servicePointId || '').toLowerCase()
   return name.includes('bpjs') || name.includes('jkn') || id.includes('bpjs') || id.includes('jkn')
+}
+
+const HTTP_STATUS_MESSAGES_ID: Record<number, string> = {
+  0: 'Koneksi ke server terputus. Periksa jaringan dan coba lagi.',
+  401: 'Sesi habis. Silakan mulai ulang aplikasi kiosk.',
+  403: 'Anda tidak memiliki izin untuk aksi ini. Hubungi administrator.',
+  404: 'Data yang dicari tidak ditemukan. Silakan hubungi petugas.',
+  409: 'Data telah diubah oleh pengguna lain. Silakan muat ulang dan coba lagi.',
+  422: 'Data yang diinput tidak valid. Periksa kembali dan coba lagi.',
+  500: 'Terjadi kesalahan pada server. Silakan coba lagi.',
+  503: 'Layanan sementara tidak tersedia. Coba lagi dalam waktu yang singkat.',
+}
+
+function normalizeGenericHttpMessage(message: string): string | null {
+  const match = message.match(/\brequest failed with status(?: code)?\s+(\d{3})\b/i)
+  if (!match) return null
+  const status = Number(match[1])
+  return HTTP_STATUS_MESSAGES_ID[status] ?? null
+}
+
+function getDisplayMessage(ctx: FailureContext): string {
+  const raw = (ctx.message || '').trim()
+  if (!raw) return getFailureMessage(ctx.code)
+  const normalized = normalizeGenericHttpMessage(raw)
+  return normalized || raw
 }
 </script>
 
@@ -86,7 +112,7 @@ function isBpjs(sp: AdmissionServicePoint): boolean {
         </div>
         <div style="flex: 1; text-align: left;">
           <p class="status error" data-testid="failure-message" style="margin: 0; font-size: 1.15rem; font-weight: 600; color: var(--danger); line-height: 1.5;">
-            {{ errorContext.message }}
+            {{ getDisplayMessage(errorContext) }}
           </p>
         </div>
       </div>
