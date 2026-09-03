@@ -32,6 +32,7 @@ import BpjsSelectReferenceStep from './steps/BpjsSelectReferenceStep.vue'
 import WalkinConfirmStep from './steps/WalkinConfirmStep.vue'
 import BiometricStep from './steps/BiometricStep.vue'
 import RegistrationSuccessStep from './steps/RegistrationSuccessStep.vue'
+import RegistrationReprintStep from './steps/RegistrationReprintStep.vue'
 import FailureStep from './steps/FailureStep.vue'
 import AssistanceQueueStep from './steps/AssistanceQueueStep.vue'
 
@@ -239,6 +240,10 @@ function onIntakeFromContext() {
 
 function onReprintRegistration() {
   void registration.reprintRegistration()
+}
+
+function onReprintExistingRegistration() {
+  void registration.reprintExistingRegistration()
 }
 
 function onReprintAssistance() {
@@ -516,6 +521,15 @@ const loadingMessage = computed(() => {
             :error-message="null"
             @confirm="registration.confirmWalkin"
             @back="onHome"
+          />
+          <RegistrationReprintStep
+            v-else-if="registration.flow.value === 'REGISTRATION_REPRINT'"
+            :registration="registration.registrationReprintData.value!"
+            :pending="selfPrint.printPending.value"
+            :succeeded="selfPrint.printSucceeded.value"
+            :error="selfPrint.printError.value"
+            @reprint="onReprintExistingRegistration"
+            @finish="onHome"
           />
           <RegistrationSuccessStep
             v-else-if="registration.flow.value === 'REGISTRATION_SUCCESS'"
