@@ -76,4 +76,15 @@ describe('renderReceiptTemplate', () => {
     const html = renderReceiptTemplate(TEMPLATE, { ...baseData(), tglLahir: '01 Januari 1980', umur: '46' })
     expect(html).toContain('46 (01 Januari 1980)')
   })
+
+  it('renders a numeric queue number as a string', () => {
+    const html = renderReceiptTemplate(TEMPLATE, { ...baseData(), noAntrian: 7 })
+    expect(html).toContain('<div class="queue-number">7</div>')
+  })
+
+  it('requires noAntrian to be a number in the receipt source type', () => {
+    type NoAntrianRequired = RegistrationReceiptData extends { noAntrian: number } ? true : false
+    const noAntrianRequired: NoAntrianRequired = true
+    expect(noAntrianRequired).toBe(true)
+  })
 })
