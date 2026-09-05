@@ -369,11 +369,7 @@ function formatLoketTitle(loketKey: string): string {
 
 function formatLoketCode(loketKey: string): string {
   if (!loketKey) return '—'
-  const match = /^Loket\s*(\d+)$/i.exec(loketKey.trim())
-  if (match) {
-    return `L${match[1]}`
-  }
-  return loketKey.toUpperCase()
+  return loketKey.trim().toUpperCase()
 }
 </script>
 
