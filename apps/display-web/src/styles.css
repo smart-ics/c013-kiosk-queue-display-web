@@ -153,6 +153,7 @@ body {
   width: clamp(30px, 4vh, 38px);
   height: clamp(30px, 4vh, 38px);
   flex-shrink: 0;
+  object-fit: contain;
 }
 
 .brand-text-col {
@@ -162,17 +163,15 @@ body {
 
 .hospital-main-name {
   margin: 0;
-  font-size: clamp(1rem, 1.8vh, 1.25rem);
-  font-weight: 800;
+  font-size: clamp(1.5rem, 2.6vh, 2rem);
+  font-weight: 900;
   color: var(--text);
   line-height: 1.15;
   letter-spacing: -0.01em;
 }
 
 .hospital-sub-tag {
-  font-size: clamp(0.7rem, 1.2vh, 0.8rem);
-  color: var(--text-tertiary);
-  font-weight: 500;
+  display: none;
 }
 
 .header-right-meta {
@@ -200,6 +199,7 @@ body {
 .date-txt {
   color: #334155;
   white-space: nowrap;
+  font-size: clamp(1.1rem, 1.6vh, 1.3rem);
 }
 
 .header-divider {
@@ -209,7 +209,7 @@ body {
 }
 
 .time-txt {
-  font-size: clamp(1rem, 2vh, 1.25rem);
+  font-size: clamp(1.3rem, 2.6vh, 1.6rem);
   font-weight: 800;
   color: var(--brand-orange-dark);
   font-variant-numeric: tabular-nums;

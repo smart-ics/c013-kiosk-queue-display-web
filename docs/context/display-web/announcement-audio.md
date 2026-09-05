@@ -22,8 +22,9 @@ Setiap kali ada pemanggilan nomor antrean baru, sistem akan memutar rangkaian fi
 4. **Ejaan Bilangan Nomor Antrean** (hasil dekomposisi angka dalam Bahasa Indonesia, misal: `numbers/15.wav`).
 5. **Frasa Penghubung** (`phrases/silakan-menuju.wav`).
 6. **Loket / Counter**:
-   * Jika `loketKey` bernilai angka 1-10 $\rightarrow$ Putar file gabungan `counters/loket-${loketKey}.wav` jika tersedia (misal: `counters/loket-1.wav`).
-   * Jika di luar angka 1-10 $\rightarrow$ Putar frasa loket (`phrases/loket.wav`) diikuti dengan ejaan karakter/angka dari `loketKey` tersebut secara terpisah.
+   * Selalu mulai dengan frasa `phrases/loket.wav`.
+   * Jika `loketKey` adalah **angka murni 1-10** (mis. "1", "2", ..., "10") $\rightarrow$ Putar file gabungan `counters/loket-${n}.wav` (mis. `counters/loket-1.wav`).
+   * Selain itu (`L1`, `L101`, `ADM`, `CS`, dsb.) $\rightarrow$ Eja `loketKey` per-chunk: grup huruf menjadi `letters/<ch>.wav`, grup angka diuraikan oleh `decomposeNumber` (mis. `L1` → `letters/l.wav` + `numbers/1.wav`; `L101` → `letters/l.wav` + `numbers/101.wav`; `ADM` → `letters/a.wav` + `letters/d.wav` + `letters/m.wav`).
 
 ---
 

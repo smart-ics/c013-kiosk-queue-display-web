@@ -52,3 +52,12 @@ async function onSubmit() {
     </form>
   </div>
 </template>
+
+<style scoped>
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+</style>

@@ -360,11 +360,11 @@ const inServiceCount = computed(() => {
 
 function formatLoketTitle(loketKey: string): string {
   if (!loketKey) return '—'
-  const match = /^L(\d+)$/i.exec(loketKey.trim())
-  if (match) {
-    return `Loket ${match[1]}`
+  const trimmed = loketKey.trim()
+  if (/^L\d+$/i.test(trimmed)) {
+    return `Loket ${trimmed}`
   }
-  return loketKey
+  return trimmed
 }
 
 function formatLoketCode(loketKey: string): string {
@@ -396,18 +396,9 @@ function formatLoketCode(loketKey: string): string {
     <!-- Header -->
     <header class="display-header">
       <div class="brand-title">
-        <svg class="hospital-brand-logo" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <!-- Heart Shape -->
-          <path d="M18 31.5C18 31.5 5 23 5 13.5C5 8.8 8.8 5 13.5 5C16.2 5 17.5 6.4 18 7.3C18.5 6.4 19.8 5 22.5 5C27.2 5 31 8.8 31 13.5C31 23 18 31.5 18 31.5Z" fill="#F97316"/>
-          <!-- Inner Medical Cross -->
-          <rect x="15" y="10" width="6" height="14" rx="2" fill="#0F2850"/>
-          <rect x="11" y="14" width="14" height="6" rx="2" fill="#0F2850"/>
-          <rect x="16" y="11" width="4" height="12" rx="1.5" fill="#FFFFFF"/>
-          <rect x="12" y="15" width="12" height="4" rx="1.5" fill="#FFFFFF"/>
-        </svg>
+        <img class="hospital-brand-logo" src="/logo.jpg" :alt="branding.name + ' logo'" />
         <div class="brand-text-col">
           <h1 class="hospital-main-name">{{ branding.name }}</h1>
-          <span class="hospital-sub-tag">{{ branding.taglineId }}</span>
         </div>
       </div>
 

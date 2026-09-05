@@ -58,7 +58,7 @@ describe('buildAnnouncementUtterance', () => {
         queueLabel: 'A0012',
         announcementVersion: 1,
       }),
-    ).toBe('Nomor A0012, loket L1')
+    ).toBe('Nomor A0012, menuju Loket L1')
   })
 })
 
@@ -152,7 +152,31 @@ describe('buildAudioQueue', () => {
       'letters/b.wav',
       'numbers/60.wav',
       'phrases/silakan-menuju.wav',
-      'counters/loket-1.wav',
+      'phrases/loket.wav',
+      'letters/l.wav',
+      'numbers/1.wav',
+    ])
+    expect(buildAudioQueue({ loketKey: 'L101', queueLabel: 'A05' })).toEqual([
+      'soundrs.m4a',
+      'phrases/nomor-antrian.wav',
+      'letters/a.wav',
+      'numbers/5.wav',
+      'phrases/silakan-menuju.wav',
+      'phrases/loket.wav',
+      'letters/l.wav',
+      'numbers/100.wav',
+      'numbers/1.wav',
+    ])
+    expect(buildAudioQueue({ loketKey: 'ADM', queueLabel: 'C12' })).toEqual([
+      'soundrs.m4a',
+      'phrases/nomor-antrian.wav',
+      'letters/c.wav',
+      'numbers/12.wav',
+      'phrases/silakan-menuju.wav',
+      'phrases/loket.wav',
+      'letters/a.wav',
+      'letters/d.wav',
+      'letters/m.wav',
     ])
   })
 })

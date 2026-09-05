@@ -107,7 +107,10 @@ const toggleMutation = useMutation({
   <div class="stack">
     <div class="row-actions" style="justify-content: space-between">
       <h2 style="margin: 0">Workstation</h2>
-      <button type="button" class="secondary" @click="resetForm">Baru</button>
+      <div v-if="!editingKey" class="row-actions">
+        <button type="button" class="secondary" @click="resetForm">Batal</button>
+        <button type="button" @click="saveMutation.mutate()">Buat</button>
+      </div>
     </div>
 
     <form class="stack" @submit.prevent="saveMutation.mutate()">
