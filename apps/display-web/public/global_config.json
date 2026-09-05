@@ -10,6 +10,10 @@
   "ads": [
     { "src": "track-1.mp4" }
   ],
+  "displayLayout": {
+    "orientation": "landscape",
+    "showWellnessTips": true
+  },
   "hospitalServices": [
     "Harap persiapkan kartu identitas diri (KTP/KIA), Kartu BPJS Kesehatan, dan Surat Rujukan (jika ada).",
     "Pendaftaran online dapat dilakukan melalui Mobile JKN atau aplikasi RS Sehat Waluyo Mobile.",

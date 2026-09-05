@@ -175,4 +175,68 @@ describe('display brandingService.initialize', () => {
   it('returns correct ads path', () => {
     expect(brandingService.getAdsPath()).toBe('ads/')
   })
+
+  it('defaults displayLayout to landscape with tips when block is missing', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ branding: { name: 'RS Bahagia' } }),
+    } as Response)
+    await brandingService.initialize('/')
+    expect(brandingService.getDisplayLayout()).toEqual({
+      orientation: 'landscape',
+      showWellnessTips: true,
+    })
+  })
+
+  it('applies portrait orientation and hides tips by default', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ displayLayout: { orientation: 'portrait' } }),
+    } as Response)
+    await brandingService.initialize('/')
+    expect(brandingService.getDisplayLayout()).toEqual({
+      orientation: 'portrait',
+      showWellnessTips: false,
+    })
+  })
+
+  it('allows explicit showWellnessTips override', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        displayLayout: { orientation: 'portrait', showWellnessTips: true },
+      }),
+    } as Response)
+    await brandingService.initialize('/')
+    expect(brandingService.getDisplayLayout()).toEqual({
+      orientation: 'portrait',
+      showWellnessTips: true,
+    })
+  })
+
+  it('falls back to landscape for invalid orientation', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ displayLayout: { orientation: 'diagonal' } }),
+    } as Response)
+    await brandingService.initialize('/')
+    expect(brandingService.getDisplayLayout()).toEqual({
+      orientation: 'landscape',
+      showWellnessTips: true,
+    })
+  })
+
+  it('resets displayLayout on fetch failure', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ displayLayout: { orientation: 'portrait' } }),
+    } as Response)
+    await brandingService.initialize('/')
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('network'))
+    await brandingService.initialize('/')
+    expect(brandingService.getDisplayLayout()).toEqual({
+      orientation: 'landscape',
+      showWellnessTips: true,
+    })
+  })
 })
