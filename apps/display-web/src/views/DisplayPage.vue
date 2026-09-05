@@ -111,15 +111,18 @@ const wellnessTips = [
   },
 ]
 
-const videoUrl = computed(() => {
+const adsBaseUrl = computed(() => {
   const base = import.meta.env.BASE_URL
   const baseSlash = base.endsWith('/') ? base : `${base}/`
-  const path = brandingService.getVideoPath()
-  if (/^https?:\/\//i.test(path) || path.startsWith('/')) {
-    return path
-  }
-  return `${baseSlash}${path}`
+  return `${baseSlash}${brandingService.getAdsPath()}`
 })
+
+const ads = computed(() =>
+  brandingService.getAds().map((ad) => ({
+    ...ad,
+    url: `${adsBaseUrl.value}${ad.src}`,
+  }))
+)
 
 const hospitalServices = computed(() => {
   const list = brandingService.getHospitalServices()
@@ -534,10 +537,15 @@ function formatLoketCode(loketKey: string): string {
             </div>
           </div>
 
-          <div class="simulated-video-container">
+          <div
+            v-for="ad in ads"
+            :key="ad.src"
+            class="simulated-video-container"
+          >
             <video
+              v-if="ad.type === 'video'"
               class="real-video-player"
-              :src="videoUrl"
+              :src="ad.url"
               autoplay
               loop
               muted
@@ -545,6 +553,12 @@ function formatLoketCode(loketKey: string): string {
             >
               Browser Anda tidak mendukung tag video.
             </video>
+            <img
+              v-else
+              class="real-video-player"
+              :src="ad.url"
+              :alt="ad.src"
+            />
           </div>
         </div>
 

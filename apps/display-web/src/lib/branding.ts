@@ -14,16 +14,22 @@ export function parseBranding(raw: unknown): Branding {
   return brandingSchema.parse(block ?? {})
 }
 
+interface AdItem {
+  type: 'video' | 'image'
+  src: string
+}
+
 class BrandingService {
   private branding: Branding = brandingSchema.parse({})
   private hospitalServices: string[] = []
-  private videoPath: string = 'video/movie.mp4'
+  private readonly adsPath = 'ads/'
+  private ads: AdItem[] = []
 
   async initialize(baseUrl: string = '/'): Promise<Branding> {
     const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
     this.branding = brandingSchema.parse({})
     this.hospitalServices = []
-    this.videoPath = 'video/movie.mp4'
+    this.ads = []
     try {
       const res = await fetch(`${base}global_config.json?t=${Date.now()}`, {
         cache: 'no-store',
@@ -36,14 +42,50 @@ class BrandingService {
         if (Array.isArray(data.hospitalServices)) {
           this.hospitalServices = data.hospitalServices.map(String)
         }
-        if (typeof data.videoPath === 'string' && data.videoPath.trim()) {
-          this.videoPath = data.videoPath.trim()
+        if (Array.isArray(data.ads)) {
+          this.ads = (data.ads as unknown[])
+            .map((item: unknown) => this.sanitizeAdItem(item))
+            .filter((item): item is AdItem => item !== null)
         }
       }
     } catch {
       this.branding = brandingSchema.parse({})
     }
     return this.branding
+  }
+
+  private sanitizeAdItem(item: unknown): AdItem | null {
+    if (!item || typeof item !== 'object') return null
+    const raw = (item as Record<string, unknown>).src
+    const rawType = (item as Record<string, unknown>).type
+    if (typeof raw !== 'string') return null
+
+    const value = raw.trim()
+    if (
+      !value ||
+      /^[a-z][a-z0-9+.-]*:/i.test(value) ||
+      value.startsWith('//') ||
+      value.startsWith('/') ||
+      value.includes('..') ||
+      value.includes('\\')
+    ) {
+      return null
+    }
+
+    const basename = value.split('/').pop() ?? ''
+    if (!basename) return null
+
+    const ext = basename.split('.').pop()?.toLowerCase() ?? ''
+    const videoExts = ['mp4', 'webm', 'ogg', 'mov']
+    const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']
+
+    let type: 'video' | 'image'
+    if (rawType === 'video' || rawType === 'image') type = rawType
+    else if (videoExts.includes(ext)) type = 'video'
+    else if (imageExts.includes(ext)) type = 'image'
+    else return null
+
+    return { type, src: basename }
   }
 
   getBranding(): Branding {
@@ -54,8 +96,12 @@ class BrandingService {
     return this.hospitalServices
   }
 
-  getVideoPath(): string {
-    return this.videoPath
+  getAdsPath(): string {
+    return this.adsPath
+  }
+
+  getAds(): AdItem[] {
+    return this.ads
   }
 }
 
