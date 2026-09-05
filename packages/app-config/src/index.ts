@@ -21,6 +21,7 @@ export const appConfigSchema = z.object({
   kioskDefaultKarcisId: z.string().optional(),
   mappingLayananKarcis: z.array(mappingLayananKarcisSchema).optional(),
   mappingJmnLayananKarcis: z.array(mappingJmnLayananKarcisSchema).optional(),
+  enablePatientLabelPrint: z.boolean().optional(),
   theme: z.string().optional(),
 })
 

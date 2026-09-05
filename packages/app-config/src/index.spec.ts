@@ -27,4 +27,12 @@ describe('appConfigSchema', () => {
     const parsed = appConfigSchema.parse({ bilregApiBase: 'http://localhost:5000/api' })
     expect(parsed.mediaInfoDir).toBeUndefined()
   })
+
+  it('accepts enablePatientLabelPrint boolean property', () => {
+    const parsed = appConfigSchema.parse({
+      bilregApiBase: 'http://localhost:5000/api',
+      enablePatientLabelPrint: true,
+    })
+    expect(parsed.enablePatientLabelPrint).toBe(true)
+  })
 })

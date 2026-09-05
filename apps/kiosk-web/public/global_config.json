@@ -29,5 +29,6 @@
     "taglineEn": "Serving with heart, healthy for the nation",
     "timeZoneLabel": "WIB"
   },
+  "enablePatientLabelPrint": true,
   "theme": "clinical-blue"
 }
