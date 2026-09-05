@@ -1,27 +1,17 @@
 import { captureToBlob, warmupFonts, PRINT_CAPTURE_OPTIONS } from './htmlToImage'
 
-export type RegistrationReceiptData = {
-  noAntrian: number
-  regId: string
+export type PatientLabelData = {
   pasienName: string
+  regId: string
   pasienId?: string
-  tglLahir?: string
   umur?: string
-  regDate?: string
-  jamReg?: string
-  tipeJaminanName?: string
-  noSep?: string
-  serviceName?: string
-  dokterName?: string
-  qrCodeReg?: string
-  rsName?: string
-  rsAddress?: string
-  rsPhone?: string
-  printedAt?: string
+  tglLahirDmy?: string
+  qrCodeLabel?: string
 }
 
-const RECEIPT_TEMPLATE_URL = `${import.meta.env.BASE_URL}templates/antrian_registrasi.html`
-const PAPER_WIDTH_MM = 80
+const LABEL_TEMPLATE_URL = `${import.meta.env.BASE_URL}templates/label_pasien.html`
+const PAPER_WIDTH_MM = 55
+const PAPER_HEIGHT_MM = 20
 
 let templateCache: string | null = null
 
@@ -42,62 +32,40 @@ function escapeHtml(value: string): string {
   })
 }
 
-function buildUmurLine(data: RegistrationReceiptData): string {
-  if (!data.tglLahir) return ''
-  const label = data.umur ? `${data.umur} (${data.tglLahir})` : data.tglLahir
-  return `<div class="patient-meta">${escapeHtml(label)}</div>`
-}
-
-function buildSepLine(data: RegistrationReceiptData): string {
-  if (!data.noSep) return ''
-  return `<br /><span>SEP : ${escapeHtml(data.noSep)}</span>`
-}
-
-export function renderReceiptTemplate(
+export function renderLabelTemplate(
   content: string,
-  data: RegistrationReceiptData,
+  data: PatientLabelData,
 ): string {
-  const lines: Record<string, string> = {
-    umurLine: buildUmurLine(data),
-    sepLine: buildSepLine(data),
-  }
   const vars: Record<string, string> = {
-    rsName: data.rsName ?? '',
-    rsAddress: data.rsAddress ?? '',
-    rsPhone: data.rsPhone ?? '',
     pasienName: data.pasienName ?? '',
-    pasienId: data.pasienId ?? '',
     regId: data.regId ?? '',
-    regDate: data.regDate ?? '',
-    jamReg: data.jamReg ?? '',
-    tipeJaminanName: data.tipeJaminanName ?? '',
-    noAntrian: String(data.noAntrian),
-    layananName: data.serviceName ?? '',
-    dokterName: data.dokterName ?? '',
-    qrCodeReg: data.qrCodeReg ?? '',
-    printedAt: data.printedAt ?? '',
+    pasienId: data.pasienId ?? '',
+    umur: data.umur ?? '',
+    tglLahirDmy: data.tglLahirDmy ?? '',
+    qrCodeLabel: data.qrCodeLabel ?? '',
   }
 
   let result = content
-  for (const [key, value] of Object.entries(lines)) {
-    result = result.replace(new RegExp(`{{\\s*${key}\\s*}}`, 'g'), value)
-  }
   for (const [key, value] of Object.entries(vars)) {
-    result = result.replace(new RegExp(`{{\\s*${key}\\s*}}`, 'g'), escapeHtml(value))
+    if (key === 'qrCodeLabel') {
+      result = result.replace(new RegExp(`{{\\s*${key}\\s*}}`, 'g'), value)
+    } else {
+      result = result.replace(new RegExp(`{{\\s*${key}\\s*}}`, 'g'), escapeHtml(value))
+    }
   }
   return result
 }
 
-async function loadReceiptTemplate(): Promise<string> {
+async function loadLabelTemplate(): Promise<string> {
   if (templateCache) return templateCache
-  const response = await fetch(RECEIPT_TEMPLATE_URL, { cache: 'no-store' })
-  if (!response.ok) throw new Error(`Template not found: ${RECEIPT_TEMPLATE_URL}`)
+  const response = await fetch(LABEL_TEMPLATE_URL, { cache: 'no-store' })
+  if (!response.ok) throw new Error(`Template not found: ${LABEL_TEMPLATE_URL}`)
   templateCache = await response.text()
   return templateCache
 }
 
 function injectPaperStyles(content: string): string {
-  const styleTag = `<style id="paper-size-vars">\n:root { --pw: ${PAPER_WIDTH_MM}mm; }\n</style>`
+  const styleTag = `<style id="paper-size-vars">\n:root { --pw: ${PAPER_WIDTH_MM}mm; --ph: ${PAPER_HEIGHT_MM}mm; }\n</style>`
   const headCloseIndex = content.indexOf('</head>')
   if (headCloseIndex !== -1) {
     return `${content.slice(0, headCloseIndex)}${styleTag}${content.slice(headCloseIndex)}`
@@ -114,15 +82,15 @@ function injectPrintFont(content: string): string {
   return `${styleTag}\n${content}`
 }
 
-export async function renderRegistrationReceiptPng(
-  data: RegistrationReceiptData,
+export async function renderPatientLabelPng(
+  data: PatientLabelData,
 ): Promise<Blob> {
-  let content = renderReceiptTemplate(await loadReceiptTemplate(), data)
+  let content = renderLabelTemplate(await loadLabelTemplate(), data)
   content = injectPaperStyles(content)
   content = injectPrintFont(content)
 
   const iframe = document.createElement('iframe')
-  iframe.style.cssText = `position:absolute;left:-9999px;top:-9999px;width:${PAPER_WIDTH_MM}mm;height:auto;border:none;`
+  iframe.style.cssText = `position:absolute;left:-9999px;top:-9999px;width:${PAPER_WIDTH_MM}mm;height:${PAPER_HEIGHT_MM}mm;border:none;`
   document.body.appendChild(iframe)
 
   const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
@@ -154,7 +122,7 @@ export async function renderRegistrationReceiptPng(
       }
     })
 
-    // 1. Wait for images (QR code) to complete loading inside iframe first
+    // 1. Wait for images (QR code) to complete loading inside iframe
     const images = Array.from(iframeBody.querySelectorAll('img'))
     await Promise.all(
       images.map(
@@ -170,7 +138,7 @@ export async function renderRegistrationReceiptPng(
       ),
     )
 
-    // 2. Compute exact full document height after images and layout are ready
+    // 2. Compute exact full document height / dimension if needed
     const docEl = iframeDoc.documentElement
     const contentHeight = Math.max(
       iframeBody.scrollHeight,

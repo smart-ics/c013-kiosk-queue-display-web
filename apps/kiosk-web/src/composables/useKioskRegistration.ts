@@ -73,6 +73,7 @@ export type KioskRegistrationDeps = {
   bookingAssistance: (body: BookingAssistanceBody) => Promise<AdmissionQueueIntakeResponse>
   intake: (servicePointId: string) => Promise<AdmissionQueueIntakeResponse>
   printRegistration: (ctx: RegistrationPrintContext) => Promise<RegistrationPrintResult>
+  printLabel?: (ctx: RegistrationPrintContext) => Promise<RegistrationPrintResult>
   printQueueTicket: (
     ticket: AdmissionQueueIntakeResponse,
     servicePointName?: string,
@@ -729,7 +730,11 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       }
 
       transition('REGISTRATION_SUCCESS')
-      await deps.printRegistration(buildPrintContext(currentMode)).catch(() => ({ printed: false }))
+      const printCtx = buildPrintContext(currentMode)
+      await deps.printRegistration(printCtx).catch(() => ({ printed: false }))
+      if (deps.printLabel) {
+        await deps.printLabel(printCtx).catch(() => ({ printed: false }))
+      }
     } catch (error) {
       setFailure(mapErrorToFailureCode(error), messageFromError(error))
     }
@@ -878,13 +883,17 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
 
   async function reprintRegistration() {
     if (!registrationResult.value) return
-    await deps.printRegistration(buildPrintContext(mode.value ?? 'booking'))
+    const printCtx = buildPrintContext(mode.value ?? 'booking')
+    await deps.printRegistration(printCtx)
+    if (deps.printLabel) {
+      await deps.printLabel(printCtx)
+    }
   }
 
   async function reprintExistingRegistration(): Promise<void> {
     const data = registrationReprintData.value
     if (!data) return
-    await deps.printRegistration({
+    const printCtx: RegistrationPrintContext = {
       result: { regId: data.regId, noAntrian: data.noAntrian },
       pasienName: data.pasienName,
       pasienId: data.pasienId,
@@ -893,7 +902,11 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       noSep: data.noSep,
       serviceName: data.serviceName,
       dokterName: data.dokterName,
-    })
+    }
+    await deps.printRegistration(printCtx)
+    if (deps.printLabel) {
+      await deps.printLabel(printCtx)
+    }
   }
 
   async function reprintQueueTicket() {

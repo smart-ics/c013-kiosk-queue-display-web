@@ -164,3 +164,10 @@ When executing complex tasks or styling/UI changes, follow this systematic workf
    - Stage modified files (excluding temporary files like workspace configuration and untracked drafts).
    - Commit with a descriptive message specifying scope (e.g., `feat(display-web): ...`).
    - Push to the remote branch and use GitHub CLI (`gh pr create --head <branch>`) to create a PR.
+
+## Print Development Mode Guidelines
+
+When developing or debugging receipt, ticket, or label rendering in `apps/kiosk-web`:
+1. **DEV Mode Auto-Download**: During active development of print templates/renderers, a temporary `import.meta.env.DEV` check can be enabled in composables (e.g., `useKioskSelfPrint.ts`) to automatically trigger a browser download of the rendered PNG Blob (`antrian_*.png`, `label_*.png`) for quick visual inspection.
+2. **Mandatory Production Cleanup**: BEFORE committing code or declaring a task complete, ALL temporary auto-download snippets MUST be removed to ensure production builds run cleanly without triggering client-side downloads.
+
