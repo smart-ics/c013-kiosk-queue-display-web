@@ -45,20 +45,134 @@ describe('display brandingService.initialize', () => {
     const branding = await brandingService.initialize('/')
     expect(branding.name).toBe('RS Sehat Sejahtera')
     expect(brandingService.getHospitalServices()).toEqual([])
-    expect(brandingService.getVideoPath()).toBe('video/movie.mp4')
+    expect(brandingService.getAds()).toEqual([])
   })
 
-  it('loads hospitalServices and videoPath from global_config.json', async () => {
+  it('loads hospitalServices from global_config.json', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         branding: { name: 'RS Bahagia' },
-        videoPath: 'custom-video.mp4',
         hospitalServices: ['Layanan 1', 'Layanan 2'],
       }),
     } as Response)
     await brandingService.initialize('/')
     expect(brandingService.getHospitalServices()).toEqual(['Layanan 1', 'Layanan 2'])
-    expect(brandingService.getVideoPath()).toBe('custom-video.mp4')
+  })
+
+  it('loads ads from global_config.json with video type inferred from extension', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        branding: { name: 'RS Bahagia' },
+        ads: [{ src: 'promo1.mp4' }, { src: 'banner.png' }],
+      }),
+    } as Response)
+    await brandingService.initialize('/')
+    expect(brandingService.getAds()).toEqual([
+      { type: 'video', src: 'promo1.mp4' },
+      { type: 'image', src: 'banner.png' },
+    ])
+  })
+
+  it('loads ads with explicit type from global_config.json', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        branding: { name: 'RS Bahagia' },
+        ads: [{ src: 'custom.webm', type: 'video' }, { src: 'logo.svg', type: 'image' }],
+      }),
+    } as Response)
+    await brandingService.initialize('/')
+    expect(brandingService.getAds()).toEqual([
+      { type: 'video', src: 'custom.webm' },
+      { type: 'image', src: 'logo.svg' },
+    ])
+  })
+
+  it('rejects videoPath from config and only allows ads array', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        branding: { name: 'RS Bahagia' },
+        videoPath: 'outside-video/video.mp4',
+        ads: [{ src: 'promo1.mp4' }],
+      }),
+    } as Response)
+    await brandingService.initialize('/')
+    expect(brandingService.getAds()).toEqual([{ type: 'video', src: 'promo1.mp4' }])
+  })
+
+  it('strips directory paths from ad src to enforce ads/ only', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        branding: { name: 'RS Bahagia' },
+        ads: [{ src: 'subdir/promo.mp4' }, { src: 'video/evil/evil.mp4' }],
+      }),
+    } as Response)
+    await brandingService.initialize('/')
+    expect(brandingService.getAds()).toEqual([
+      { type: 'video', src: 'promo.mp4' },
+      { type: 'video', src: 'evil.mp4' },
+    ])
+  })
+
+  it('rejects absolute URLs and schemes in ad src', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        branding: { name: 'RS Bahagia' },
+        ads: [
+          { src: 'http://evil.com/video.mp4' },
+          { src: 'https://attacker.com/img.png' },
+          { src: '//cdn.example.com/file.mp4' },
+          { src: '/absolute/path.mp4' },
+          { src: 'data:text/html,<script>alert(1)</script>' },
+        ],
+      }),
+    } as Response)
+    await brandingService.initialize('/')
+    expect(brandingService.getAds()).toEqual([])
+  })
+
+  it('rejects items with .. or \\ in src', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        branding: { name: 'RS Bahagia' },
+        ads: [{ src: 'video\\../etc/passwd.mp4' }, { src: '..\\..\\evil.gif' }],
+      }),
+    } as Response)
+    await brandingService.initialize('/')
+    expect(brandingService.getAds()).toEqual([])
+  })
+
+  it('rejects items with unsupported extensions', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        branding: { name: 'RS Bahagia' },
+        ads: [{ src: 'document.pdf' }, { src: 'script.js' }, { src: 'unknown.xyz' }],
+      }),
+    } as Response)
+    await brandingService.initialize('/')
+    expect(brandingService.getAds()).toEqual([])
+  })
+
+  it('rejects invalid ad items', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        branding: { name: 'RS Bahagia' },
+        ads: [null, undefined, 'string', { type: 'video' }, 123],
+      }),
+    } as Response)
+    await brandingService.initialize('/')
+    expect(brandingService.getAds()).toEqual([])
+  })
+
+  it('returns correct ads path', () => {
+    expect(brandingService.getAdsPath()).toBe('ads/')
   })
 })
