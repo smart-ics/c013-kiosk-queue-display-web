@@ -30,6 +30,7 @@ const isPreview = computed(() => String(route.query.preview ?? '') === '1')
 
 const DEFAULT_POLL_MS = 15_000
 const CONFIG_REFRESH_MS = 60_000
+const AD_ROTATION_MS = 10_000
 
 const bootError = ref<string | null>(null)
 const deviceConfig = ref<DeviceConfig | null>(null)
@@ -111,15 +112,25 @@ const wellnessTips = [
   },
 ]
 
-const videoUrl = computed(() => {
+const adsBaseUrl = computed(() => {
   const base = import.meta.env.BASE_URL
   const baseSlash = base.endsWith('/') ? base : `${base}/`
-  const path = brandingService.getVideoPath()
-  if (/^https?:\/\//i.test(path) || path.startsWith('/')) {
-    return path
-  }
-  return `${baseSlash}${path}`
+  return `${baseSlash}${brandingService.getAdsPath()}`
 })
+
+const ads = computed(() =>
+  brandingService.getAds().map((ad) => ({
+    ...ad,
+    url: `${adsBaseUrl.value}${ad.src}`,
+  }))
+)
+
+const displayLayout = computed(() => brandingService.getDisplayLayout())
+const isPortrait = computed(() => displayLayout.value.orientation === 'portrait')
+const showWellnessTips = computed(() => displayLayout.value.showWellnessTips)
+
+const activeAdIndex = ref(0)
+const visibleAd = computed(() => ads.value[activeAdIndex.value] ?? null)
 
 const hospitalServices = computed(() => {
   const list = brandingService.getHospitalServices()
@@ -133,13 +144,21 @@ const activeServiceIndex = ref(0)
 let clockInterval: number
 let tipsInterval: number
 let serviceInterval: number
+let adInterval: number
 
 onMounted(() => {
   updateClock()
   clockInterval = window.setInterval(updateClock, 1000)
-  tipsInterval = window.setInterval(() => {
-    activeTipIndex.value = (activeTipIndex.value + 1) % wellnessTips.length
-  }, 10000)
+  if (ads.value.length > 1) {
+    adInterval = window.setInterval(() => {
+      activeAdIndex.value = (activeAdIndex.value + 1) % ads.value.length
+    }, AD_ROTATION_MS)
+  }
+  if (showWellnessTips.value) {
+    tipsInterval = window.setInterval(() => {
+      activeTipIndex.value = (activeTipIndex.value + 1) % wellnessTips.length
+    }, 10000)
+  }
   serviceInterval = window.setInterval(() => {
     if (hospitalServices.value.length > 0) {
       activeServiceIndex.value = (activeServiceIndex.value + 1) % hospitalServices.value.length
@@ -151,6 +170,7 @@ onUnmounted(() => {
   window.clearInterval(clockInterval)
   window.clearInterval(tipsInterval)
   window.clearInterval(serviceInterval)
+  window.clearInterval(adInterval)
   window.clearTimeout(flashTimeout)
 })
 
@@ -525,8 +545,11 @@ function formatLoketCode(loketKey: string): string {
 
       <!-- Right Column (Media, Health Info, Stats) -->
       <div class="ads-column">
-        <!-- 1. Video / Media Player Card -->
-        <div class="media-card-container">
+<!-- 1. Video / Media Player Card -->
+        <div
+          class="media-card-container"
+          :class="{ 'is-full': !showWellnessTips }"
+        >
           <div class="media-card-header">
             <div class="header-left-title">
               <span class="info-orange-icon">ⓘ</span>
@@ -534,22 +557,36 @@ function formatLoketCode(loketKey: string): string {
             </div>
           </div>
 
-          <div class="simulated-video-container">
-            <video
-              class="real-video-player"
-              :src="videoUrl"
-              autoplay
-              loop
-              muted
-              playsinline
-            >
-              Browser Anda tidak mendukung tag video.
-            </video>
+          <div
+            class="simulated-video-container"
+            :class="{ 'is-portrait': isPortrait }"
+          >
+            <Transition name="ad-fade" mode="out-in">
+              <video
+                v-if="visibleAd?.type === 'video'"
+                :key="visibleAd.src"
+                class="real-video-player"
+                :src="visibleAd.url"
+                autoplay
+                loop
+                muted
+                playsinline
+              >
+                Browser Anda tidak mendukung tag video.
+              </video>
+              <img
+                v-else-if="visibleAd"
+                :key="visibleAd.src"
+                class="real-video-player"
+                :src="visibleAd.url"
+                :alt="visibleAd.src"
+              />
+            </Transition>
           </div>
         </div>
 
         <!-- 2. Wellness Tips Card -->
-        <div class="wellness-tip-card">
+        <div v-if="showWellnessTips" class="wellness-tip-card">
           <div class="tip-header-row">
             <svg v-if="wellnessTips[activeTipIndex].icon === 'moon'" class="tip-icon" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />

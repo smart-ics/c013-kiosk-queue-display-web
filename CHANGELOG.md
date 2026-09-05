@@ -1,5 +1,21 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **Display layout configuration (display-web)**: Added a `displayLayout` block to `global_config.json` to control the orientation of the ad panel (`orientation` = `landscape` or `portrait`) and the visibility of the health tips card (`showWellnessTips`).
+- **Ads carousel (display-web)**: The ad panel now shows a single asset at a time — 16:9 ratio in landscape and 9:16 in portrait — and automatically rotates through the assets when more than one is configured. Supports both video and image files (PNG, JPG, GIF, WebP, SVG).
+- **IIS installation guide**: Documented how to use ad assets in the display app and how to set the display layout options.
+
+### Changed
+
+- **Health tips card (display-web)**: Health tips can now be hidden; by default they are hidden on portrait displays and shown on landscape displays.
+
+### Security
+
+- **Restricted ad media folder (display-web)**: Ads can now only be loaded from the `ads/` folder of the display app. File names are sanitized (external URL schemes, absolute paths, and path traversal are rejected), and the previously unrestricted `videoPath` setting was removed.
+
 ## [0.2.6] - 2026-09-03
 
 ### Changed
