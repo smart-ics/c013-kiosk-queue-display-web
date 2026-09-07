@@ -30,6 +30,7 @@ const isPreview = computed(() => String(route.query.preview ?? '') === '1')
 
 const DEFAULT_POLL_MS = 15_000
 const CONFIG_REFRESH_MS = 60_000
+const AD_ROTATION_MS = 10_000
 
 const bootError = ref<string | null>(null)
 const deviceConfig = ref<DeviceConfig | null>(null)
@@ -111,15 +112,27 @@ const wellnessTips = [
   },
 ]
 
-const videoUrl = computed(() => {
+const adsBaseUrl = computed(() => {
   const base = import.meta.env.BASE_URL
   const baseSlash = base.endsWith('/') ? base : `${base}/`
-  const path = brandingService.getVideoPath()
-  if (/^https?:\/\//i.test(path) || path.startsWith('/')) {
-    return path
-  }
-  return `${baseSlash}${path}`
+  return `${baseSlash}${brandingService.getAdsPath()}`
 })
+
+const logoUrl = `${import.meta.env.BASE_URL}logo.jpg`
+
+const ads = computed(() =>
+  brandingService.getAds().map((ad) => ({
+    ...ad,
+    url: `${adsBaseUrl.value}${ad.src}`,
+  }))
+)
+
+const displayLayout = computed(() => brandingService.getDisplayLayout())
+const isPortrait = computed(() => displayLayout.value.orientation === 'portrait')
+const showWellnessTips = computed(() => displayLayout.value.showWellnessTips)
+
+const activeAdIndex = ref(0)
+const visibleAd = computed(() => ads.value[activeAdIndex.value] ?? null)
 
 const hospitalServices = computed(() => {
   const list = brandingService.getHospitalServices()
@@ -133,13 +146,21 @@ const activeServiceIndex = ref(0)
 let clockInterval: number
 let tipsInterval: number
 let serviceInterval: number
+let adInterval: number
 
 onMounted(() => {
   updateClock()
   clockInterval = window.setInterval(updateClock, 1000)
-  tipsInterval = window.setInterval(() => {
-    activeTipIndex.value = (activeTipIndex.value + 1) % wellnessTips.length
-  }, 10000)
+  if (ads.value.length > 1) {
+    adInterval = window.setInterval(() => {
+      activeAdIndex.value = (activeAdIndex.value + 1) % ads.value.length
+    }, AD_ROTATION_MS)
+  }
+  if (showWellnessTips.value) {
+    tipsInterval = window.setInterval(() => {
+      activeTipIndex.value = (activeTipIndex.value + 1) % wellnessTips.length
+    }, 10000)
+  }
   serviceInterval = window.setInterval(() => {
     if (hospitalServices.value.length > 0) {
       activeServiceIndex.value = (activeServiceIndex.value + 1) % hospitalServices.value.length
@@ -151,6 +172,7 @@ onUnmounted(() => {
   window.clearInterval(clockInterval)
   window.clearInterval(tipsInterval)
   window.clearInterval(serviceInterval)
+  window.clearInterval(adInterval)
   window.clearTimeout(flashTimeout)
 })
 
@@ -340,20 +362,12 @@ const inServiceCount = computed(() => {
 
 function formatLoketTitle(loketKey: string): string {
   if (!loketKey) return '—'
-  const match = /^L(\d+)$/i.exec(loketKey.trim())
-  if (match) {
-    return `Loket ${match[1]}`
-  }
-  return loketKey
+  return `Loket ${loketKey.trim()}`
 }
 
 function formatLoketCode(loketKey: string): string {
   if (!loketKey) return '—'
-  const match = /^Loket\s*(\d+)$/i.exec(loketKey.trim())
-  if (match) {
-    return `L${match[1]}`
-  }
-  return loketKey.toUpperCase()
+  return loketKey.trim().toUpperCase()
 }
 </script>
 
@@ -376,18 +390,9 @@ function formatLoketCode(loketKey: string): string {
     <!-- Header -->
     <header class="display-header">
       <div class="brand-title">
-        <svg class="hospital-brand-logo" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <!-- Heart Shape -->
-          <path d="M18 31.5C18 31.5 5 23 5 13.5C5 8.8 8.8 5 13.5 5C16.2 5 17.5 6.4 18 7.3C18.5 6.4 19.8 5 22.5 5C27.2 5 31 8.8 31 13.5C31 23 18 31.5 18 31.5Z" fill="#F97316"/>
-          <!-- Inner Medical Cross -->
-          <rect x="15" y="10" width="6" height="14" rx="2" fill="#0F2850"/>
-          <rect x="11" y="14" width="14" height="6" rx="2" fill="#0F2850"/>
-          <rect x="16" y="11" width="4" height="12" rx="1.5" fill="#FFFFFF"/>
-          <rect x="12" y="15" width="12" height="4" rx="1.5" fill="#FFFFFF"/>
-        </svg>
+        <img class="hospital-brand-logo" :src="logoUrl" :alt="branding.name + ' logo'" />
         <div class="brand-text-col">
           <h1 class="hospital-main-name">{{ branding.name }}</h1>
-          <span class="hospital-sub-tag">{{ branding.taglineId }}</span>
         </div>
       </div>
 
@@ -525,8 +530,11 @@ function formatLoketCode(loketKey: string): string {
 
       <!-- Right Column (Media, Health Info, Stats) -->
       <div class="ads-column">
-        <!-- 1. Video / Media Player Card -->
-        <div class="media-card-container">
+<!-- 1. Video / Media Player Card -->
+        <div
+          class="media-card-container"
+          :class="{ 'is-full': !showWellnessTips }"
+        >
           <div class="media-card-header">
             <div class="header-left-title">
               <span class="info-orange-icon">ⓘ</span>
@@ -534,22 +542,36 @@ function formatLoketCode(loketKey: string): string {
             </div>
           </div>
 
-          <div class="simulated-video-container">
-            <video
-              class="real-video-player"
-              :src="videoUrl"
-              autoplay
-              loop
-              muted
-              playsinline
-            >
-              Browser Anda tidak mendukung tag video.
-            </video>
+          <div
+            class="simulated-video-container"
+            :class="{ 'is-portrait': isPortrait }"
+          >
+            <Transition name="ad-fade" mode="out-in">
+              <video
+                v-if="visibleAd?.type === 'video'"
+                :key="visibleAd.src"
+                class="real-video-player"
+                :src="visibleAd.url"
+                autoplay
+                loop
+                muted
+                playsinline
+              >
+                Browser Anda tidak mendukung tag video.
+              </video>
+              <img
+                v-else-if="visibleAd"
+                :key="visibleAd.src"
+                class="real-video-player"
+                :src="visibleAd.url"
+                :alt="visibleAd.src"
+              />
+            </Transition>
           </div>
         </div>
 
         <!-- 2. Wellness Tips Card -->
-        <div class="wellness-tip-card">
+        <div v-if="showWellnessTips" class="wellness-tip-card">
           <div class="tip-header-row">
             <svg v-if="wellnessTips[activeTipIndex].icon === 'moon'" class="tip-icon" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />

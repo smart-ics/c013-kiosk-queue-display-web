@@ -47,7 +47,7 @@ export function applyAnnouncementGate(
 
 export function buildAnnouncementUtterance(candidate: AnnouncementCandidate): string {
   const label = candidate.queueLabel?.trim() || 'tanpa label'
-  return `Nomor ${label}, loket ${candidate.loketKey}`
+  return `Nomor ${label}, menuju Loket ${candidate.loketKey}`
 }
 
 export function parseQueueLabel(label: string): { letters: string[]; number: number | null } {
@@ -133,26 +133,23 @@ export function buildAudioQueue(candidate: {
   // 4. "Silakan menuju" phrase
   queue.push('phrases/silakan-menuju.wav')
 
-  // 5. Loket / Counter phrase and number
-  let cleanLoketKey = candidate.loketKey.trim()
-  if (/^[lL]\d+$/.test(cleanLoketKey)) {
-    cleanLoketKey = cleanLoketKey.substring(1)
-  }
-
-  const loketNum = parseInt(cleanLoketKey, 10)
-  if (!isNaN(loketNum) && loketNum >= 1 && loketNum <= 10) {
-    queue.push(`counters/loket-${loketNum}.wav`)
+  // 5. Loket / Counter
+  //    - Pure numbers 1-10: use combined "loket N" recording (backward compat)
+  //    - Otherwise: "loket" + spell each letter/digit group of the raw key
+  const cleanLoketKey = candidate.loketKey.trim()
+  const pureNumber = /^\d+$/.test(cleanLoketKey) ? parseInt(cleanLoketKey, 10) : NaN
+  if (!isNaN(pureNumber) && pureNumber >= 1 && pureNumber <= 10) {
+    queue.push(`counters/loket-${pureNumber}.wav`)
   } else {
     queue.push('phrases/loket.wav')
-    if (!isNaN(loketNum) && loketNum > 0) {
-      queue.push(...decomposeNumber(loketNum))
-    } else {
-      const lowerKey = cleanLoketKey.toLowerCase()
-      for (const char of lowerKey) {
-        if (/[a-z]/.test(char)) {
-          queue.push(`letters/${char}.wav`)
-        } else if (/[0-9]/.test(char)) {
-          queue.push(`numbers/${char}.wav`)
+    // Split into letter groups and digit groups
+    const chunks = cleanLoketKey.match(/[a-zA-Z]+|\d+/g) ?? []
+    for (const chunk of chunks) {
+      if (/^\d+$/.test(chunk)) {
+        queue.push(...decomposeNumber(parseInt(chunk, 10)))
+      } else {
+        for (const ch of chunk.toLowerCase()) {
+          queue.push(`letters/${ch}.wav`)
         }
       }
     }

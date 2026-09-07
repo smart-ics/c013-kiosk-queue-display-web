@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { logout } from '@/infrastructure'
+import { version } from '../../package.json'
 
 const router = useRouter()
 
@@ -34,5 +35,6 @@ function onLogout() {
         <RouterView />
       </div>
     </main>
+    <footer class="shell-footer">v{{ version }}</footer>
   </div>
 </template>

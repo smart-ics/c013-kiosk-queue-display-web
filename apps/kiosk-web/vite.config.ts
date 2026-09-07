@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { copyFileSync } from 'node:fs'
 
@@ -13,6 +13,7 @@ function versionJsonPlugin() {
         builtAt: new Date().toISOString(),
       }
       const outDir = resolve(__dirname, 'dist')
+      mkdirSync(outDir, { recursive: true })
       writeFileSync(resolve(outDir, 'version.json'), JSON.stringify(version, null, 2))
       copyFileSync(resolve(__dirname, 'web.config'), resolve(outDir, 'web.config'))
     },
