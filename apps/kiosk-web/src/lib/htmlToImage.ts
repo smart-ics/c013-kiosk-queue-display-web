@@ -55,6 +55,7 @@ const PRINT_STYLE_PROPS = [
 
 export const PRINT_CAPTURE_OPTIONS: ToBlobOptions = {
   skipAutoScale: true,
+  includeStyleProperties: [...PRINT_STYLE_PROPS],
 }
 
 let fontEmbedCSS: string | null = null

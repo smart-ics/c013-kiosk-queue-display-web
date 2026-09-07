@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.7] - 2026-09-07
+
+### Added
+
+- **Patient Label Printing (kiosk-web)**: Added patient label template (`public/templates/label_pasien.html`) and `patientLabel.ts` renderer for printing patient labels via the local print proxy using `html-to-image`.
+- **Kiosk Version Display (kiosk-web)**: Home page footer now shows the kiosk package version for easier identification during support.
+
+### Fixed
+
+- **TeamCity Build Fix (kiosk-web)**: Restored `PRINT_STYLE_PROPS` usage in `htmlToImage.ts` to resolve `TS6133` unused-variable build failure that prevented `vite build` from executing.
+
 ## [0.2.6] - 2026-09-03
 
 ### Changed

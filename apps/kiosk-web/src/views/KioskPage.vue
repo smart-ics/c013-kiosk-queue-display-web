@@ -161,7 +161,7 @@ const registration = useKioskRegistration({
   bookingAssistance: (body) => getHisApi().bookingAssistance(body),
   intake: (servicePointId) => getAdmissionQueueApi().intake({ servicePointId }),
   printRegistration: selfPrint.printRegistration,
-  printLabel: configService.getConfig().enablePatientLabelPrint !== false ? selfPrint.printPatientLabel : undefined,
+  printLabel: selfPrint.printPatientLabel,
   printQueueTicket: selfPrint.printQueueTicket,
   offeringsName: (servicePointId) =>
     offerings.value.find((sp) => sp.servicePointId === servicePointId)?.displayName,

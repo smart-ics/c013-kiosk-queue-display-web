@@ -1,89 +1,60 @@
-### Task 1: `@aq/app-config` — optional `jetliApiBase` + schema test
+### Task 1: Add Registration Detail Contract
 
 **Files:**
-- Modify: `packages/app-config/src/index.ts`
-- Modify: `packages/app-config/package.json`
-- Create: `packages/app-config/src/index.spec.ts`
+- Modify: `packages/shared-types/src/index.ts` near the existing HIS registration schemas
+- Test: `packages/shared-types/src/__tests__/hisSchemas.spec.ts`
 
 **Interfaces:**
-- Consumes: existing `configService`, `AppConfig`
-- Produces: `appConfigSchema` exported with optional `jetliApiBase`; `AppConfig` type gains optional `jetliApiBase: string`
+- Produces `registrationPrintDataSchema` and `RegistrationPrintData` with:
+  `regId: string`, `noAntrian: number`, `pasienName: string`, optional `pasienId`, `tglLahir`, `tipeJaminanName`, `noSep`, `serviceName`, and `dokterName`.
+- The schema must reject missing `regId`, missing `pasienName`, or non-numeric/missing `noAntrian`.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write failing schema tests**
 
-Create `packages/app-config/src/index.spec.ts`:
+Add tests that parse a complete `RegistrationPrintData` and reject an object with no `noAntrian`.
 
 ```ts
-import { describe, expect, it } from 'vitest'
-import { appConfigSchema } from './index'
+it('parses complete registration print data', () => {
+  expect(
+    registrationPrintDataSchema.parse({
+      regId: 'RG12345678',
+      noAntrian: 12,
+      pasienName: 'Andi',
+      pasienId: 'PT1',
+      tglLahir: '1990-01-01',
+      tipeJaminanName: 'Umum',
+      noSep: undefined,
+      serviceName: 'Poli Jantung',
+      dokterName: 'Dr. X',
+    }),
+  ).toMatchObject({ regId: 'RG12345678', noAntrian: 12 })
+})
 
-describe('appConfigSchema', () => {
-  it('accepts bilregApiBase without jetliApiBase', () => {
-    const result = appConfigSchema.safeParse({ bilregApiBase: 'http://localhost:5000/api' })
-    expect(result.success).toBe(true)
-  })
-
-  it('accepts jetliApiBase when provided', () => {
-    const parsed = appConfigSchema.parse({
-      bilregApiBase: 'http://localhost:5000/api',
-      jetliApiBase: 'http://localhost:6000/api',
-    })
-    expect(parsed.jetliApiBase).toBe('http://localhost:6000/api')
-  })
+it('rejects registration print data without a queue number', () => {
+  expect(() => registrationPrintDataSchema.parse({ regId: 'RG1', pasienName: 'Andi' })).toThrow()
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run the focused schema test and verify it fails**
 
-Run: `pnpm --filter @aq/app-config exec vitest run src/index.spec.ts`
-Expected: FAIL — `appConfigSchema` is not exported from `./index`.
+Run: `pnpm --filter @aq/shared-types exec vitest run src/__tests__/hisSchemas.spec.ts`
 
-- [ ] **Step 3: Modify the schema**
+Expected: FAIL because `registrationPrintDataSchema` is not defined.
 
-In `packages/app-config/src/index.ts`, export the schema and add the optional field:
+- [ ] **Step 3: Implement the focused schema and type**
 
-```ts
-export const appConfigSchema = z.object({
-  bilregApiBase: z.string().min(1, 'bilregApiBase must not be empty'),
-  jetliApiBase: z.string().optional(),
-})
-```
+Add the Zod object next to the existing HIS response schemas. Keep receipt data focused; do not expose the full backend `RegGetResponse` as an app-facing type.
 
-`AppConfig` stays derived from the schema (`z.infer`). The `configService` implementation is unchanged.
+- [ ] **Step 4: Run the focused schema test and verify it passes**
 
-- [ ] **Step 4: Add vitest devDependency and test script**
+Run: `pnpm --filter @aq/shared-types exec vitest run src/__tests__/hisSchemas.spec.ts`
 
-In `packages/app-config/package.json`:
+Expected: PASS.
 
-```json
-{
-  "name": "@aq/app-config",
-  "version": "0.0.0",
-  "private": true,
-  "main": "src/index.ts",
-  "types": "src/index.ts",
-  "scripts": {
-    "test": "vitest run --passWithNoTests"
-  },
-  "dependencies": {
-    "zod": "^3.23.8"
-  },
-  "devDependencies": {
-    "typescript": "^5.2.2",
-    "vitest": "^3.2.4"
-  }
-}
-```
-
-- [ ] **Step 5: Run test to verify it passes**
-
-Run: `pnpm install && pnpm --filter @aq/app-config test`
-Expected: PASS (2 tests).
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add packages/app-config
-git commit -m "feat(app-config): optional jetliApiBase for BPJS integration"
+git add packages/shared-types/src/index.ts packages/shared-types/src/__tests__/hisSchemas.spec.ts
+git commit -m "feat(shared-types): add registration print data contract"
 ```
 
