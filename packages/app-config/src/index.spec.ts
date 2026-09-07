@@ -35,4 +35,28 @@ describe('appConfigSchema', () => {
     })
     expect(parsed.enablePatientLabelPrint).toBe(true)
   })
+
+  it('accepts fallbackServicePoints.bookingFailure', () => {
+    const parsed = appConfigSchema.parse({
+      bilregApiBase: 'http://localhost:5000/api',
+      fallbackServicePoints: { bookingFailure: 'SP-ADMISI' },
+    })
+
+    expect(parsed.fallbackServicePoints?.bookingFailure).toBe('SP-ADMISI')
+  })
+
+  it('normalizes an empty bookingFailure assignment to undefined', () => {
+    const parsed = appConfigSchema.parse({
+      bilregApiBase: 'http://localhost:5000/api',
+      fallbackServicePoints: { bookingFailure: '' },
+    })
+
+    expect(parsed.fallbackServicePoints?.bookingFailure).toBeUndefined()
+  })
+
+  it('keeps fallbackServicePoints optional', () => {
+    const parsed = appConfigSchema.parse({ bilregApiBase: 'http://localhost:5000/api' })
+
+    expect(parsed.fallbackServicePoints).toBeUndefined()
+  })
 })

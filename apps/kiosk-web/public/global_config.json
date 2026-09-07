@@ -30,5 +30,8 @@
     "timeZoneLabel": "WIB"
   },
   "enablePatientLabelPrint": true,
-  "theme": "clinical-blue"
+  "theme": "clinical-blue",
+  "fallbackServicePoints": {
+    "bookingFailure": ""
+  }
 }

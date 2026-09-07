@@ -13,6 +13,16 @@ export const mappingJmnLayananKarcisSchema = z.object({
   name: z.string().optional(),
 })
 
+export const fallbackServicePointsSchema = z.object({
+  bookingFailure: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+})
+
+export type FallbackServicePoints = z.infer<typeof fallbackServicePointsSchema>
+
 export const appConfigSchema = z.object({
   bilregApiBase: z.string().min(1, 'bilregApiBase must not be empty'),
   bilregApiHubBase: z.string().optional(),
@@ -23,6 +33,7 @@ export const appConfigSchema = z.object({
   mappingJmnLayananKarcis: z.array(mappingJmnLayananKarcisSchema).optional(),
   enablePatientLabelPrint: z.boolean().optional(),
   theme: z.string().optional(),
+  fallbackServicePoints: fallbackServicePointsSchema.optional(),
 })
 
 export type AppConfig = z.infer<typeof appConfigSchema>
