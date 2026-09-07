@@ -118,6 +118,8 @@ const adsBaseUrl = computed(() => {
   return `${baseSlash}${brandingService.getAdsPath()}`
 })
 
+const logoUrl = `${import.meta.env.BASE_URL}logo.jpg`
+
 const ads = computed(() =>
   brandingService.getAds().map((ad) => ({
     ...ad,
@@ -388,7 +390,7 @@ function formatLoketCode(loketKey: string): string {
     <!-- Header -->
     <header class="display-header">
       <div class="brand-title">
-        <img class="hospital-brand-logo" :src="`${import.meta.env.BASE_URL}logo.jpg`" :alt="branding.name + ' logo'" />
+        <img class="hospital-brand-logo" :src="logoUrl" :alt="branding.name + ' logo'" />
         <div class="brand-text-col">
           <h1 class="hospital-main-name">{{ branding.name }}</h1>
         </div>
