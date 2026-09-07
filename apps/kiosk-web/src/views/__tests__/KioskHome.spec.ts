@@ -49,6 +49,11 @@ describe('KioskHome', () => {
     expect(wrapper.find('[data-testid="kiosk-ad-panel"]').exists()).toBe(true)
   })
 
+  it('renders package version in the footer', () => {
+    const wrapper = mount(KioskHome, { props: { intakeAvailable: true, businessDate: null } })
+    expect(wrapper.text()).toContain('v0.2.6')
+  })
+
   it('renders the fallback video source when no media directory is configured', async () => {
     const wrapper = mount(KioskHome, { props: { intakeAvailable: true, businessDate: null } })
     await nextTick()

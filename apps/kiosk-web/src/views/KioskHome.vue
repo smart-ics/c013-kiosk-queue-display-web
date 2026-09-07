@@ -7,6 +7,7 @@ import { useKioskMediaInfo } from '../composables/useKioskMediaInfo'
 import { resolveMediaDirUrl } from '../lib/mediaDirectory'
 import { getKodeBookingMjkn } from '../lib/qrCodeDecoder'
 import { brandingService } from '../lib/branding'
+import { version } from '../../package.json'
 
 const branding = brandingService.getBranding()
 
@@ -224,6 +225,10 @@ onUnmounted(() => {
           <path d="M13.76 17.5a5 5 0 0 0-6.88-6" />
         </svg>
         Ramah difabel · Layar bersih otomatis 30 detik
+      </span>
+      <span class="footer-sep" aria-hidden="true">•</span>
+      <span class="footer-item footer-version">
+        v{{ version }}
       </span>
     </footer>
   </div>
