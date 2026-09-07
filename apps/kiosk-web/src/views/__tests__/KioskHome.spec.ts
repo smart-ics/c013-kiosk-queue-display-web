@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
+import { version } from '../../../package.json'
 import KioskHome from '../KioskHome.vue'
 
 vi.mock('@aq/app-config', () => ({
@@ -51,7 +52,7 @@ describe('KioskHome', () => {
 
   it('renders package version in the footer', () => {
     const wrapper = mount(KioskHome, { props: { intakeAvailable: true, businessDate: null } })
-    expect(wrapper.text()).toContain('v0.2.6')
+    expect(wrapper.text()).toContain(`v${version}`)
   })
 
   it('renders the fallback video source when no media directory is configured', async () => {
