@@ -42,8 +42,8 @@ body {
 }
 
 .shell {
-  display: grid;
-  grid-template-rows: auto 1fr;
+  display: flex;
+  flex-direction: column;
   min-height: 100%;
 }
 
@@ -84,7 +84,15 @@ body {
 }
 
 .shell-main {
+  flex: 1 0 auto;
   padding: 0 1.25rem 1.25rem;
+}
+
+.shell-footer {
+  padding: 0.5rem 1.25rem 0.75rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: rgba(232, 255, 244, 0.65);
 }
 
 button,

@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiClientError } from '@aq/api-client'
 import { login } from '@/infrastructure'
+import { version } from '../../package.json'
 
 const route = useRoute()
 const router = useRouter()
@@ -49,6 +50,7 @@ async function onSubmit() {
       <button type="submit" :disabled="loading">
         {{ loading ? 'Memproses…' : 'Masuk' }}
       </button>
+      <p class="login-version">v{{ version }}</p>
     </form>
   </div>
 </template>
@@ -59,5 +61,12 @@ body {
   justify-content: center;
   align-items: center;
   height: 100%;
+}
+
+.login-version {
+  margin: 0.75rem 0 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 </style>

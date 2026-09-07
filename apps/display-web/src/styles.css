@@ -71,6 +71,23 @@ body {
   overflow: hidden;
 }
 
+.app-version-badge {
+  position: fixed;
+  right: 8px;
+  bottom: 6px;
+  z-index: 50;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-tertiary);
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 0.3rem 0.55rem;
+  pointer-events: none;
+  user-select: none;
+}
+
 /* Boot & Error page styling */
 .panel {
   margin: auto;
