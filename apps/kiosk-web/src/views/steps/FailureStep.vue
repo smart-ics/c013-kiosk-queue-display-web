@@ -7,6 +7,7 @@ defineProps<{
   errorContext: FailureContext
   offerings: AdmissionServicePoint[]
   pending: boolean
+  recommendedServicePointId?: string
 }>()
 defineEmits<{
   selectServicePoint: [servicePointId: string]
@@ -131,6 +132,7 @@ function getDisplayMessage(ctx: FailureContext): string {
           class="radio-card"
           :disabled="pending"
           :data-testid="`assist-${sp.servicePointId}`"
+          :data-recommended="sp.servicePointId === recommendedServicePointId ? 'true' : undefined"
           @click="$emit('selectServicePoint', sp.servicePointId)"
           style="min-height: 88px;"
         >
@@ -159,6 +161,13 @@ function getDisplayMessage(ctx: FailureContext): string {
           <div class="radio-card-content">
             <h4 class="radio-card-title">{{ sp.displayName }}</h4>
             <p class="radio-card-subtitle">{{ sp.queuePrefix }} - {{ sp.displayName }}</p>
+            <span
+              v-if="sp.servicePointId === recommendedServicePointId"
+              class="recommended-badge"
+              style="display:inline-block;margin-top:4px;background:var(--brand-soft);color:var(--brand-strong);padding:2px 10px;border-radius:999px;font-weight:700;font-size:0.8rem;"
+            >
+              Rekomendasi
+            </span>
           </div>
 
           <!-- Select Arrow -->

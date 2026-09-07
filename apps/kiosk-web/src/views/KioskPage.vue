@@ -13,6 +13,7 @@ import {
 } from '../infrastructure'
 import { configService } from '@aq/app-config'
 import { intersectOfferings } from '../lib/offerings'
+import { resolveFallbackServicePointId } from '../lib/fallbackServicePoint'
 import { createBiometricClient } from '../lib/biometric'
 import { scanQrFromCamera } from '../lib/qrScanner'
 import { useKioskIntake } from '../composables/useKioskIntake'
@@ -108,6 +109,13 @@ const offerings = computed(() => {
   if (!deviceConfig.value || !servicePointsQuery.data.value) return []
   return intersectOfferings(deviceConfig.value, servicePointsQuery.data.value)
 })
+
+const recommendedFallbackServicePointId = computed(() =>
+  resolveFallbackServicePointId(
+    configService.getConfig().fallbackServicePoints?.bookingFailure,
+    offerings.value,
+  ),
+)
 
 const {
   pending,
@@ -546,6 +554,7 @@ const loadingMessage = computed(() => {
             :error-context="registration.errorContext.value!"
             :offerings="offerings"
             :pending="registration.submitting.value"
+            :recommended-service-point-id="recommendedFallbackServicePointId"
             @select-service-point="registration.confirmAssistance"
             @back="onHome"
           />
