@@ -1,11 +1,10 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.8] - 2026-09-07
 
 ### Added
 
-- **Patient Label Printing (kiosk-web)**: Added patient label template (`public/templates/label_pasien.html`) and `patientLabel.ts` renderer for printing patient labels via the local print proxy using `html-to-image`.
-- **Kiosk Version Display (kiosk-web)**: Home page footer now shows the kiosk package version for easier identification during support.
+- **App version badge (display-web, config-web)**: Queue display and config apps now show the app version in the UI footer, matching the kiosk home footer, for easier support identification.
 - **Display layout configuration (display-web)**: Added a `displayLayout` block to `global_config.json` to control the orientation of the ad panel (`orientation` = `landscape` or `portrait`) and the visibility of the health tips card (`showWellnessTips`).
 - **Ads carousel (display-web)**: The ad panel now shows a single asset at a time — 16:9 ratio in landscape and 9:16 in portrait — and automatically rotates through the assets when more than one is configured. Supports both video and image files (PNG, JPG, GIF, WebP, SVG).
 - **IIS installation guide**: Documented how to use ad assets in the display app and how to set the display layout options.
@@ -16,11 +15,23 @@
 
 ### Fixed
 
-- **TeamCity Build Fix (kiosk-web)**: Restored `PRINT_STYLE_PROPS` usage in `htmlToImage.ts` to resolve `TS6133` unused-variable build failure that prevented `vite build` from executing.
+- **Loket name display (display-web)**: Loket names now always render as `Loket <key>`, and the hospital logo uses the app base path so it loads correctly when deployed under `/display/`.
+- **App build (all apps)**: The Vite build now ensures the output folder exists before writing `version.json` and `web.config`.
 
 ### Security
 
 - **Restricted ad media folder (display-web)**: Ads can now only be loaded from the `ads/` folder of the display app. File names are sanitized (external URL schemes, absolute paths, and path traversal are rejected), and the previously unrestricted `videoPath` setting was removed.
+
+## [0.2.7] - 2026-09-07
+
+### Added
+
+- **Patient Label Printing (kiosk-web)**: Added patient label template (`public/templates/label_pasien.html`) and `patientLabel.ts` renderer for printing patient labels via the local print proxy using `html-to-image`.
+- **Kiosk Version Display (kiosk-web)**: Home page footer now shows the kiosk package version for easier identification during support.
+
+### Fixed
+
+- **TeamCity Build Fix (kiosk-web)**: Restored `PRINT_STYLE_PROPS` usage in `htmlToImage.ts` to resolve `TS6133` unused-variable build failure that prevented `vite build` from executing.
 
 ## [0.2.6] - 2026-09-03
 
