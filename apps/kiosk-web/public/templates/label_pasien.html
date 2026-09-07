@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Label Pasien</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        width: var(--pw, 55mm);
+        height: var(--ph, 20mm);
+        line-height: 1.2;
+        font-family: Tahoma, Arial, sans-serif;
+        color: #000000;
+        background-color: #ffffff;
+      }
+      .label {
+        width: 100%;
+        height: 100%;
+        /* padding: 2mm; */
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+      }
+      .info-name {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        line-height: 1.2;
+      }
+      .info-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 1mm;
+        flex: 1;
+      }
+      .qr-wrap {
+        flex-shrink: 0;
+        align-self: flex-start; /* fix #1: paksa QR mulai dari atas */
+        width: calc(var(--pw, 55mm) * 0.22);
+        height: calc(var(--pw, 55mm) * 0.22);
+        max-width: 18mm;
+        max-height: 18mm;
+      }
+      .qr-wrap img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: contain;
+        object-position: top left; /* fix #1: cegah gambar turun ke tengah */
+      }
+      .info-data {
+        flex: 1; /* fix #2: isi sisa lebar, hilangkan space kanan */
+        display: flex;
+        flex-direction: column;
+        gap: 0.5mm;
+        align-self: flex-start; /* fix #1: data mulai dari atas */
+      }
+      .info-mr {
+        font-size: 10px; /* fix #3: restore ke ukuran asli */
+        font-weight: 500;
+        line-height: 1.2;
+      }
+      .info-dob {
+        font-size: 10px; /* fix #3 */
+        font-weight: 500;
+        line-height: 1.2;
+      }
+      @media print {
+        @page {
+          size: var(--pw, 55mm) var(--ph, 20mm);
+          margin: 0;
+          padding: 0;
+        }
+        body {
+          margin: 0;
+          padding: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="label">
+      <div class="info-name">{{ pasienName }}</div>
+      <div class="info-row">
+        <div class="qr-wrap">
+          <img src="{{ qrCodeLabel }}" alt="QR" />
+        </div>
+        <div class="info-data">
+          <div class="info-mr">{{ regId }}</div>
+          <div class="info-mr">{{ pasienId }}</div>
+          <div class="info-dob">{{ umur }} ({{ tglLahirDmy }})</div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -3,6 +3,7 @@ import type { AdmissionQueueIntakeResponse, ReturnCreateWalkIn } from '@aq/share
 import { createPrintProxyClient, type PrintProxyClient } from '../lib/printProxy'
 import { renderQueueTicketPng } from '../lib/queueTicket'
 import { renderRegistrationReceiptPng } from '../lib/registrationReceipt'
+import { renderPatientLabelPng } from '../lib/patientLabel'
 import { brandingService } from '../lib/branding'
 import { generateQrDataUrl } from '../lib/qrCode'
 
@@ -26,6 +27,7 @@ export type UseKioskSelfPrintOptions = {
   createClient?: (port?: number) => PrintProxyClient
   renderRegistration?: typeof renderRegistrationReceiptPng
   renderTicket?: typeof renderQueueTicketPng
+  renderLabel?: typeof renderPatientLabelPng
 }
 
 async function tryGenerateQrDataUrl(text: string): Promise<string> {
@@ -45,6 +47,7 @@ export function useKioskSelfPrint(options: UseKioskSelfPrintOptions) {
     options.createClient ?? ((port?: number) => createPrintProxyClient({ port }))
   const renderRegistration = options.renderRegistration ?? renderRegistrationReceiptPng
   const renderTicket = options.renderTicket ?? renderQueueTicketPng
+  const renderLabel = options.renderLabel ?? renderPatientLabelPng
 
   async function printRegistration(
     ctx: RegistrationPrintContext,
@@ -82,7 +85,45 @@ export function useKioskSelfPrint(options: UseKioskSelfPrintOptions) {
         jamReg: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
         printedAt: now.toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }),
       })
+
       const proxyResult = await client.printPng(blob, 'antrian')
+      if (!proxyResult.success) {
+        printError.value = proxyResult.error ?? 'Cetak gagal'
+        printSucceeded.value = false
+        return { printed: false, error: printError.value }
+      }
+      printSucceeded.value = true
+      return { printed: true }
+    } catch (error) {
+      printError.value = error instanceof Error ? error.message : 'Cetak gagal'
+      printSucceeded.value = false
+      return { printed: false, error: printError.value }
+    } finally {
+      printPending.value = false
+    }
+  }
+
+  async function printPatientLabel(
+    ctx: RegistrationPrintContext,
+  ): Promise<RegistrationPrintResult> {
+    if (printPending.value) {
+      printError.value = 'Cetak sedang berlangsung.'
+      return { printed: false, error: 'Cetak sedang berlangsung.' }
+    }
+    printPending.value = true
+    printError.value = null
+    try {
+      const client = createClient(options.printerProxyPort?.value)
+      const blob = await renderLabel({
+        pasienName: ctx.pasienName,
+        regId: ctx.result.regId,
+        pasienId: ctx.pasienId,
+        umur: ctx.umur,
+        tglLahirDmy: ctx.tglLahir,
+        qrCodeLabel: await tryGenerateQrDataUrl(ctx.result.regId),
+      })
+
+      const proxyResult = await client.printPng(blob, 'label_mr')
       if (!proxyResult.success) {
         printError.value = proxyResult.error ?? 'Cetak gagal'
         printSucceeded.value = false
@@ -121,6 +162,7 @@ export function useKioskSelfPrint(options: UseKioskSelfPrintOptions) {
         servicePointName,
         stationId: options.stationId.value,
       })
+
       const proxyResult = await client.printPng(blob, 'antrian')
       if (!proxyResult.success) {
         printError.value = proxyResult.error ?? 'Cetak gagal'
@@ -149,6 +191,7 @@ export function useKioskSelfPrint(options: UseKioskSelfPrintOptions) {
     printError,
     printSucceeded,
     printRegistration,
+    printPatientLabel,
     printQueueTicket,
     resetPrintState,
   }

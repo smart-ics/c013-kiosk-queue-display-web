@@ -11,6 +11,7 @@ const selfPrintMocks = vi.hoisted(() => ({
       pasienName?: string
     }) => ({ printed: true }),
   ),
+  printPatientLabel: vi.fn(async () => ({ printed: true })),
   printQueueTicket: vi.fn(async () => ({ printed: true })),
   resetPrintState: vi.fn(),
 }))
@@ -108,6 +109,7 @@ vi.mock('../../composables/useKioskSelfPrint', () => ({
     printError: { value: null },
     printSucceeded: { value: false },
     printRegistration: selfPrintMocks.printRegistration,
+    printPatientLabel: selfPrintMocks.printPatientLabel,
     printQueueTicket: selfPrintMocks.printQueueTicket,
     resetPrintState: selfPrintMocks.resetPrintState,
   })),

@@ -54,7 +54,6 @@ const PRINT_STYLE_PROPS = [
 ] as const
 
 export const PRINT_CAPTURE_OPTIONS: ToBlobOptions = {
-  skipFonts: true,
   skipAutoScale: true,
   includeStyleProperties: [...PRINT_STYLE_PROPS],
 }

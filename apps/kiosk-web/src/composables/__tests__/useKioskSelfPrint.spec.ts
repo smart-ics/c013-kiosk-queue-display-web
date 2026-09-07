@@ -55,6 +55,33 @@ describe('useKioskSelfPrint', () => {
     expect(urls).toEqual(['antrian'])
   })
 
+  it('prints a patient label with doctype label_mr', async () => {
+    const urls: string[] = []
+    const printPng = vi.fn(async (_blob: Blob, doctype: string): Promise<PrintProxyResult> => {
+      urls.push(doctype)
+      return { success: true, jobId: 'j3', isNetworkError: false }
+    })
+    const createClient = (): PrintProxyClient =>
+      ({ baseUrl: 'http://localhost:5050/print', checkHealth: async () => null, printPng }) as unknown as PrintProxyClient
+
+    const print = useKioskSelfPrint({
+      stationId: ref('K01'),
+      createClient,
+      renderLabel: async () => new Blob(['png'], { type: 'image/png' }),
+    })
+
+    const result = await print.printPatientLabel({
+      result: { regId: 'RG01069593', noAntrian: 12 },
+      pasienName: 'SUGIARTO, TN',
+      pasienId: '00-12-34-56',
+      umur: '45 Thn',
+      tglLahir: '15-08-1981',
+    })
+    expect(result.printed).toBe(true)
+    expect(urls).toEqual(['label_mr'])
+    expect(print.printSucceeded.value).toBe(true)
+  })
+
   it('surfaces printError when a registration print is already pending', async () => {
     let resolveRender!: (v: Blob) => void
     const pendingRender = new Promise<Blob>((resolve) => {
