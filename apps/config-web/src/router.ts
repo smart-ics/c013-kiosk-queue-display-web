@@ -7,6 +7,7 @@ import SummaryPage from './views/SummaryPage.vue'
 import WorkstationsPage from './views/WorkstationsPage.vue'
 import DisplaysPage from './views/DisplaysPage.vue'
 import KiosksPage from './views/KiosksPage.vue'
+import ServicePointsPage from './views/ServicePointsPage.vue'
 import SegmentationPage from './views/SegmentationPage.vue'
 import AuditPage from './views/AuditPage.vue'
 
@@ -33,6 +34,7 @@ export const router = createRouter({
         { path: 'workstations', name: 'workstations', component: WorkstationsPage },
         { path: 'displays', name: 'displays', component: DisplaysPage },
         { path: 'kiosks', name: 'kiosks', component: KiosksPage },
+        { path: 'service-points', name: 'service-points', component: ServicePointsPage },
         { path: 'segmentation', name: 'segmentation', component: SegmentationPage },
         { path: 'audit', name: 'audit', component: AuditPage },
       ],

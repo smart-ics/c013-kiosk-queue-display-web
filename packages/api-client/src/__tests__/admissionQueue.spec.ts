@@ -99,3 +99,70 @@ describe('getCurrentDisplays', () => {
     await expect(createAdmissionQueueApi(client).getCurrentDisplays()).resolves.toEqual([])
   })
 })
+
+describe('upsertServicePoint', () => {
+  it('sends a PUT to the service point with the expected body', async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          status: 'success',
+          data: {
+            servicePointId: 'SP-ADMISI',
+            displayName: 'Administrasi',
+            queuePrefix: 'A',
+            status: 'Active',
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    )
+    const client = new AdmissionQueueClient({
+      baseUrl: 'http://localhost:5000/api',
+      auth: createAuth(),
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    const api = createAdmissionQueueApi(client)
+
+    await api.upsertServicePoint('SP-ADMISI', {
+      displayName: 'Administrasi',
+      queuePrefix: 'A',
+      active: true,
+    })
+
+    const request = fetchImpl.mock.calls[0]?.[1] as RequestInit | undefined
+    expect(request?.method).toBe('PUT')
+    expect(String(fetchImpl.mock.calls[0]?.[0])).toContain(
+      '/v1/admission-queue/service-points/SP-ADMISI',
+    )
+    expect(JSON.parse(String(request?.body))).toEqual({
+      displayName: 'Administrasi',
+      queuePrefix: 'A',
+      active: true,
+    })
+  })
+})
+
+describe('listAllServicePoints', () => {
+  it('requests service points with activeOnly=false', async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(JSON.stringify({ status: 'success', data: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    const client = new AdmissionQueueClient({
+      baseUrl: 'http://localhost:5000/api',
+      auth: createAuth(),
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+
+    await createAdmissionQueueApi(client).listAllServicePoints()
+
+    const url = String(fetchImpl.mock.calls[0]?.[0])
+    expect(url).toContain('v1/admission-queue/service-points')
+    expect(url).toContain('activeOnly=false')
+  })
+})

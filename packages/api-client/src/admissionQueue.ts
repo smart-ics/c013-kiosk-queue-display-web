@@ -31,6 +31,23 @@ export function createAdmissionQueueApi(client: AdmissionQueueClient) {
       })
     },
 
+    listAllServicePoints(): Promise<AdmissionServicePoint[]> {
+      return client.getJson('v1/admission-queue/service-points', servicePointsSchema, {
+        activeOnly: false,
+      })
+    },
+
+    upsertServicePoint(
+      servicePointId: string,
+      body: { displayName: string; queuePrefix: string; active: boolean },
+    ): Promise<AdmissionServicePoint> {
+      return client.putJson(
+        `v1/admission-queue/service-points/${encodeURIComponent(servicePointId)}`,
+        body,
+        admissionServicePointSchema,
+      )
+    },
+
     intake(body: IntakeBody): Promise<AdmissionQueueIntakeResponse> {
       return client.postJson('v1/admission-queue/intake', body, admissionQueueIntakeResponseSchema)
     },
