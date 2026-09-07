@@ -360,11 +360,7 @@ const inServiceCount = computed(() => {
 
 function formatLoketTitle(loketKey: string): string {
   if (!loketKey) return '—'
-  const trimmed = loketKey.trim()
-  if (/^L\d+$/i.test(trimmed)) {
-    return `Loket ${trimmed}`
-  }
-  return trimmed
+  return `Loket ${loketKey.trim()}`
 }
 
 function formatLoketCode(loketKey: string): string {
@@ -392,7 +388,7 @@ function formatLoketCode(loketKey: string): string {
     <!-- Header -->
     <header class="display-header">
       <div class="brand-title">
-        <img class="hospital-brand-logo" src="/logo.jpg" :alt="branding.name + ' logo'" />
+        <img class="hospital-brand-logo" :src="`${import.meta.env.BASE_URL}logo.jpg`" :alt="branding.name + ' logo'" />
         <div class="brand-text-col">
           <h1 class="hospital-main-name">{{ branding.name }}</h1>
         </div>
