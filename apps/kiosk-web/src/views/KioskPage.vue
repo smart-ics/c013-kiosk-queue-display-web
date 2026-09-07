@@ -554,7 +554,7 @@ const loadingMessage = computed(() => {
             :error-context="registration.errorContext.value!"
             :offerings="offerings"
             :pending="registration.submitting.value"
-            :recommended-service-point-id="recommendedFallbackServicePointId"
+            :recommended-service-point-id="isBookingMode ? recommendedFallbackServicePointId : undefined"
             @select-service-point="registration.confirmAssistance"
             @back="onHome"
           />

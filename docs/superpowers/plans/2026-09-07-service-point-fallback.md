@@ -43,7 +43,7 @@ The contract is deployment-wide because `global_config.json` is shared by the ki
 - Add `fallbackServicePoints.bookingFailure` to the app configuration schema.
 - Document the manually edited property in the kiosk `global_config.json` template.
 - Resolve a valid recommendation against the existing current-kiosk `offerings` list.
-- Visually mark the resolved service point as the recommended assistance choice while retaining all fallback choices and requiring explicit user click.
+- Visually mark the resolved service point as the recommended assistance choice while retaining all fallback choices and requiring explicit user click. The marker appears ONLY in booking mode; walk-in and other failure paths show no recommendation.
 - Add Service Point master-data CRUD to `config-web` using the existing BE API (list all + upsert); no new BE endpoints.
 - Add unit/component coverage for valid, missing, empty, inactive, and unmapped assignments.
 
@@ -355,10 +355,10 @@ const recommendedFallbackServicePointId = computed(() =>
 )
 ```
 
-Pass it to `FailureStep`:
+Pass it to `FailureStep`, gated so the recommendation appears ONLY in booking mode (walk-in and other failure paths show no recommendation):
 
 ```vue
-:recommended-service-point-id="recommendedFallbackServicePointId"
+:recommended-service-point-id="isBookingMode ? recommendedFallbackServicePointId : undefined"
 ```
 
 - [ ] **Step 4: Render the recommendation in `FailureStep.vue`**
@@ -387,7 +387,7 @@ Add a visible badge inside the card content so the recommendation is obvious to 
 </span>
 ```
 
-The existing click handler must remain unchanged. The visual marker is the only behavior change; the user still chooses the service point explicitly.
+The existing click handler must remain unchanged. The visual marker is the only behavior change; the user still chooses the service point explicitly. The marker must appear ONLY in booking mode — in walk-in and other failure paths, no card is recommended.
 
 - [ ] **Step 5: Run the focused tests**
 
@@ -545,11 +545,12 @@ Expected: both production builds succeed.
 Verify these deployment scenarios:
 
 1. `fallbackServicePoints` absent or `bookingFailure` empty: all active service points mapped to the current station are shown and none is recommended.
-2. Valid mapped ID: the matching assistance card is marked as recommended.
+2. Valid mapped ID in booking mode: the matching assistance card is marked as recommended.
 3. Unmapped ID: no card is recommended and all existing fallback cards remain shown.
-4. Clicking a service point still requires explicit user action before `bookingAssistance` or `intake` is called.
-5. Walk-in flow and normal intake selection remain unchanged.
-6. `config-web` Service Point screen lists active and retired records, supports create/edit, and never shows `fallbackServicePoints`.
+4. Walk-in failure or any non-booking failure path: no card is recommended regardless of the configured assignment.
+5. Clicking a service point still requires explicit user action before `bookingAssistance` or `intake` is called.
+6. Walk-in flow and normal intake selection remain unchanged.
+7. `config-web` Service Point screen lists active and retired records, supports create/edit, and never shows `fallbackServicePoints`.
 
 - [ ] **Step 4: Update the Progress Tracker**
 
@@ -585,5 +586,5 @@ No BE implementation is included. The following proposal may be sent to the BE c
 
 - Spec coverage: nested manual configuration, current kiosk mapping fallback, invalid/empty configuration fallback, no BE changes, Service Point master CRUD, and the BE adaptation proposal are all covered.
 - Placeholder scan: no `TBD`, `TODO`, or unspecified implementation step remains.
-- Type consistency: `fallbackServicePoints.bookingFailure` is defined in `AppConfig`, consumed by `resolveFallbackServicePointId`, and passed to `FailureStep` as `recommendedServicePointId`.
+- Type consistency: `fallbackServicePoints.bookingFailure` is defined in `AppConfig`, consumed by `resolveFallbackServicePointId`, and passed to `FailureStep` as `recommendedServicePointId`. In the template the marker is gated to booking mode via `isBookingMode`; it is never referenced inside the `recommendedFallbackServicePointId` computed because `registration` is declared after it.
 - Scope check: no task modifies `b09-bilreg-api`; Service Point CRUD is limited to master-data maintenance in `config-web`, while the fallback assignment remains manual JSON configuration.

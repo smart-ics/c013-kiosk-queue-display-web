@@ -32,4 +32,12 @@ describe('FailureStep recommended service point', () => {
 
     expect(wrapper.findAll('[data-recommended="true"]')).toHaveLength(0)
   })
+
+  it('emits selectServicePoint with the servicePointId when the recommended card is clicked', async () => {
+    const wrapper = mountStep({ recommendedServicePointId: 'SP-B' })
+
+    await wrapper.get('[data-testid="assist-SP-B"]').trigger('click')
+
+    expect(wrapper.emitted('selectServicePoint')).toEqual([['SP-B']])
+  })
 })

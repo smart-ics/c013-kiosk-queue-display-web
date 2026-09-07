@@ -3,7 +3,7 @@ import type { AdmissionServicePoint } from '@aq/shared-types'
 import type { FailureContext } from '../../composables/useKioskRegistration'
 import { getFailureMessage } from '../../lib/failureCode'
 
-defineProps<{
+const props = defineProps<{
   errorContext: FailureContext
   offerings: AdmissionServicePoint[]
   pending: boolean
@@ -18,6 +18,10 @@ function isBpjs(sp: AdmissionServicePoint): boolean {
   const name = (sp.displayName || '').toLowerCase()
   const id = (sp.servicePointId || '').toLowerCase()
   return name.includes('bpjs') || name.includes('jkn') || id.includes('bpjs') || id.includes('jkn')
+}
+
+function isRecommended(sp: AdmissionServicePoint): boolean {
+  return sp.servicePointId === props.recommendedServicePointId
 }
 
 const HTTP_STATUS_MESSAGES_ID: Record<number, string> = {
@@ -132,7 +136,7 @@ function getDisplayMessage(ctx: FailureContext): string {
           class="radio-card"
           :disabled="pending"
           :data-testid="`assist-${sp.servicePointId}`"
-          :data-recommended="sp.servicePointId === recommendedServicePointId ? 'true' : undefined"
+          :data-recommended="isRecommended(sp) ? 'true' : undefined"
           @click="$emit('selectServicePoint', sp.servicePointId)"
           style="min-height: 88px;"
         >
@@ -162,7 +166,7 @@ function getDisplayMessage(ctx: FailureContext): string {
             <h4 class="radio-card-title">{{ sp.displayName }}</h4>
             <p class="radio-card-subtitle">{{ sp.queuePrefix }} - {{ sp.displayName }}</p>
             <span
-              v-if="sp.servicePointId === recommendedServicePointId"
+              v-if="isRecommended(sp)"
               class="recommended-badge"
               style="display:inline-block;margin-top:4px;background:var(--brand-soft);color:var(--brand-strong);padding:2px 10px;border-radius:999px;font-weight:700;font-size:0.8rem;"
             >

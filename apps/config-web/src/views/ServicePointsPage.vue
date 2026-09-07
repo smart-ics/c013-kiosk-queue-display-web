@@ -89,7 +89,12 @@ const retireMutation = useMutation({
       <h2 style="margin: 0">Service Point</h2>
       <div v-if="!editingId" class="row-actions">
         <button type="button" class="secondary" @click="resetForm">Batal</button>
-        <button type="button" @click="saveMutation.mutate()">Buat</button>
+        <button type="button" :disabled="saveMutation.isPending.value" @click="saveMutation.mutate()">
+          Buat
+        </button>
+      </div>
+      <div v-else class="row-actions">
+        <button type="button" class="secondary" @click="resetForm">Batal</button>
       </div>
     </div>
 
@@ -132,7 +137,11 @@ const retireMutation = useMutation({
       </button>
     </form>
 
-    <table class="table">
+    <p v-if="listQuery.isLoading.value" class="muted">Memuat Service Point…</p>
+    <p v-else-if="listQuery.isError.value" class="error">
+      Gagal memuat Service Point: {{ (listQuery.error.value as Error)?.message }}
+    </p>
+    <table v-else class="table">
       <thead>
         <tr>
           <th>ServicePointId</th>

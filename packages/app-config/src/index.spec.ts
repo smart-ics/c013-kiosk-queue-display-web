@@ -54,6 +54,24 @@ describe('appConfigSchema', () => {
     expect(parsed.fallbackServicePoints?.bookingFailure).toBeUndefined()
   })
 
+  it('normalizes an empty fallbackServicePoints container to undefined bookingFailure', () => {
+    const parsed = appConfigSchema.parse({
+      bilregApiBase: 'http://localhost:5000/api',
+      fallbackServicePoints: {},
+    })
+
+    expect(parsed.fallbackServicePoints?.bookingFailure).toBeUndefined()
+  })
+
+  it('normalizes whitespace-only bookingFailure to undefined', () => {
+    const parsed = appConfigSchema.parse({
+      bilregApiBase: 'http://localhost:5000/api',
+      fallbackServicePoints: { bookingFailure: '   ' },
+    })
+
+    expect(parsed.fallbackServicePoints?.bookingFailure).toBeUndefined()
+  })
+
   it('keeps fallbackServicePoints optional', () => {
     const parsed = appConfigSchema.parse({ bilregApiBase: 'http://localhost:5000/api' })
 
