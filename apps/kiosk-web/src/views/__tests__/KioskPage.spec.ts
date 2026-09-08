@@ -24,6 +24,11 @@ const registrationMocks = vi.hoisted(() => ({
     antrianId: 'A1',
     noUrut: 1,
   })),
+  intake: vi.fn<() => Promise<AdmissionQueueIntakeResponse>>(async () => ({
+    queueLabel: 'BOK-001',
+    antrianId: 'A1',
+    noUrut: 1,
+  })),
   patientContextSearch: vi.fn<() => Promise<PatientContextSearchResponse>>(async () => ({
     businessDate: '2026-09-02',
     bookings: { items: [], total: 0, hasMore: false },
@@ -80,10 +85,11 @@ vi.mock('../../infrastructure', () => ({
        servicePointIds: ['BOK'],
      })),
   })),
-  getAdmissionQueueApi: vi.fn(() => ({
+getAdmissionQueueApi: vi.fn(() => ({
     listServicePoints: vi.fn(async () => [
        { servicePointId: 'BOK', displayName: 'Loket Bantuan', queuePrefix: 'BOK', status: 'Active' },
     ]),
+    intake: registrationMocks.intake,
   })),
   getHisApi: vi.fn(() => ({
     getBusinessDate: vi.fn(async () => ({ businessDate: '2026-09-02' })),
@@ -230,12 +236,14 @@ describe('KioskPage booking fallback assistance', () => {
   beforeEach(() => {
     registrationMocks.searchBooking.mockReset()
     registrationMocks.searchBooking.mockResolvedValue([])
-    registrationMocks.bookingAssistance.mockReset()
-registrationMocks.bookingAssistance.mockResolvedValue({
+registrationMocks.bookingAssistance.mockReset()
+    registrationMocks.bookingAssistance.mockResolvedValue({
       queueLabel: 'BOK-001',
       antrianId: 'A1',
       noUrut: 1,
     })
+    registrationMocks.intake.mockReset()
+    registrationMocks.intake.mockResolvedValue({ queueLabel: 'BOK-001', antrianId: 'A1', noUrut: 1 })
     registrationMocks.patientContextSearch.mockReset()
     registrationMocks.patientContextSearch.mockImplementation(async () => ({
       businessDate: '2026-09-02',
@@ -421,5 +429,50 @@ registrationMocks.bookingAssistance.mockResolvedValue({
     expect(registrationMocks.bookingAssistance).toHaveBeenCalledTimes(1)
     expect(wrapper.find('[data-testid="assist-BOK"]').exists()).toBe(true)
     expect(selfPrintMocks.printQueueTicket).not.toHaveBeenCalled()
+  })
+
+  it('auto-intakes to the fallback when booking is not found', async () => {
+    registrationMocks.searchBooking.mockResolvedValueOnce([])
+    registrationMocks.patientContextSearch.mockImplementationOnce(async () => ({
+      businessDate: '2026-09-02',
+      bookings: { items: [], total: 0, hasMore: false },
+      registrations: { items: [], total: 0, hasMore: false },
+      patients: { items: [], total: 0, hasMore: false },
+      bestMatch: null,
+      canCreatePatient: false,
+    }))
+    const wrapper = mountPage()
+
+    await flushPromises()
+    await flushPromises()
+    await wrapper.get('[data-testid="search-keyword"]').setValue('0002036512473')
+    await wrapper.get('[data-testid="search-submit"]').trigger('click')
+    await flushPromises()
+    await flushPromises()
+
+    expect(registrationMocks.intake).toHaveBeenCalledWith({ servicePointId: 'BOK' })
+    expect(registrationMocks.bookingAssistance).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="assist-redirect-queue"]').exists()).toBe(true)
+  })
+
+  it('shows the generic layout for a manual booking selection after failure', async () => {
+    registrationMocks.searchBooking.mockRejectedValueOnce(new Error('booking failed'))
+    registrationMocks.bookingAssistance.mockRejectedValueOnce(new Error('assist failed'))
+    const wrapper = mountPage()
+
+    await flushPromises()
+    await flushPromises()
+    await wrapper.get('[data-testid="search-keyword"]').setValue('0002036512473')
+    await wrapper.get('[data-testid="search-submit"]').trigger('click')
+    await flushPromises()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="assist-BOK"]').exists()).toBe(true)
+    await wrapper.get('[data-testid="assist-BOK"]').trigger('click')
+    await flushPromises()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="assist-redirect-queue"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="assist-queue-label"]').text()).toBe('BOK-001')
   })
 })

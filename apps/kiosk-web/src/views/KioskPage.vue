@@ -270,6 +270,7 @@ onUnmounted(() => {
 const isBookingMode = computed(() => registration.mode.value === 'booking')
 const automaticFallbackAttempted = ref(false)
 const automaticFallbackFailed = ref(false)
+const automaticFallbackUsed = ref(false)
 
 const automaticFallbackActive = computed(
   () =>
@@ -292,6 +293,7 @@ watch(
     if (flow !== 'FAILURE') {
       automaticFallbackAttempted.value = false
       automaticFallbackFailed.value = false
+      if (flow !== 'ASSISTANCE_QUEUE') automaticFallbackUsed.value = false
       return
     }
     if (
@@ -303,8 +305,12 @@ watch(
       return
 
     automaticFallbackAttempted.value = true
+    automaticFallbackUsed.value = true
     void registration.confirmAssistance(fallbackServicePointId).then(() => {
-      if (registration.flow.value === 'FAILURE') automaticFallbackFailed.value = true
+      if (registration.flow.value === 'FAILURE') {
+        automaticFallbackFailed.value = true
+        automaticFallbackUsed.value = false
+      }
     })
   },
 )
@@ -609,7 +615,7 @@ const loadingMessage = computed(() => {
             :ticket="registration.assistanceTicket.value!"
             :title="assistanceTitle"
             :service-point-name="assistanceServicePointName"
-            :variant="isBookingMode ? 'admisiRedirect' : 'assistance'"
+            :variant="automaticFallbackUsed ? 'admisiRedirect' : 'assistance'"
             :print-pending="selfPrint.printPending.value"
             :print-succeeded="selfPrint.printSucceeded.value"
             :print-error="selfPrint.printError.value"
