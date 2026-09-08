@@ -1,65 +1,96 @@
-### Task 2: Add HIS Registration Detail Reader
+### Task 2: Implement the Pure Recommendation Resolver
 
 **Files:**
-- Modify: `packages/api-client/src/his.ts`
-- Test: `packages/api-client/src/__tests__/his.spec.ts`
+- Create: `apps/kiosk-web/src/lib/fallbackServicePoint.ts`
+- Create: `apps/kiosk-web/src/lib/__tests__/fallbackServicePoint.spec.ts`
 
 **Interfaces:**
-- Produces `getRegistrationPrintData(regId: string): Promise<RegistrationPrintData>` on the HIS API.
-- Calls the existing backend route `GET /api/Reg/{id}`.
-- Validates the response fields from `RegGetResponse`: `regId`, `noAntrian`, `pasien.pasienName`, `pasien.pasienId`, `pasien.tglLahir`, `tipeJaminan.tipeJaminanName`, `sjpNo`, `layanan.layananName`, and `dokter.ppaName`.
-
-- [ ] **Step 1: Write the failing API-client test**
-
-Use the existing `hisClient` test helper and a JSend response fixture shaped like the backend `RegGetResponse`. Assert the route and mapped values.
+- Consumes `AdmissionServicePoint[]` from the existing `offerings` computed value.
+- Produces `string | undefined` through:
 
 ```ts
-it('loads and maps registration print data by registration id', async () => {
-  const { fetchImpl, api } = hisClient({
-    regId: 'RG12345678',
-    noAntrian: 12,
-    pasien: { pasienId: 'PT1', pasienName: 'Andi', tglLahir: '1990-01-01' },
-    tipeJaminan: { tipeJaminanId: '00000', tipeJaminanName: 'Umum' },
-    sjpNo: '',
-    layanan: { layananId: 'LY1', layananName: 'Poli Jantung' },
-    dokter: { ppaId: 'DP1', ppaName: 'Dr. X' },
+export function resolveFallbackServicePointId(
+  configuredId: string | undefined,
+  offerings: readonly AdmissionServicePoint[],
+): string | undefined
+```
+
+- [ ] **Step 1: Write resolver tests**
+
+Create the fixture and the five cases:
+
+```ts
+import { describe, expect, it } from 'vitest'
+import type { AdmissionServicePoint } from '@aq/shared-types'
+import { resolveFallbackServicePointId } from '../fallbackServicePoint'
+
+const offerings: AdmissionServicePoint[] = [
+  { servicePointId: 'SP-A', displayName: 'Admisi Umum', queuePrefix: 'A', status: 'Active' },
+  { servicePointId: 'SP-B', displayName: 'Admisi BPJS', queuePrefix: 'B', status: 'Active' },
+]
+
+describe('resolveFallbackServicePointId', () => {
+  it('returns the configured id when it is an active offering', () => {
+    expect(resolveFallbackServicePointId('SP-A', offerings)).toBe('SP-A')
   })
 
-  await expect(api.getRegistrationPrintData('RG12345678')).resolves.toEqual({
-    regId: 'RG12345678',
-    noAntrian: 12,
-    pasienName: 'Andi',
-    pasienId: 'PT1',
-    tglLahir: '1990-01-01',
-    tipeJaminanName: 'Umum',
-    noSep: undefined,
-    serviceName: 'Poli Jantung',
-    dokterName: 'Dr. X',
+  it('returns undefined when no assignment is configured', () => {
+    expect(resolveFallbackServicePointId(undefined, offerings)).toBeUndefined()
   })
-  expect(String(fetchImpl.mock.calls[0]?.[0])).toContain('Reg/RG12345678')
+
+  it('returns undefined when the assignment is empty', () => {
+    expect(resolveFallbackServicePointId('', offerings)).toBeUndefined()
+  })
+
+  it('returns undefined when the configured id is not an offering of this kiosk', () => {
+    expect(resolveFallbackServicePointId('SP-MISSING', offerings)).toBeUndefined()
+  })
+
+  it('trims the configured id before matching', () => {
+    expect(resolveFallbackServicePointId(' SP-B ', offerings)).toBe('SP-B')
+  })
 })
 ```
 
-- [ ] **Step 2: Run the focused API-client test and verify it fails**
+`offerings` already contains only active, mapped Service Points, so an "inactive" assignment is covered by the `SP-MISSING` case: it simply is not an offering.
 
-Run: `pnpm --filter @aq/api-client exec vitest run src/__tests__/his.spec.ts`
+- [ ] **Step 2: Run the resolver tests and verify they fail**
 
-Expected: FAIL because the HIS API has no `getRegistrationPrintData` method.
+Run:
 
-- [ ] **Step 3: Implement validation and mapping**
+```text
+pnpm --filter kiosk-web exec vitest run src/lib/__tests__/fallbackServicePoint.spec.ts
+```
 
-Add a private response schema in `his.ts` for only the required fields, import `registrationPrintDataSchema`/`RegistrationPrintData`, call `client.getJson('Reg/{id}', responseSchema)`, and map to the focused type. The Zod schema must reject missing `noAntrian` instead of converting it to an empty value.
+Expected: FAIL because the module does not exist.
 
-- [ ] **Step 4: Run the focused API-client test and verify it passes**
+- [ ] **Step 3: Implement the minimal pure helper**
 
-Run: `pnpm --filter @aq/api-client exec vitest run src/__tests__/his.spec.ts`
+```ts
+import type { AdmissionServicePoint } from '@aq/shared-types'
+
+export function resolveFallbackServicePointId(
+  configuredId: string | undefined,
+  offerings: readonly AdmissionServicePoint[],
+): string | undefined {
+  const normalizedId = configuredId?.trim()
+  if (!normalizedId) return undefined
+
+  return offerings.some((item) => item.servicePointId === normalizedId)
+    ? normalizedId
+    : undefined
+}
+```
+
+The helper must not call an API, mutate `offerings`, or implement a second Service Point lookup.
+
+- [ ] **Step 4: Run the resolver tests**
+
+Run:
+
+```text
+pnpm --filter kiosk-web exec vitest run src/lib/__tests__/fallbackServicePoint.spec.ts
+```
 
 Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add packages/api-client/src/his.ts packages/api-client/src/__tests__/his.spec.ts
-git commit -m "feat(api-client): read registration print details"
-```
 

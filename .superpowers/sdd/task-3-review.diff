@@ -1,21 +1,338 @@
-apps/display-web/src/views/MissingScreenPicker.vue | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+=== COMMITS 05f9b3c..fa06088 ===
+fa06088 feat(kiosk-web): mark recommended service point on booking failure
+
+=== DIFF STAT ===
+apps/kiosk-web/src/views/KioskPage.vue             |  9 ++++++
+ apps/kiosk-web/src/views/steps/FailureStep.vue     |  9 ++++++
+ .../src/views/steps/__tests__/FailureStep.spec.ts  | 35 ++++++++++++++++++++++
+ 3 files changed, 53 insertions(+)
+
+=== FULL DIFF ===
+apps/kiosk-web/src/views/KioskPage.vue             |  9 ++++++
+ apps/kiosk-web/src/views/steps/FailureStep.vue     |  9 ++++++
+ .../src/views/steps/__tests__/FailureStep.spec.ts  | 35 ++++++++++++++++++++++
+ 3 files changed, 53 insertions(+)
+
+diff --git a/apps/kiosk-web/src/views/KioskPage.vue b/apps/kiosk-web/src/views/KioskPage.vue
+index f398684..c25a3c0 100644
+--- a/apps/kiosk-web/src/views/KioskPage.vue
++++ b/apps/kiosk-web/src/views/KioskPage.vue
+@@ -6,20 +6,21 @@ import { DeviceConfigInvalidError, DeviceConfigNotFoundError } from '@aq/device-
+ import { mapBackendErrorToUserMessage } from '@aq/api-client'
+ import {
+   getAdmissionQueueApi,
+   getDeviceConfigProvider,
+   getHisApi,
+   getJetliApi,
+   getServiceCatalog,
+ } from '../infrastructure'
+ import { configService } from '@aq/app-config'
+ import { intersectOfferings } from '../lib/offerings'
++import { resolveFallbackServicePointId } from '../lib/fallbackServicePoint'
+ import { createBiometricClient } from '../lib/biometric'
+ import { scanQrFromCamera } from '../lib/qrScanner'
+ import { useKioskIntake } from '../composables/useKioskIntake'
+ import { useKioskPrint } from '../composables/useKioskPrint'
+ import { useKioskRegistration } from '../composables/useKioskRegistration'
+ import { useKioskSelfPrint } from '../composables/useKioskSelfPrint'
+ import type { PatientContextItem } from '@aq/shared-types'
+ import BootErrorPage from './BootErrorPage.vue'
+ import KioskHome from './KioskHome.vue'
+ import KioskHeader from '../components/KioskHeader.vue'
+@@ -102,20 +103,27 @@ const businessDateQuery = useQuery({
+   staleTime: 5 * 60 * 1000,
+ })
+ 
+ const businessDate = computed(() => businessDateQuery.data.value?.businessDate ?? null)
+ 
+ const offerings = computed(() => {
+   if (!deviceConfig.value || !servicePointsQuery.data.value) return []
+   return intersectOfferings(deviceConfig.value, servicePointsQuery.data.value)
+ })
+ 
++const recommendedFallbackServicePointId = computed(() =>
++  resolveFallbackServicePointId(
++    configService.getConfig().fallbackServicePoints?.bookingFailure,
++    offerings.value,
++  ),
++)
++
+ const {
+   pending,
+   errorMessage,
+   errorUncertain,
+   result,
+   lastAttemptServicePointId,
+   canSubmit,
+   submitIntake,
+   retryLast,
+   resetToSelection,
+@@ -539,20 +547,21 @@ const loadingMessage = computed(() => {
+             :print-succeeded="selfPrint.printSucceeded.value"
+             :print-error="selfPrint.printError.value"
+             @reprint="onReprintRegistration"
+             @finish="onHome"
+           />
+           <FailureStep
+             v-else-if="registration.flow.value === 'FAILURE'"
+             :error-context="registration.errorContext.value!"
+             :offerings="offerings"
+             :pending="registration.submitting.value"
++            :recommended-service-point-id="recommendedFallbackServicePointId"
+             @select-service-point="registration.confirmAssistance"
+             @back="onHome"
+           />
+           <AssistanceQueueStep
+             v-else-if="registration.flow.value === 'ASSISTANCE_QUEUE'"
+             :ticket="registration.assistanceTicket.value!"
+             :title="assistanceTitle"
+             :service-point-name="assistanceServicePointName"
+             :print-pending="selfPrint.printPending.value"
+             :print-succeeded="selfPrint.printSucceeded.value"
+diff --git a/apps/kiosk-web/src/views/steps/FailureStep.vue b/apps/kiosk-web/src/views/steps/FailureStep.vue
+index 9c68c10..514590e 100644
+--- a/apps/kiosk-web/src/views/steps/FailureStep.vue
++++ b/apps/kiosk-web/src/views/steps/FailureStep.vue
+@@ -1,19 +1,20 @@
+ <script setup lang="ts">
+ import type { AdmissionServicePoint } from '@aq/shared-types'
+ import type { FailureContext } from '../../composables/useKioskRegistration'
+ import { getFailureMessage } from '../../lib/failureCode'
+ 
+ defineProps<{
+   errorContext: FailureContext
+   offerings: AdmissionServicePoint[]
+   pending: boolean
++  recommendedServicePointId?: string
+ }>()
+ defineEmits<{
+   selectServicePoint: [servicePointId: string]
+   back: []
+ }>()
+ 
+ function isBpjs(sp: AdmissionServicePoint): boolean {
+   const name = (sp.displayName || '').toLowerCase()
+   const id = (sp.servicePointId || '').toLowerCase()
+   return name.includes('bpjs') || name.includes('jkn') || id.includes('bpjs') || id.includes('jkn')
+@@ -124,20 +125,21 @@ function getDisplayMessage(ctx: FailureContext): string {
+ 
+       <!-- Choose Counter Grid -->
+       <div class="kiosk-grid-2x2" style="width: 100%; padding-bottom: 24px;">
+         <button
+           v-for="sp in offerings"
+           :key="sp.servicePointId"
+           type="button"
+           class="radio-card"
+           :disabled="pending"
+           :data-testid="`assist-${sp.servicePointId}`"
++          :data-recommended="sp.servicePointId === recommendedServicePointId ? 'true' : undefined"
+           @click="$emit('selectServicePoint', sp.servicePointId)"
+           style="min-height: 88px;"
+         >
+           <!-- Card Icon -->
+           <div
+             class="radio-card-icon"
+             :style="{
+               background: isBpjs(sp) ? 'var(--green-soft)' : 'var(--brand-soft)',
+               color: isBpjs(sp) ? 'var(--green-strong)' : 'var(--brand-strong)'
+             }"
+@@ -152,20 +154,27 @@ function getDisplayMessage(ctx: FailureContext): string {
+             <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+               <circle cx="12" cy="7" r="4" />
+             </svg>
+           </div>
+ 
+           <!-- Card Content (Labels) -->
+           <div class="radio-card-content">
+             <h4 class="radio-card-title">{{ sp.displayName }}</h4>
+             <p class="radio-card-subtitle">{{ sp.queuePrefix }} - {{ sp.displayName }}</p>
++            <span
++              v-if="sp.servicePointId === recommendedServicePointId"
++              class="recommended-badge"
++              style="display:inline-block;margin-top:4px;background:var(--brand-soft);color:var(--brand-strong);padding:2px 10px;border-radius:999px;font-weight:700;font-size:0.8rem;"
++            >
++              Rekomendasi
++            </span>
+           </div>
+ 
+           <!-- Select Arrow -->
+           <div
+             class="select-arrow"
+             :style="{
+               background: isBpjs(sp) ? 'var(--green-soft)' : '',
+               color: isBpjs(sp) ? 'var(--green-strong)' : ''
+             }"
+           >
+diff --git a/apps/kiosk-web/src/views/steps/__tests__/FailureStep.spec.ts b/apps/kiosk-web/src/views/steps/__tests__/FailureStep.spec.ts
+new file mode 100644
+index 0000000..eda556e
+--- /dev/null
++++ b/apps/kiosk-web/src/views/steps/__tests__/FailureStep.spec.ts
+@@ -0,0 +1,35 @@
++import { describe, expect, it } from 'vitest'
++import { mount } from '@vue/test-utils'
++import type { AdmissionServicePoint } from '@aq/shared-types'
++import FailureStep from '../FailureStep.vue'
++import type { FailureContext } from '../../../composables/useKioskRegistration'
++
++const offerings: AdmissionServicePoint[] = [
++  { servicePointId: 'SP-A', displayName: 'Admisi Umum', queuePrefix: 'A', status: 'Active' },
++  { servicePointId: 'SP-B', displayName: 'Admisi BPJS', queuePrefix: 'B', status: 'Active' },
++]
++
++const errorContext: FailureContext = { code: 'BACKEND_ERROR', message: 'gagal' }
++
++function mountStep(props: { recommendedServicePointId?: string } = {}) {
++  return mount(FailureStep, {
++    props: { errorContext, offerings, pending: false, ...props },
++  })
++}
++
++describe('FailureStep recommended service point', () => {
++  it('marks the recommended card and does not auto-emit', () => {
++    const wrapper = mountStep({ recommendedServicePointId: 'SP-B' })
++    const recommended = wrapper.findAll('[data-recommended="true"]')
++
++    expect(recommended).toHaveLength(1)
++    expect(recommended[0].attributes('data-testid')).toBe('assist-SP-B')
++    expect(wrapper.emitted('selectServicePoint')).toBeUndefined()
++  })
++
++  it('marks no card when no recommendation is given', () => {
++    const wrapper = mountStep()
++
++    expect(wrapper.findAll('[data-recommended="true"]')).toHaveLength(0)
++  })
++})
 
 --- Changes ---
 
-apps/display-web/src/views/MissingScreenPicker.vue
-  @@ -25,7 +25,7 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
-  -      <p class="subtitle">Silakan pilih salah satu screen aktif dari devices.json untuk mulai menampilkan antrean admisi.</p>
-  +      <p class="subtitle">Silakan pilih salah satu screen aktif untuk mulai menampilkan antrean admisi.</p>
-       </div>
+apps/kiosk-web/src/views/KioskPage.vue
+  @@ -6,20 +6,21 @@ import { DeviceConfigInvalidError, DeviceConfigNotFoundError } from '@aq/device-
+  +import { resolveFallbackServicePointId } from '../lib/fallbackServicePoint'
+   import { createBiometricClient } from '../lib/biometric'
+   import { scanQrFromCamera } from '../lib/qrScanner'
+   import { useKioskIntake } from '../composables/useKioskIntake'
+   import { useKioskPrint } from '../composables/useKioskPrint'
+   import { useKioskRegistration } from '../composables/useKioskRegistration'
+   import { useKioskSelfPrint } from '../composables/useKioskSelfPrint'
+   import type { PatientContextItem } from '@aq/shared-types'
+   import BootErrorPage from './BootErrorPage.vue'
+   import KioskHome from './KioskHome.vue'
+   import KioskHeader from '../components/KioskHeader.vue'
+  @@ -102,20 +103,27 @@ const businessDateQuery = useQuery({
+  +const recommendedFallbackServicePointId = computed(() =>
+  +  resolveFallbackServicePointId(
+  +    configService.getConfig().fallbackServicePoints?.bookingFailure,
+  +    offerings.value,
+  +  ),
+  +)
+  +
+   const {
+     pending,
+     errorMessage,
+     errorUncertain,
+     result,
+     lastAttemptServicePointId,
+     canSubmit,
+     submitIntake,
+     retryLast,
+     resetToSelection,
+  @@ -539,20 +547,21 @@ const loadingMessage = computed(() => {
+  +            :recommended-service-point-id="recommendedFallbackServicePointId"
+               @select-service-point="registration.confirmAssistance"
+               @back="onHome"
+             />
+             <AssistanceQueueStep
+               v-else-if="registration.flow.value === 'ASSISTANCE_QUEUE'"
+               :ticket="registration.assistanceTicket.value!"
+               :title="assistanceTitle"
+               :service-point-name="assistanceServicePointName"
+               :print-pending="selfPrint.printPending.value"
+               :print-succeeded="selfPrint.printSucceeded.value"
+  +9 -0
+
+apps/kiosk-web/src/views/steps/FailureStep.vue
+  @@ -1,19 +1,20 @@
+  +  recommendedServicePointId?: string
+   }>()
+   defineEmits<{
+     selectServicePoint: [servicePointId: string]
+     back: []
+   }>()
    
-       <div v-if="status === 'loading'" class="loading-state">
-  @@ -41,8 +41,8 @@ const empty = computed(() => status.value === 'ok' && screenIds.value.length ===
-  -        Tidak ada entry screen display yang terdaftar di <code>devices.json</code>.
-  -        Pastikan Anda telah menambahkan entry dengan <code>role: 'display'</code> terlebih dahulu.
-  +        Tidak ada screen display yang terdaftar di sistem.
-  +        Pastikan admin telah mendaftarkan screen display melalui halaman konfigurasi.
-         </p>
-       </div>
+   function isBpjs(sp: AdmissionServicePoint): boolean {
+     const name = (sp.displayName || '').toLowerCase()
+     const id = (sp.servicePointId || '').toLowerCase()
+     return name.includes('bpjs') || name.includes('jkn') || id.includes('bpjs') || id.includes('jkn')
+  @@ -124,20 +125,21 @@ function getDisplayMessage(ctx: FailureContext): string {
+  +          :data-recommended="sp.servicePointId === recommendedServicePointId ? 'true' : undefined"
+             @click="$emit('selectServicePoint', sp.servicePointId)"
+             style="min-height: 88px;"
+           >
+             <!-- Card Icon -->
+             <div
+               class="radio-card-icon"
+               :style="{
+                 background: isBpjs(sp) ? 'var(--green-soft)' : 'var(--brand-soft)',
+                 color: isBpjs(sp) ? 'var(--green-strong)' : 'var(--brand-strong)'
+               }"
+  @@ -152,20 +154,27 @@ function getDisplayMessage(ctx: FailureContext): string {
+  +            <span
+  +              v-if="sp.servicePointId === recommendedServicePointId"
+  +              class="recommended-badge"
+  +              style="display:inline-block;margin-top:4px;background:var(--brand-soft);color:var(--brand-strong);padding:2px 10px;border-radius:999px;font-weight:700;font-size:0.8rem;"
+  +            >
+  +              Rekomendasi
+  +            </span>
+             </div>
    
-  +3 -3
+             <!-- Select Arrow -->
+             <div
+               class="select-arrow"
+               :style="{
+                 background: isBpjs(sp) ? 'var(--green-soft)' : '',
+                 color: isBpjs(sp) ? 'var(--green-strong)' : ''
+               }"
+             >
+  +9 -0
+
+apps/kiosk-web/src/views/steps/__tests__/FailureStep.spec.ts
+  @@ -0,0 +1,35 @@
+  +import { describe, expect, it } from 'vitest'
+  +import { mount } from '@vue/test-utils'
+  +import type { AdmissionServicePoint } from '@aq/shared-types'
+  +import FailureStep from '../FailureStep.vue'
+  +import type { FailureContext } from '../../../composables/useKioskRegistration'
+  +
+  +const offerings: AdmissionServicePoint[] = [
+  +  { servicePointId: 'SP-A', displayName: 'Admisi Umum', queuePrefix: 'A', status: 'Active' },
+  +  { servicePointId: 'SP-B', displayName: 'Admisi BPJS', queuePrefix: 'B', status: 'Active' },
+  +]
+  +
+  +const errorContext: FailureContext = { code: 'BACKEND_ERROR', message: 'gagal' }
+  +
+  +function mountStep(props: { recommendedServicePointId?: string } = {}) {
+  +  return mount(FailureStep, {
+  +    props: { errorContext, offerings, pending: false, ...props },
+  +  })
+  +}
+  +
+  +describe('FailureStep recommended service point', () => {
+  +  it('marks the recommended card and does not auto-emit', () => {
+  +    const wrapper = mountStep({ recommendedServicePointId: 'SP-B' })
+  +    const recommended = wrapper.findAll('[data-recommended="true"]')
+  +
+  +    expect(recommended).toHaveLength(1)
+  +    expect(recommended[0].attributes('data-testid')).toBe('assist-SP-B')
+  +    expect(wrapper.emitted('selectServicePoint')).toBeUndefined()
+  +  })
+  +
+  +  it('marks no card when no recommendation is given', () => {
+  +    const wrapper = mountStep()
+  +
+  +    expect(wrapper.findAll('[data-recommended="true"]')).toHaveLength(0)
+  +  })
+  +})
+  +35 -0

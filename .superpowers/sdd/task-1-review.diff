@@ -1,13 +1,198 @@
-packages/api-client/src/configuration.ts | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+=== COMMITS dfe57b6..1e586ec ===
+1e586ec feat(app-config): add fallbackServicePoints.bookingFailure config con...
+
+=== DIFF STAT ===
+apps/kiosk-web/public/global_config.json |  5 ++++-
+ packages/app-config/src/index.spec.ts    | 24 ++++++++++++++++++++++++
+ packages/app-config/src/index.ts         | 11 +++++++++++
+ 3 files changed, 39 insertions(+), 1 deletion(-)
+
+=== FULL DIFF ===
+apps/kiosk-web/public/global_config.json |  5 ++++-
+ packages/app-config/src/index.spec.ts    | 24 ++++++++++++++++++++++++
+ packages/app-config/src/index.ts         | 11 +++++++++++
+ 3 files changed, 39 insertions(+), 1 deletion(-)
+
+diff --git a/apps/kiosk-web/public/global_config.json b/apps/kiosk-web/public/global_config.json
+index 2208279..ae8cafe 100644
+--- a/apps/kiosk-web/public/global_config.json
++++ b/apps/kiosk-web/public/global_config.json
+@@ -23,12 +23,15 @@
+   ],
+   "branding": {
+     "name": "RS Mekarsari",
+     "address": "",
+     "phone": "",
+     "taglineId": "Melayani dengan hati, sehat untuk negeri",
+     "taglineEn": "Serving with heart, healthy for the nation",
+     "timeZoneLabel": "WIB"
+   },
+   "enablePatientLabelPrint": true,
+-  "theme": "clinical-blue"
++  "theme": "clinical-blue",
++  "fallbackServicePoints": {
++    "bookingFailure": ""
++  }
+ }
+diff --git a/packages/app-config/src/index.spec.ts b/packages/app-config/src/index.spec.ts
+index 09a9892..b70d622 100644
+--- a/packages/app-config/src/index.spec.ts
++++ b/packages/app-config/src/index.spec.ts
+@@ -28,11 +28,35 @@ describe('appConfigSchema', () => {
+     expect(parsed.mediaInfoDir).toBeUndefined()
+   })
+ 
+   it('accepts enablePatientLabelPrint boolean property', () => {
+     const parsed = appConfigSchema.parse({
+       bilregApiBase: 'http://localhost:5000/api',
+       enablePatientLabelPrint: true,
+     })
+     expect(parsed.enablePatientLabelPrint).toBe(true)
+   })
++
++  it('accepts fallbackServicePoints.bookingFailure', () => {
++    const parsed = appConfigSchema.parse({
++      bilregApiBase: 'http://localhost:5000/api',
++      fallbackServicePoints: { bookingFailure: 'SP-ADMISI' },
++    })
++
++    expect(parsed.fallbackServicePoints?.bookingFailure).toBe('SP-ADMISI')
++  })
++
++  it('normalizes an empty bookingFailure assignment to undefined', () => {
++    const parsed = appConfigSchema.parse({
++      bilregApiBase: 'http://localhost:5000/api',
++      fallbackServicePoints: { bookingFailure: '' },
++    })
++
++    expect(parsed.fallbackServicePoints?.bookingFailure).toBeUndefined()
++  })
++
++  it('keeps fallbackServicePoints optional', () => {
++    const parsed = appConfigSchema.parse({ bilregApiBase: 'http://localhost:5000/api' })
++
++    expect(parsed.fallbackServicePoints).toBeUndefined()
++  })
+ })
+diff --git a/packages/app-config/src/index.ts b/packages/app-config/src/index.ts
+index 6a88b9f..954ac40 100644
+--- a/packages/app-config/src/index.ts
++++ b/packages/app-config/src/index.ts
+@@ -6,30 +6,41 @@ export const mappingLayananKarcisSchema = z.object({
+   name: z.string().optional(),
+ })
+ 
+ export const mappingJmnLayananKarcisSchema = z.object({
+   tipeJaminanId: z.string(),
+   layananId: z.string().optional(),
+   karcisId: z.string(),
+   name: z.string().optional(),
+ })
+ 
++export const fallbackServicePointsSchema = z.object({
++  bookingFailure: z
++    .string()
++    .trim()
++    .optional()
++    .transform((value) => (value ? value : undefined)),
++})
++
++export type FallbackServicePoints = z.infer<typeof fallbackServicePointsSchema>
++
+ export const appConfigSchema = z.object({
+   bilregApiBase: z.string().min(1, 'bilregApiBase must not be empty'),
+   bilregApiHubBase: z.string().optional(),
+   jetliApiBase: z.string().optional(),
+   mediaInfoDir: z.string().optional(),
+   kioskDefaultKarcisId: z.string().optional(),
+   mappingLayananKarcis: z.array(mappingLayananKarcisSchema).optional(),
+   mappingJmnLayananKarcis: z.array(mappingJmnLayananKarcisSchema).optional(),
+   enablePatientLabelPrint: z.boolean().optional(),
+   theme: z.string().optional(),
++  fallbackServicePoints: fallbackServicePointsSchema.optional(),
+ })
+ 
+ export type AppConfig = z.infer<typeof appConfigSchema>
+ 
+ class ConfigService {
+   private config: AppConfig | null = null
+ 
+   async initialize(baseUrl: string = '/'): Promise<AppConfig> {
+     // Determine the base path robustly, using Vite's import.meta.env.BASE_URL if provided
+     const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
 
 --- Changes ---
 
-packages/api-client/src/configuration.ts
-  @@ -335,7 +335,7 @@ export function createRuntimeDeviceApi(client: AdmissionQueueClient) {
-  -      return client.getJson(
-  +      return client.getPublicJson(
-           "v1/admission-queue/configuration/kiosks",
-           kiosksSchema,
-         );
-  +1 -1
+apps/kiosk-web/public/global_config.json
+  @@ -23,12 +23,15 @@
+  -  "theme": "clinical-blue"
+  +  "theme": "clinical-blue",
+  +  "fallbackServicePoints": {
+  +    "bookingFailure": ""
+  +  }
+   }
+  +4 -1
+
+packages/app-config/src/index.spec.ts
+  @@ -28,11 +28,35 @@ describe('appConfigSchema', () => {
+  +
+  +  it('accepts fallbackServicePoints.bookingFailure', () => {
+  +    const parsed = appConfigSchema.parse({
+  +      bilregApiBase: 'http://localhost:5000/api',
+  +      fallbackServicePoints: { bookingFailure: 'SP-ADMISI' },
+  +    })
+  +
+  +    expect(parsed.fallbackServicePoints?.bookingFailure).toBe('SP-ADMISI')
+  +  })
+  +
+  +  it('normalizes an empty bookingFailure assignment to undefined', () => {
+  +    const parsed = appConfigSchema.parse({
+  +      bilregApiBase: 'http://localhost:5000/api',
+  +      fallbackServicePoints: { bookingFailure: '' },
+  +    })
+  +
+  +    expect(parsed.fallbackServicePoints?.bookingFailure).toBeUndefined()
+  +  })
+  +
+  +  it('keeps fallbackServicePoints optional', () => {
+  +    const parsed = appConfigSchema.parse({ bilregApiBase: 'http://localhost:5000/api' })
+  +
+  +    expect(parsed.fallbackServicePoints).toBeUndefined()
+  +  })
+   })
+  +24 -0
+
+packages/app-config/src/index.ts
+  @@ -6,30 +6,41 @@ export const mappingLayananKarcisSchema = z.object({
+  +export const fallbackServicePointsSchema = z.object({
+  +  bookingFailure: z
+  +    .string()
+  +    .trim()
+  +    .optional()
+  +    .transform((value) => (value ? value : undefined)),
+  +})
+  +
+  +export type FallbackServicePoints = z.infer<typeof fallbackServicePointsSchema>
+  +
+   export const appConfigSchema = z.object({
+     bilregApiBase: z.string().min(1, 'bilregApiBase must not be empty'),
+     bilregApiHubBase: z.string().optional(),
+     jetliApiBase: z.string().optional(),
+     mediaInfoDir: z.string().optional(),
+     kioskDefaultKarcisId: z.string().optional(),
+     mappingLayananKarcis: z.array(mappingLayananKarcisSchema).optional(),
+     mappingJmnLayananKarcis: z.array(mappingJmnLayananKarcisSchema).optional(),
+     enablePatientLabelPrint: z.boolean().optional(),
+     theme: z.string().optional(),
+  +  fallbackServicePoints: fallbackServicePointsSchema.optional(),
+   })
+   
+   export type AppConfig = z.infer<typeof appConfigSchema>
+   
+   class ConfigService {
+     private config: AppConfig | null = null
+   
+     async initialize(baseUrl: string = '/'): Promise<AppConfig> {
+       // Determine the base path robustly, using Vite's import.meta.env.BASE_URL if provided
+       const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+  +11 -0

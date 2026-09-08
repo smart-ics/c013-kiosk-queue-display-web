@@ -1,46 +1,75 @@
-# Task 4 Report: Route Existing Reg IDs In The Registration Composable
+# Task 4 Report: Add Service Point Master CRUD to `config-web`
 
-## Status: DONE_WITH_CONCERNS
+**Status:** DONE
+**Branch:** `feat/service-point-fallback`
+**Commit:** `19f97d8` — `feat(config-web): add service point master CRUD`
 
-## What was implemented
+## What I implemented
 
-In `apps/kiosk-web/src/composables/useKioskRegistration.ts`:
+1. **API client** (`packages/api-client/src/admissionQueue.ts`)
+   - `listAllServicePoints()` — GET `v1/admission-queue/service-points` with `activeOnly=false`.
+   - `upsertServicePoint(servicePointId, { displayName, queuePrefix, active })` — PUT `v1/admission-queue/service-points/{id}` with the JSON body, validated against `admissionServicePointSchema`. Matched the file's semicolon formatting style.
 
-1. Extended `KioskRegistrationDeps` with required `getRegistrationPrintData(regId: string): Promise<RegistrationPrintData>`.
-2. Added state `registrationReprintData = ref<RegistrationPrintData | null>(null)`; cleared in `goHome()` and at the start of `submitBookingKeyword`.
-3. Added `reprintExistingRegistration()` — no-ops when the ref is null; otherwise builds `RegistrationPrintContext` exactly as specified (`{ result: { regId, noAntrian }, pasienName, pasienId, tglLahir, tipeJaminanName, noSep, serviceName, dokterName }`) and calls `deps.printRegistration(ctx)`.
-4. In `searchPatientContextFor`, AFTER obtaining the result and only when `isCanonicalRegistrationIdKeyword(keyword)`:
-   - exact matches from `result.registrations.items` where `item.registrationId === keyword`;
-   - if zero items matches and `bestMatch.kind === 'Registration'` with `bestMatch.registrationId === keyword`, the bestMatch counts as the single exact match;
-   - exactly one match → `await deps.getRegistrationPrintData(keyword)`, assign `registrationReprintData.value`, `transition('REGISTRATION_REPRINT')`, return;
-   - more than one → `setFailure('UNKNOWN_ERROR', 'Ditemukan lebih dari satu registrasi. Hubungi petugas.')`, return;
-   - zero → falls through to the existing patient-context / BOOKING_NOT_FOUND behavior unchanged.
-   - `getRegistrationPrintData` rejections are caught by the existing catch → `setFailure`; never enters REGISTRATION_REPRINT with partial data.
-   - `bestMatch` Booking/Patient are rejected as direct-reprint candidates (existing behavior preserved).
-5. `registerBooking` / `registerWalkin` / `printRegistration` are never called during lookup.
-6. Existing `reprintRegistration()` for REGISTRATION_SUCCESS left untouched and separate.
+2. **Page** (`apps/config-web/src/views/ServicePointsPage.vue`, modeled on `KiosksPage.vue`)
+   - `useQuery(['config-service-points'])` → `getAdmissionQueueApi().listAllServicePoints()`.
+   - Table columns: `servicePointId`, `displayName`, `queuePrefix`, status badge (`Active`/`Retired`, retired uses `badge inactive`), actions.
+   - Create form: `servicePointId` + `displayName` + `queuePrefix` + active select (default true).
+   - Edit Active: `displayName`/`queuePrefix` only, upserts with `active: true`.
+   - Edit Retired: `displayName`/`queuePrefix` only, upserts with `active: false`, shows notice "tidak dapat diaktifkan kembali melalui aplikasi ini".
+   - Row actions: Active rows get Edit + `Nonaktifkan` (upsert `active:false`); Retired rows get Edit + muted cannot-reactivate note (no reactivate action).
+   - `queuePrefix` client validation: `required`, `maxlength="1"`, `pattern="[A-Z]"`, `title` hint; API/server errors surface in the `.error` area.
+   - On save success: invalidate `['config-service-points']` and reset the form.
+   - No reference to `fallbackServicePoints` or `global_config.json`.
 
-Tests: added the brief's Step 1 tests verbatim, plus the `bestMatch` Registration-as-exact-ID case, bestMatch Booking rejection, bestMatch Patient rejection, a `reprintExistingRegistration` print/no-op test, and a `goHome` clears-reprint-data test. Added fixtures `registrationContextResponse`, `multipleRegistrationContextResponse`, `registrationPrintData`, and a default `getRegistrationPrintData` mock in `makeDeps` (the only `KioskRegistrationDeps` factory in the file; `makeContextDeps` delegates to it).
+3. **Route + nav**
+   - `router.ts`: child route `{ path: 'service-points', name: 'service-points', component: ServicePointsPage }`.
+   - `AppShell.vue`: `<RouterLink :to="{ name: 'service-points' }">Service Point</RouterLink>` in `.shell-nav`.
 
-## Commands run and observed results
+## Tests
 
-- `pnpm --filter kiosk-web exec vitest run src/composables/__tests__/useKioskRegistration.spec.ts` (pre-implementation, Step 2): **6 failed / 40 passed** (46 total) — failures were exactly the new reprint-routing tests (dep/state/transition missing), as expected.
-- `pnpm --filter kiosk-web exec vitest run src/composables/__tests__/useKioskRegistration.spec.ts` (post-implementation, Step 5): **46 passed** (1 file), all existing booking/walk-in/patient-context tests included.
-- `pnpm --filter kiosk-web exec vue-tsc -p tsconfig.app.json --noEmit`: **clean (no output)**.
-- Re-ran the vitest suite after the typecheck fix: **46 passed**.
+- **api-client** (`packages/api-client/src/__tests__/admissionQueue.spec.ts`) added:
+  - `upsertServicePoint` sends `PUT` to `/v1/admission-queue/service-points/SP-ADMISI` with body `{ displayName, queuePrefix, active }`.
+  - `listAllServicePoints` requests `activeOnly=false`.
+- **config-web** (`apps/config-web/src/views/__tests__/ServicePointsPage.spec.ts`) added (7 tests), mocking `@/infrastructure` + `VueQueryPlugin`:
+  - Active and retired rows both render.
+  - Create submits the expected upsert payload (`active: true`).
+  - `Nonaktifkan` on an Active row submits `active: false`.
+  - Retired rows show the cannot-reactivate note and no `Nonaktifkan` action.
+  - Editing an Active row submits `active: true`.
+  - Editing a Retired row submits `active: false` and shows the notice.
+  - Page HTML contains no `fallbackServicePoints`.
 
-## Commits created
+## Results
 
-- `729a5e3` — `feat(kiosk-web): route existing registration ids to reprint` (3 files: `useKioskRegistration.ts`, `useKioskRegistration.spec.ts`, `KioskPage.vue`)
+- `pnpm --filter @aq/api-client test` → **29 passed** (was 27; +2).
+- `pnpm --filter config-web exec vitest run src/views/__tests__/ServicePointsPage.spec.ts` → **7 passed**.
+- `pnpm --filter config-web test` → **12 passed** (4 files).
+- `pnpm --filter config-web run typecheck` → clean.
+- `pnpm --filter @aq/api-client run typecheck` → clean.
 
-## Concerns / deviations
+## TDD evidence
 
-1. **Modified `apps/kiosk-web/src/views/KioskPage.vue` (1 line)** — outside the brief's listed files. Because `getRegistrationPrintData` is a required dep on `KioskRegistrationDeps`, the real consumer `KioskPage.vue` failed `vue-tsc` without wiring it. The API already exists as `getHisApi().getRegistrationPrintData(regId)` (committed in `5bae1c8`). Added `getRegistrationPrintData: (regId) => getHisApi().getRegistrationPrintData(regId)` — minimal, necessary wiring for the required typecheck gate. Included in the commit; the commit message matches the brief exactly.
-2. The working-tree in-flight normalization work in `useKioskRegistration.ts` (task 1–3 context: `REGISTRATION_ID_INPUT_PATTERN`, `normalizeRegistrationIdKeyword`, `isCanonicalRegistrationIdKeyword`, the canonical-ID branch in `submitBookingKeyword`) was preserved untouched and committed together with this feature, as instructed.
-3. One test assertion required `vi.mocked(deps.printRegistration).mockClear()` because `makeDeps` is typed as `KioskRegistrationDeps` (plain function types) rather than `Mock`. Runtime behavior unchanged.
+- **RED:** New api-client tests failed with `api.upsertServicePoint is not a function` / `listAllServicePoints is not a function` before implementation (first run also caught a test-fixture bug: mocked PUT response `data: null` didn't satisfy the schema; fixed the fixture to return a real service-point object).
+- **GREEN:** After implementing the two client methods, api-client suite passed. Page tests written against the new page passed immediately on first run (page was authored to spec; a RED snapshot was not separately captured for the SFC since the spec + implementation were written together).
 
-## Files changed
+## Files changed (committed)
 
-- `apps/kiosk-web/src/composables/useKioskRegistration.ts`
-- `apps/kiosk-web/src/composables/__tests__/useKioskRegistration.spec.ts`
-- `apps/kiosk-web/src/views/KioskPage.vue` (wiring, see concern 1)
+- `packages/api-client/src/admissionQueue.ts`
+- `packages/api-client/src/__tests__/admissionQueue.spec.ts`
+- `apps/config-web/src/views/ServicePointsPage.vue`
+- `apps/config-web/src/router.ts`
+- `apps/config-web/src/views/AppShell.vue`
+- `apps/config-web/src/views/__tests__/ServicePointsPage.spec.ts`
+
+Only these 6 files were staged. `.superpowers/`, `docs/architecture/cetakan/`, `docs/design/*`, and `docs/superpowers/plans/2026-09-07-kiosk-label-version-release.md` were left untouched/unstaged.
+
+## Self-review
+
+- All five brief behaviors implemented; no `fallbackServicePoints`/`global_config.json` anywhere outside the negative assertion in the spec.
+- Tests assert real behavior (row rendering, exact create/edit/retire payloads, no reactivation for retired rows).
+- UI reuses KiosksPage class names (`stack`, `form-grid`, `row-actions`, `table`, `badge`, `secondary`, `danger`, `muted`, `error`) and identical mutation/error patterns.
+- YAGNI: no extra endpoints, no BE changes, no new dependencies; reuses `getAdmissionQueueApi()` and the existing `['config-service-points']` query key (which also refreshes the KiosksPage service-point selector via the same key).
+
+## Concerns
+
+- None blocking. Minor note: invalidation of `['config-service-points']` also triggers a refetch on `KiosksPage`'s service-point checkbox list — this is intentional/desirable (same key), consistent with existing code.

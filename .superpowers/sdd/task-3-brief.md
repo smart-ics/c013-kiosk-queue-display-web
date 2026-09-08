@@ -1,40 +1,121 @@
-### Task 3: Fix Flow Transitions And Receipt Type
+### Task 3: Integrate the Resolver into the Kiosk Failure Flow
 
 **Files:**
-- Modify: `apps/kiosk-web/src/lib/flow.ts`
-- Test: `apps/kiosk-web/src/lib/__tests__/flow.spec.ts`
-- Modify: `apps/kiosk-web/src/lib/registrationReceipt.ts`
-- Test: `apps/kiosk-web/src/lib/__tests__/registrationReceipt.spec.ts`
+- Modify: `apps/kiosk-web/src/views/KioskPage.vue`
+- Modify: `apps/kiosk-web/src/views/steps/FailureStep.vue`
+- Create: `apps/kiosk-web/src/views/steps/__tests__/FailureStep.spec.ts`
 
 **Interfaces:**
-- `canTransition('HOME', 'REGISTRATION_REPRINT')` returns `true`.
-- `REGISTRATION_REPRINT` remains terminal back to `HOME`.
-- `RegistrationReceiptData.noAntrian` is `number`, and rendering uses `String(data.noAntrian)`.
+- Consumes `configService.getConfig().fallbackServicePoints?.bookingFailure`.
+- Produces a `recommendedServicePointId?: string` prop for `FailureStep`; this is a visual recommendation, not an automatic queue submission.
 
-- [ ] **Step 1: Add failing flow and receipt regression tests**
+- [ ] **Step 1: Write the failing FailureStep test**
 
-Add assertions for `HOME -> REGISTRATION_REPRINT` and for a numeric queue number being rendered. Add a regression expectation that the receipt source type does not accept missing queue numbers through the public function signature.
+Create `apps/kiosk-web/src/views/steps/__tests__/FailureStep.spec.ts`:
 
-- [ ] **Step 2: Run focused tests and verify the transition test fails**
+```ts
+import { describe, expect, it } from 'vitest'
+import { mount } from '@vue/test-utils'
+import type { AdmissionServicePoint } from '@aq/shared-types'
+import FailureStep from '../FailureStep.vue'
+import type { FailureContext } from '../../../composables/useKioskRegistration'
 
-Run: `pnpm --filter kiosk-web exec vitest run src/lib/__tests__/flow.spec.ts src/lib/__tests__/registrationReceipt.spec.ts`
+const offerings: AdmissionServicePoint[] = [
+  { servicePointId: 'SP-A', displayName: 'Admisi Umum', queuePrefix: 'A', status: 'Active' },
+  { servicePointId: 'SP-B', displayName: 'Admisi BPJS', queuePrefix: 'B', status: 'Active' },
+]
 
-Expected: flow test FAILS until the HOME transition is added; receipt test exposes the nullable current type if the working-tree relaxation is present.
+const errorContext: FailureContext = { code: 'BACKEND_ERROR', message: 'gagal' }
 
-- [ ] **Step 3: Implement the minimal corrections**
+function mountStep(props: { recommendedServicePointId?: string } = {}) {
+  return mount(FailureStep, {
+    props: { errorContext, offerings, pending: false, ...props },
+  })
+}
 
-Add `REGISTRATION_REPRINT` to `FLOW_TRANSITIONS.HOME`. Remove nullable/optional `noAntrian` from `RegistrationReceiptData` and remove the blank-string fallback in `renderRegistrationReceiptPng`. Do not alter the existing successful-registration print path.
+describe('FailureStep recommended service point', () => {
+  it('marks the recommended card and does not auto-emit', () => {
+    const wrapper = mountStep({ recommendedServicePointId: 'SP-B' })
+    const recommended = wrapper.findAll('[data-recommended="true"]')
 
-- [ ] **Step 4: Run focused tests and verify they pass**
+    expect(recommended).toHaveLength(1)
+    expect(recommended[0].attributes('data-testid')).toBe('assist-SP-B')
+    expect(wrapper.emitted('selectServicePoint')).toBeUndefined()
+  })
 
-Run: `pnpm --filter kiosk-web exec vitest run src/lib/__tests__/flow.spec.ts src/lib/__tests__/registrationReceipt.spec.ts`
+  it('marks no card when no recommendation is given', () => {
+    const wrapper = mountStep()
+
+    expect(wrapper.findAll('[data-recommended="true"]')).toHaveLength(0)
+  })
+})
+```
+
+- [ ] **Step 2: Run the focused test and verify it fails**
+
+Run:
+
+```text
+pnpm --filter kiosk-web exec vitest run src/views/steps/__tests__/FailureStep.spec.ts
+```
+
+Expected: FAIL because `FailureStep` does not yet render a `data-recommended` marker.
+
+- [ ] **Step 3: Resolve the recommendation in `KioskPage.vue`**
+
+Import the helper. Use the existing `offerings` computed value and do not make another Service Point API call:
+
+```ts
+const recommendedFallbackServicePointId = computed(() =>
+  resolveFallbackServicePointId(
+    configService.getConfig().fallbackServicePoints?.bookingFailure,
+    offerings.value,
+  ),
+)
+```
+
+Pass it to `FailureStep`:
+
+```vue
+:recommended-service-point-id="recommendedFallbackServicePointId"
+```
+
+- [ ] **Step 4: Render the recommendation in `FailureStep.vue`**
+
+Add the optional prop to the existing `defineProps` block:
+
+```ts
+recommendedServicePointId?: string
+```
+
+On the assistance card button, mark only the matching card with a stable attribute. Keep the existing click handler unchanged:
+
+```vue
+:data-recommended="sp.servicePointId === recommendedServicePointId ? 'true' : undefined"
+```
+
+Add a visible badge inside the card content so the recommendation is obvious to the kiosk user:
+
+```vue
+<span
+  v-if="sp.servicePointId === recommendedServicePointId"
+  class="recommended-badge"
+  style="display:inline-block;margin-top:4px;background:var(--brand-soft);color:var(--brand-strong);padding:2px 10px;border-radius:999px;font-weight:700;font-size:0.8rem;"
+>
+  Rekomendasi
+</span>
+```
+
+The existing click handler must remain unchanged. The visual marker is the only behavior change; the user still chooses the service point explicitly.
+
+- [ ] **Step 5: Run the focused tests**
+
+Run:
+
+```text
+pnpm --filter kiosk-web exec vitest run src/views/steps/__tests__/FailureStep.spec.ts
+pnpm --filter kiosk-web exec vitest run src/lib/__tests__/fallbackServicePoint.spec.ts
+```
 
 Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add apps/kiosk-web/src/lib/flow.ts apps/kiosk-web/src/lib/__tests__/flow.spec.ts apps/kiosk-web/src/lib/registrationReceipt.ts apps/kiosk-web/src/lib/__tests__/registrationReceipt.spec.ts
-git commit -m "fix(kiosk-web): require queue number for registration receipts"
-```
 

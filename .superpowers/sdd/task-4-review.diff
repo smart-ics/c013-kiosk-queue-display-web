@@ -1,186 +1,902 @@
-.../src/composables/useDisplayScreenList.ts        | 38 +++++++-------------
- apps/kiosk-web/src/composables/useStationList.ts   | 38 +++++++-------------
- packages/device-config/src/deviceList.ts           | 42 ++++++++++++++++++++++
- packages/device-config/src/index.ts                |  1 +
- 4 files changed, 67 insertions(+), 52 deletions(-)
+=== COMMITS fa06088..19f97d8 ===
+19f97d8 feat(config-web): add service point master CRUD
+
+=== DIFF STAT ===
+apps/config-web/src/router.ts                      |   2 +
+ apps/config-web/src/views/AppShell.vue             |   1 +
+ apps/config-web/src/views/ServicePointsPage.vue    | 171 +++++++++++++++++++++
+ .../src/views/__tests__/ServicePointsPage.spec.ts  | 142 +++++++++++++++++
+ .../src/__tests__/admissionQueue.spec.ts           |  67 ++++++++
+ packages/api-client/src/admissionQueue.ts          |  17 ++
+ 6 files changed, 400 insertions(+)
+
+=== FULL DIFF ===
+apps/config-web/src/router.ts                      |   2 +
+ apps/config-web/src/views/AppShell.vue             |   1 +
+ apps/config-web/src/views/ServicePointsPage.vue    | 171 +++++++++++++++++++++
+ .../src/views/__tests__/ServicePointsPage.spec.ts  | 142 +++++++++++++++++
+ .../src/__tests__/admissionQueue.spec.ts           |  67 ++++++++
+ packages/api-client/src/admissionQueue.ts          |  17 ++
+ 6 files changed, 400 insertions(+)
+
+diff --git a/apps/config-web/src/router.ts b/apps/config-web/src/router.ts
+index e7d1286..9bdbc29 100644
+--- a/apps/config-web/src/router.ts
++++ b/apps/config-web/src/router.ts
+@@ -1,19 +1,20 @@
+ import { createRouter, createWebHistory } from 'vue-router'
+ import { getSessionAuth } from './infrastructure'
+ import AppShell from './views/AppShell.vue'
+ import LoginPage from './views/LoginPage.vue'
+ import ForbiddenPage from './views/ForbiddenPage.vue'
+ import SummaryPage from './views/SummaryPage.vue'
+ import WorkstationsPage from './views/WorkstationsPage.vue'
+ import DisplaysPage from './views/DisplaysPage.vue'
+ import KiosksPage from './views/KiosksPage.vue'
++import ServicePointsPage from './views/ServicePointsPage.vue'
+ import SegmentationPage from './views/SegmentationPage.vue'
+ import AuditPage from './views/AuditPage.vue'
+ 
+ export const router = createRouter({
+   history: createWebHistory(import.meta.env.BASE_URL),
+   routes: [
+     {
+       path: '/login',
+       name: 'login',
+       component: LoginPage,
+@@ -26,20 +27,21 @@ export const router = createRouter({
+       meta: { public: true },
+     },
+     {
+       path: '/',
+       component: AppShell,
+       children: [
+         { path: '', name: 'summary', component: SummaryPage },
+         { path: 'workstations', name: 'workstations', component: WorkstationsPage },
+         { path: 'displays', name: 'displays', component: DisplaysPage },
+         { path: 'kiosks', name: 'kiosks', component: KiosksPage },
++        { path: 'service-points', name: 'service-points', component: ServicePointsPage },
+         { path: 'segmentation', name: 'segmentation', component: SegmentationPage },
+         { path: 'audit', name: 'audit', component: AuditPage },
+       ],
+     },
+   ],
+ })
+ 
+ router.beforeEach((to) => {
+   if (to.meta.public) return true
+   if (!getSessionAuth().getToken()) {
+diff --git a/apps/config-web/src/views/AppShell.vue b/apps/config-web/src/views/AppShell.vue
+index 953f838..9599c9a 100644
+--- a/apps/config-web/src/views/AppShell.vue
++++ b/apps/config-web/src/views/AppShell.vue
+@@ -20,20 +20,21 @@ function onLogout() {
+           Manajemen workstation, kiosk, display, dan segmentasi loket
+         </p>
+       </div>
+       <button type="button" class="secondary" @click="onLogout">Keluar</button>
+     </header>
+     <nav class="shell-nav">
+       <RouterLink :to="{ name: 'summary' }">Ringkasan</RouterLink>
+       <RouterLink :to="{ name: 'workstations' }">Workstation</RouterLink>
+       <RouterLink :to="{ name: 'displays' }">Queue Display</RouterLink>
+       <RouterLink :to="{ name: 'kiosks' }">Kiosk</RouterLink>
++      <RouterLink :to="{ name: 'service-points' }">Service Point</RouterLink>
+       <RouterLink :to="{ name: 'segmentation' }">Segmentasi</RouterLink>
+       <RouterLink :to="{ name: 'audit' }">Riwayat</RouterLink>
+     </nav>
+     <main class="shell-main">
+       <div class="panel">
+         <RouterView />
+       </div>
+     </main>
+     <footer class="shell-footer">v{{ version }}</footer>
+   </div>
+diff --git a/apps/config-web/src/views/ServicePointsPage.vue b/apps/config-web/src/views/ServicePointsPage.vue
+new file mode 100644
+index 0000000..42e4fb0
+--- /dev/null
++++ b/apps/config-web/src/views/ServicePointsPage.vue
+@@ -0,0 +1,171 @@
++<script setup lang="ts">
++import { reactive, ref } from 'vue'
++import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
++import type { AdmissionServicePoint } from '@aq/shared-types'
++import { getAdmissionQueueApi } from '@/infrastructure'
++
++const admissionApi = getAdmissionQueueApi()
++const queryClient = useQueryClient()
++const error = ref('')
++const editingId = ref<string | null>(null)
++const editingStatus = ref<AdmissionServicePoint['status']>('Active')
++
++const form = reactive({
++  servicePointId: '',
++  displayName: '',
++  queuePrefix: '',
++  active: true,
++})
++
++const listQuery = useQuery({
++  queryKey: ['config-service-points'],
++  queryFn: () => admissionApi.listAllServicePoints(),
++})
++
++function resetForm() {
++  editingId.value = null
++  editingStatus.value = 'Active'
++  form.servicePointId = ''
++  form.displayName = ''
++  form.queuePrefix = ''
++  form.active = true
++  error.value = ''
++}
++
++function startEdit(row: AdmissionServicePoint) {
++  editingId.value = row.servicePointId
++  editingStatus.value = row.status
++  form.servicePointId = row.servicePointId
++  form.displayName = row.displayName
++  form.queuePrefix = row.queuePrefix
++  form.active = row.status === 'Active'
++  error.value = ''
++}
++
++const saveMutation = useMutation({
++  mutationFn: async () => {
++    if (editingId.value) {
++      return admissionApi.upsertServicePoint(editingId.value, {
++        displayName: form.displayName,
++        queuePrefix: form.queuePrefix,
++        active: editingStatus.value === 'Active',
++      })
++    }
++    return admissionApi.upsertServicePoint(form.servicePointId, {
++      displayName: form.displayName,
++      queuePrefix: form.queuePrefix,
++      active: form.active,
++    })
++  },
++  onSuccess: async () => {
++    await queryClient.invalidateQueries({ queryKey: ['config-service-points'] })
++    resetForm()
++  },
++  onError: (err: Error) => {
++    error.value = err.message
++  },
++})
++
++const retireMutation = useMutation({
++  mutationFn: (row: AdmissionServicePoint) =>
++    admissionApi.upsertServicePoint(row.servicePointId, {
++      displayName: row.displayName,
++      queuePrefix: row.queuePrefix,
++      active: false,
++    }),
++  onSuccess: async () => {
++    await queryClient.invalidateQueries({ queryKey: ['config-service-points'] })
++    resetForm()
++  },
++  onError: (err: Error) => {
++    error.value = err.message
++  },
++})
++</script>
++
++<template>
++  <div class="stack">
++    <div class="row-actions" style="justify-content: space-between">
++      <h2 style="margin: 0">Service Point</h2>
++      <div v-if="!editingId" class="row-actions">
++        <button type="button" class="secondary" @click="resetForm">Batal</button>
++        <button type="button" @click="saveMutation.mutate()">Buat</button>
++      </div>
++    </div>
++
++    <form class="stack" @submit.prevent="saveMutation.mutate()">
++      <div class="form-grid">
++        <label>
++          ServicePointId
++          <input v-model="form.servicePointId" :disabled="!!editingId" required maxlength="50" />
++        </label>
++        <label>
++          Nama
++          <input v-model="form.displayName" required />
++        </label>
++        <label>
++          QueuePrefix (satu huruf)
++          <input
++            v-model="form.queuePrefix"
++            required
++            maxlength="1"
++            pattern="[A-Z]"
++            title="Harus satu huruf kapital AΓÇôZ"
++          />
++        </label>
++        <label v-if="!editingId">
++          Aktif saat create
++          <select v-model="form.active">
++            <option :value="true">Ya</option>
++            <option :value="false">Tidak</option>
++          </select>
++        </label>
++      </div>
++
++      <p v-if="editingId && editingStatus === 'Retired'" class="muted">
++        Service point ini retired dan tidak dapat diaktifkan kembali melalui aplikasi ini.
++      </p>
++
++      <p v-if="error" class="error">{{ error }}</p>
++      <button type="submit" :disabled="saveMutation.isPending.value">
++        {{ editingId ? 'Simpan service point' : 'Buat service point' }}
++      </button>
++    </form>
++
++    <table class="table">
++      <thead>
++        <tr>
++          <th>ServicePointId</th>
++          <th>Nama</th>
++          <th>QueuePrefix</th>
++          <th>Status</th>
++          <th>Aksi</th>
++        </tr>
++      </thead>
++      <tbody>
++        <tr v-for="row in listQuery.data.value ?? []" :key="row.servicePointId">
++          <td><code>{{ row.servicePointId }}</code></td>
++          <td>{{ row.displayName }}</td>
++          <td>{{ row.queuePrefix }}</td>
++          <td>
++            <span class="badge" :class="{ inactive: row.status !== 'Active' }">
++              {{ row.status }}
++            </span>
++          </td>
++          <td class="row-actions">
++            <button type="button" class="secondary" @click="startEdit(row)">Edit</button>
++            <button
++              v-if="row.status === 'Active'"
++              type="button"
++              class="danger"
++              @click="retireMutation.mutate(row)"
++            >
++              Nonaktifkan
++            </button>
++            <span v-else class="muted">tidak dapat diaktifkan kembali melalui aplikasi ini</span>
++          </td>
++        </tr>
++      </tbody>
++    </table>
++  </div>
++</template>
+\ No newline at end of file
+diff --git a/apps/config-web/src/views/__tests__/ServicePointsPage.spec.ts b/apps/config-web/src/views/__tests__/ServicePointsPage.spec.ts
+new file mode 100644
+index 0000000..a3421ee
+--- /dev/null
++++ b/apps/config-web/src/views/__tests__/ServicePointsPage.spec.ts
+@@ -0,0 +1,142 @@
++import { beforeEach, describe, expect, it, vi } from 'vitest'
++import { flushPromises, mount } from '@vue/test-utils'
++import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
++import ServicePointsPage from '../ServicePointsPage.vue'
++
++const apiMocks = vi.hoisted(() => ({
++  listAllServicePoints: vi.fn(),
++  upsertServicePoint: vi.fn(),
++}))
++
++vi.mock('@/infrastructure', () => ({
++  getAdmissionQueueApi: vi.fn(() => ({
++    listAllServicePoints: apiMocks.listAllServicePoints,
++    upsertServicePoint: apiMocks.upsertServicePoint,
++  })),
++}))
++
++const activePoint = {
++  servicePointId: 'SP-ADMISI',
++  displayName: 'Administrasi',
++  queuePrefix: 'A',
++  status: 'Active' as const,
++}
++
++const retiredPoint = {
++  servicePointId: 'SP-RETIRED',
++  displayName: 'Retired Lama',
++  queuePrefix: 'R',
++  status: 'Retired' as const,
++}
++
++beforeEach(() => {
++  apiMocks.listAllServicePoints.mockResolvedValue([activePoint, retiredPoint])
++  apiMocks.upsertServicePoint.mockResolvedValue(activePoint)
++})
++
++function mountPage() {
++  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
++  return mount(ServicePointsPage, {
++    global: { plugins: [[VueQueryPlugin, { queryClient }]] },
++  })
++}
++
++async function submitForm(wrapper: ReturnType<typeof mountPage>) {
++  await wrapper.get('form').trigger('submit')
++  await flushPromises()
++}
++
++describe('ServicePointsPage', () => {
++  it('renders both active and retired service points', async () => {
++    const wrapper = mountPage()
++    await flushPromises()
++
++    expect(wrapper.text()).toContain('SP-ADMISI')
++    expect(wrapper.text()).toContain('Administrasi')
++    expect(wrapper.text()).toContain('SP-RETIRED')
++    expect(wrapper.text()).toContain('Retired Lama')
++    expect(apiMocks.listAllServicePoints).toHaveBeenCalled()
++  })
++
++  it('creates a service point with the expected upsert payload', async () => {
++    const wrapper = mountPage()
++    await flushPromises()
++
++    const inputs = wrapper.findAll('form input')
++    await inputs[0]!.setValue('SP-BARU')
++    await inputs[1]!.setValue('Baru')
++    await inputs[2]!.setValue('B')
++    await submitForm(wrapper)
++
++    expect(apiMocks.upsertServicePoint).toHaveBeenCalledWith('SP-BARU', {
++      displayName: 'Baru',
++      queuePrefix: 'B',
++      active: true,
++    })
++  })
++
++  it('retires an active service point with active:false', async () => {
++    const wrapper = mountPage()
++    await flushPromises()
++
++    const activeRow = wrapper.findAll('tbody tr')[0]!
++    const nonaktifkan = activeRow.findAll('button').find((b) => b.text() === 'Nonaktifkan')!
++    await nonaktifkan.trigger('click')
++    await flushPromises()
++
++    expect(apiMocks.upsertServicePoint).toHaveBeenCalledWith('SP-ADMISI', {
++      displayName: 'Administrasi',
++      queuePrefix: 'A',
++      active: false,
++    })
++  })
++
++  it('does not offer reactivation for retired service points', async () => {
++    const wrapper = mountPage()
++    await flushPromises()
++
++    const retiredRow = wrapper.findAll('tbody tr')[1]!
++    expect(retiredRow.text()).toContain('tidak dapat diaktifkan kembali melalui aplikasi ini')
++    expect(retiredRow.text()).not.toContain('Nonaktifkan')
++  })
++
++  it('editing an active service point keeps active:true', async () => {
++    const wrapper = mountPage()
++    await flushPromises()
++
++    await wrapper.findAll('tbody tr')[0]!.findAll('button')[0]!.trigger('click')
++    const inputs = wrapper.findAll('form input')
++    await inputs[1]!.setValue('Administrasi 2')
++    await submitForm(wrapper)
++
++    expect(apiMocks.upsertServicePoint).toHaveBeenCalledWith('SP-ADMISI', {
++      displayName: 'Administrasi 2',
++      queuePrefix: 'A',
++      active: true,
++    })
++  })
++
++  it('editing a retired service point keeps active:false and shows the notice', async () => {
++    const wrapper = mountPage()
++    await flushPromises()
++
++    await wrapper.findAll('tbody tr')[1]!.findAll('button')[0]!.trigger('click')
++    expect(wrapper.text()).toContain('tidak dapat diaktifkan kembali melalui aplikasi ini')
++    const inputs = wrapper.findAll('form input')
++    await inputs[1]!.setValue('Retired Baru')
++    await submitForm(wrapper)
++
++    expect(apiMocks.upsertServicePoint).toHaveBeenCalledWith('SP-RETIRED', {
++      displayName: 'Retired Baru',
++      queuePrefix: 'R',
++      active: false,
++    })
++  })
++
++  it('has no form control bound to fallbackServicePoints', async () => {
++    const wrapper = mountPage()
++    await flushPromises()
++
++    expect(wrapper.html()).not.toContain('fallbackServicePoints')
++  })
++})
+\ No newline at end of file
+diff --git a/packages/api-client/src/__tests__/admissionQueue.spec.ts b/packages/api-client/src/__tests__/admissionQueue.spec.ts
+index 117d2b3..f3f006d 100644
+--- a/packages/api-client/src/__tests__/admissionQueue.spec.ts
++++ b/packages/api-client/src/__tests__/admissionQueue.spec.ts
+@@ -92,10 +92,77 @@ describe('getCurrentDisplays', () => {
+     )
+     const client = new AdmissionQueueClient({
+       baseUrl: 'http://localhost:5000/api',
+       auth: createAuth(),
+       fetchImpl: fetchImpl as unknown as typeof fetch,
+     })
+ 
+     await expect(createAdmissionQueueApi(client).getCurrentDisplays()).resolves.toEqual([])
+   })
+ })
++
++describe('upsertServicePoint', () => {
++  it('sends a PUT to the service point with the expected body', async () => {
++    const fetchImpl = vi.fn(async () =>
++      new Response(
++        JSON.stringify({
++          status: 'success',
++          data: {
++            servicePointId: 'SP-ADMISI',
++            displayName: 'Administrasi',
++            queuePrefix: 'A',
++            status: 'Active',
++          },
++        }),
++        {
++          status: 200,
++          headers: { 'Content-Type': 'application/json' },
++        },
++      ),
++    )
++    const client = new AdmissionQueueClient({
++      baseUrl: 'http://localhost:5000/api',
++      auth: createAuth(),
++      fetchImpl: fetchImpl as unknown as typeof fetch,
++    })
++    const api = createAdmissionQueueApi(client)
++
++    await api.upsertServicePoint('SP-ADMISI', {
++      displayName: 'Administrasi',
++      queuePrefix: 'A',
++      active: true,
++    })
++
++    const request = fetchImpl.mock.calls[0]?.[1] as RequestInit | undefined
++    expect(request?.method).toBe('PUT')
++    expect(String(fetchImpl.mock.calls[0]?.[0])).toContain(
++      '/v1/admission-queue/service-points/SP-ADMISI',
++    )
++    expect(JSON.parse(String(request?.body))).toEqual({
++      displayName: 'Administrasi',
++      queuePrefix: 'A',
++      active: true,
++    })
++  })
++})
++
++describe('listAllServicePoints', () => {
++  it('requests service points with activeOnly=false', async () => {
++    const fetchImpl = vi.fn(async () =>
++      new Response(JSON.stringify({ status: 'success', data: [] }), {
++        status: 200,
++        headers: { 'Content-Type': 'application/json' },
++      }),
++    )
++    const client = new AdmissionQueueClient({
++      baseUrl: 'http://localhost:5000/api',
++      auth: createAuth(),
++      fetchImpl: fetchImpl as unknown as typeof fetch,
++    })
++
++    await createAdmissionQueueApi(client).listAllServicePoints()
++
++    const url = String(fetchImpl.mock.calls[0]?.[0])
++    expect(url).toContain('v1/admission-queue/service-points')
++    expect(url).toContain('activeOnly=false')
++  })
++})
+diff --git a/packages/api-client/src/admissionQueue.ts b/packages/api-client/src/admissionQueue.ts
+index 350fed5..5047600 100644
+--- a/packages/api-client/src/admissionQueue.ts
++++ b/packages/api-client/src/admissionQueue.ts
+@@ -24,20 +24,37 @@ export function buildAdmissionQueueHubUrl(apiBase: string): string {
+ }
+ 
+ export function createAdmissionQueueApi(client: AdmissionQueueClient) {
+   return {
+     listServicePoints(activeOnly = true): Promise<AdmissionServicePoint[]> {
+       return client.getJson('v1/admission-queue/service-points', servicePointsSchema, {
+         activeOnly,
+       })
+     },
+ 
++    listAllServicePoints(): Promise<AdmissionServicePoint[]> {
++      return client.getJson('v1/admission-queue/service-points', servicePointsSchema, {
++        activeOnly: false,
++      })
++    },
++
++    upsertServicePoint(
++      servicePointId: string,
++      body: { displayName: string; queuePrefix: string; active: boolean },
++    ): Promise<AdmissionServicePoint> {
++      return client.putJson(
++        `v1/admission-queue/service-points/${encodeURIComponent(servicePointId)}`,
++        body,
++        admissionServicePointSchema,
++      )
++    },
++
+     intake(body: IntakeBody): Promise<AdmissionQueueIntakeResponse> {
+       return client.postJson('v1/admission-queue/intake', body, admissionQueueIntakeResponseSchema)
+     },
+ 
+     getCurrentDisplays(loketKey?: string): Promise<CurrentLoketDisplayItem[]> {
+       const query =
+         loketKey !== undefined && loketKey.trim() !== ''
+           ? { loketKey: loketKey.trim() }
+           : undefined
+       return client.getJson('v1/admission-queue/displays/current', currentDisplaysSchema, query)
 
 --- Changes ---
 
-apps/display-web/src/composables/useDisplayScreenList.ts
-  @@ -1,7 +1,8 @@
-  +import { createListFetcher, type DeviceListStatus } from '@aq/device-config'
-   import { getDeviceConfigProvider } from '../infrastructure'
+apps/config-web/src/router.ts
+  @@ -1,19 +1,20 @@
+  +import ServicePointsPage from './views/ServicePointsPage.vue'
+   import SegmentationPage from './views/SegmentationPage.vue'
+   import AuditPage from './views/AuditPage.vue'
    
-  -export type DisplayScreenListStatus = 'idle' | 'loading' | 'ok' | 'error'
-  +export type DisplayScreenListStatus = DeviceListStatus
+   export const router = createRouter({
+     history: createWebHistory(import.meta.env.BASE_URL),
+     routes: [
+       {
+         path: '/login',
+         name: 'login',
+         component: LoginPage,
+  @@ -26,20 +27,21 @@ export const router = createRouter({
+  +        { path: 'service-points', name: 'service-points', component: ServicePointsPage },
+           { path: 'segmentation', name: 'segmentation', component: SegmentationPage },
+           { path: 'audit', name: 'audit', component: AuditPage },
+         ],
+       },
+     ],
+   })
    
-   export interface DisplayScreenListState {
-     status: Ref<DisplayScreenListStatus>
-  @@ -15,10 +16,9 @@ const FALLBACK_ERROR = 'Gagal memuat daftar screen.'
-  -  const status = ref<DisplayScreenListStatus>('idle')
-  +  const status = ref<DisplayScreenListStatus>('loading')
-     const screenIds = ref<string[]>([])
-     const error = ref<string | null>(null)
-  -  let loadId = 0
-   
-     const defaultFetch = async (): Promise<string[]> => {
-       const provider = await getDeviceConfigProvider()
-  @@ -27,36 +27,22 @@ export function useDisplayScreenList(opts?: {
-  -  const run = (): void => {
-  -    const myId = ++loadId
-  -    status.value = 'loading'
-  -    error.value = null
-  -    fetchImpl()
-  -      .then((ids) => {
-  -        if (myId !== loadId) return
-  -        screenIds.value = ids
-  -        status.value = 'ok'
-  -      })
-  -      .catch((err: unknown) => {
-  -        if (myId !== loadId) return
-  -        error.value = err instanceof Error && err.message ? err.message : FALLBACK_ERROR
-  -        screenIds.value = []
-  -        status.value = 'error'
-  -      })
-  -  }
-  -
-  -  run()
-  +  const fetcher = createListFetcher(fetchImpl, FALLBACK_ERROR, (s) => {
-  +    status.value = s.status
-  +    screenIds.value = s.items
-  +    error.value = s.error
-  +  })
-   
-     if (getCurrentScope()) {
-  -    onScopeDispose(() => {
-  -      loadId += 1
-  -    })
-  +    onScopeDispose(() => fetcher.cancel())
-     }
-   
-  +  fetcher.run()
-  +
-     return {
-       status,
-       screenIds,
-       error,
-  -    refresh: run,
-  +    refresh: () => fetcher.run(),
-     }
-   }
-  +12 -26
+   router.beforeEach((to) => {
+     if (to.meta.public) return true
+     if (!getSessionAuth().getToken()) {
+  +2 -0
 
-apps/kiosk-web/src/composables/useStationList.ts
-  @@ -1,7 +1,8 @@
-  +import { createListFetcher, type DeviceListStatus } from '@aq/device-config'
-   import { getDeviceConfigProvider } from '../infrastructure'
-   
-  -export type KioskStationListStatus = 'idle' | 'loading' | 'ok' | 'error'
-  +export type KioskStationListStatus = DeviceListStatus
-   
-   export interface KioskStationListState {
-     status: Ref<KioskStationListStatus>
-  @@ -15,10 +16,9 @@ const FALLBACK_ERROR = 'Gagal memuat daftar kiosk station.'
-  -  const status = ref<KioskStationListStatus>('idle')
-  +  const status = ref<KioskStationListStatus>('loading')
-     const stationIds = ref<string[]>([])
-     const error = ref<string | null>(null)
-  -  let loadId = 0
-   
-     const defaultFetch = async (): Promise<string[]> => {
-       const provider = await getDeviceConfigProvider()
-  @@ -27,36 +27,22 @@ export function useStationList(opts?: {
-  -  const run = (): void => {
-  -    const myId = ++loadId
-  -    status.value = 'loading'
-  -    error.value = null
-  -    fetchImpl()
-  -      .then((ids) => {
-  -        if (myId !== loadId) return
-  -        stationIds.value = ids
-  -        status.value = 'ok'
-  -      })
-  -      .catch((err: unknown) => {
-  -        if (myId !== loadId) return
-  -        error.value = err instanceof Error && err.message ? err.message : FALLBACK_ERROR
-  -        stationIds.value = []
-  -        status.value = 'error'
-  -      })
-  -  }
-  -
-  -  run()
-  +  const fetcher = createListFetcher(fetchImpl, FALLBACK_ERROR, (s) => {
-  +    status.value = s.status
-  +    stationIds.value = s.items
-  +    error.value = s.error
-  +  })
-   
-     if (getCurrentScope()) {
-  -    onScopeDispose(() => {
-  -      loadId += 1
-  -    })
-  +    onScopeDispose(() => fetcher.cancel())
-     }
-   
-  +  fetcher.run()
-  +
-     return {
-       status,
-       stationIds,
-       error,
-  -    refresh: run,
-  +    refresh: () => fetcher.run(),
-     }
-   }
-  +12 -26
-
-packages/device-config/src/deviceList.ts
-  @@ -0,0 +1,42 @@
-  +export type DeviceListStatus = 'loading' | 'ok' | 'error'
-  +
-  +export type DeviceListState = {
-  +  status: DeviceListStatus
-  +  items: string[]
-  +  error: string | null
-  +}
-  +
-  +export type DeviceListFetcher = {
-  +  run: () => void
-  +  cancel: () => void
-  +}
-  +
-  +export function createListFetcher(
-  +  fetchImpl: () => Promise<string[]>,
-  +  fallbackMsg: string,
-  +  onUpdate: (state: DeviceListState) => void,
-  +): DeviceListFetcher {
-  +  let loadId = 0
-  +
-  +  const isStale = (myId: number) => myId !== loadId
-  +
-  +  const run = () => {
-  +    const myId = ++loadId
-  +    onUpdate({ status: 'loading', items: [], error: null })
-  +    fetchImpl()
-  +      .then((items) => {
-  +        if (isStale(myId)) return
-  +        onUpdate({ status: 'ok', items, error: null })
-  +      })
-  +      .catch((err: unknown) => {
-  +        if (isStale(myId)) return
-  +        const msg = err instanceof Error && err.message ? err.message : fallbackMsg
-  +        onUpdate({ status: 'error', items: [], error: msg })
-  +      })
-  +  }
-  +
-  +  return {
-  +    run,
-  +    cancel: () => { loadId += 1 },
-  +  }
-  +}
-  +42 -0
-
-packages/device-config/src/index.ts
-  @@ -10,3 +10,4 @@ export {
-  +export * from './deviceList'
+apps/config-web/src/views/AppShell.vue
+  @@ -20,20 +20,21 @@ function onLogout() {
+  +      <RouterLink :to="{ name: 'service-points' }">Service Point</RouterLink>
+         <RouterLink :to="{ name: 'segmentation' }">Segmentasi</RouterLink>
+         <RouterLink :to="{ name: 'audit' }">Riwayat</RouterLink>
+       </nav>
+       <main class="shell-main">
+         <div class="panel">
+           <RouterView />
+         </div>
+       </main>
+       <footer class="shell-footer">v{{ version }}</footer>
+     </div>
   +1 -0
+
+apps/config-web/src/views/ServicePointsPage.vue
+  @@ -0,0 +1,171 @@
+  +<script setup lang="ts">
+  +import { reactive, ref } from 'vue'
+  +import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
+  +import type { AdmissionServicePoint } from '@aq/shared-types'
+  +import { getAdmissionQueueApi } from '@/infrastructure'
+  +
+  +const admissionApi = getAdmissionQueueApi()
+  +const queryClient = useQueryClient()
+  +const error = ref('')
+  +const editingId = ref<string | null>(null)
+  +const editingStatus = ref<AdmissionServicePoint['status']>('Active')
+  +
+  +const form = reactive({
+  +  servicePointId: '',
+  +  displayName: '',
+  +  queuePrefix: '',
+  +  active: true,
+  +})
+  +
+  +const listQuery = useQuery({
+  +  queryKey: ['config-service-points'],
+  +  queryFn: () => admissionApi.listAllServicePoints(),
+  +})
+  +
+  +function resetForm() {
+  +  editingId.value = null
+  +  editingStatus.value = 'Active'
+  +  form.servicePointId = ''
+  +  form.displayName = ''
+  +  form.queuePrefix = ''
+  +  form.active = true
+  +  error.value = ''
+  +}
+  +
+  +function startEdit(row: AdmissionServicePoint) {
+  +  editingId.value = row.servicePointId
+  +  editingStatus.value = row.status
+  +  form.servicePointId = row.servicePointId
+  +  form.displayName = row.displayName
+  +  form.queuePrefix = row.queuePrefix
+  +  form.active = row.status === 'Active'
+  +  error.value = ''
+  +}
+  +
+  +const saveMutation = useMutation({
+  +  mutationFn: async () => {
+  +    if (editingId.value) {
+  +      return admissionApi.upsertServicePoint(editingId.value, {
+  +        displayName: form.displayName,
+  +        queuePrefix: form.queuePrefix,
+  +        active: editingStatus.value === 'Active',
+  +      })
+  +    }
+  +    return admissionApi.upsertServicePoint(form.servicePointId, {
+  +      displayName: form.displayName,
+  +      queuePrefix: form.queuePrefix,
+  +      active: form.active,
+  +    })
+  +  },
+  +  onSuccess: async () => {
+  +    await queryClient.invalidateQueries({ queryKey: ['config-service-points'] })
+  +    resetForm()
+  +  },
+  +  onError: (err: Error) => {
+  +    error.value = err.message
+  +  },
+  +})
+  +
+  +const retireMutation = useMutation({
+  +  mutationFn: (row: AdmissionServicePoint) =>
+  +    admissionApi.upsertServicePoint(row.servicePointId, {
+  +      displayName: row.displayName,
+  +      queuePrefix: row.queuePrefix,
+  +      active: false,
+  +    }),
+  +  onSuccess: async () => {
+  +    await queryClient.invalidateQueries({ queryKey: ['config-service-points'] })
+  +    resetForm()
+  +  },
+  +  onError: (err: Error) => {
+  +    error.value = err.message
+  +  },
+  +})
+  +</script>
+  +
+  +<template>
+  +  <div class="stack">
+  +    <div class="row-actions" style="justify-content: space-between">
+  +      <h2 style="margin: 0">Service Point</h2>
+  +      <div v-if="!editingId" class="row-actions">
+  +        <button type="button" class="secondary" @click="resetForm">Batal</button>
+  +        <button type="button" @click="saveMutation.mutate()">Buat</button>
+  +      </div>
+  +    </div>
+  +
+  +    <form class="stack" @submit.prevent="saveMutation.mutate()">
+  +      <div class="form-grid">
+  +        <label>
+  +          ServicePointId
+  +          <input v-model="form.servicePointId" :disabled="!!editingId" required maxlength="50" />
+  ... (71 lines truncated)
+  +171 -0
+
+apps/config-web/src/views/__tests__/ServicePointsPage.spec.ts
+  @@ -0,0 +1,142 @@
+  +import { beforeEach, describe, expect, it, vi } from 'vitest'
+  +import { flushPromises, mount } from '@vue/test-utils'
+  +import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
+  +import ServicePointsPage from '../ServicePointsPage.vue'
+  +
+  +const apiMocks = vi.hoisted(() => ({
+  +  listAllServicePoints: vi.fn(),
+  +  upsertServicePoint: vi.fn(),
+  +}))
+  +
+  +vi.mock('@/infrastructure', () => ({
+  +  getAdmissionQueueApi: vi.fn(() => ({
+  +    listAllServicePoints: apiMocks.listAllServicePoints,
+  +    upsertServicePoint: apiMocks.upsertServicePoint,
+  +  })),
+  +}))
+  +
+  +const activePoint = {
+  +  servicePointId: 'SP-ADMISI',
+  +  displayName: 'Administrasi',
+  +  queuePrefix: 'A',
+  +  status: 'Active' as const,
+  +}
+  +
+  +const retiredPoint = {
+  +  servicePointId: 'SP-RETIRED',
+  +  displayName: 'Retired Lama',
+  +  queuePrefix: 'R',
+  +  status: 'Retired' as const,
+  +}
+  +
+  +beforeEach(() => {
+  +  apiMocks.listAllServicePoints.mockResolvedValue([activePoint, retiredPoint])
+  +  apiMocks.upsertServicePoint.mockResolvedValue(activePoint)
+  +})
+  +
+  +function mountPage() {
+  +  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  +  return mount(ServicePointsPage, {
+  +    global: { plugins: [[VueQueryPlugin, { queryClient }]] },
+  +  })
+  +}
+  +
+  +async function submitForm(wrapper: ReturnType<typeof mountPage>) {
+  +  await wrapper.get('form').trigger('submit')
+  +  await flushPromises()
+  +}
+  +
+  +describe('ServicePointsPage', () => {
+  +  it('renders both active and retired service points', async () => {
+  +    const wrapper = mountPage()
+  +    await flushPromises()
+  +
+  +    expect(wrapper.text()).toContain('SP-ADMISI')
+  +    expect(wrapper.text()).toContain('Administrasi')
+  +    expect(wrapper.text()).toContain('SP-RETIRED')
+  +    expect(wrapper.text()).toContain('Retired Lama')
+  +    expect(apiMocks.listAllServicePoints).toHaveBeenCalled()
+  +  })
+  +
+  +  it('creates a service point with the expected upsert payload', async () => {
+  +    const wrapper = mountPage()
+  +    await flushPromises()
+  +
+  +    const inputs = wrapper.findAll('form input')
+  +    await inputs[0]!.setValue('SP-BARU')
+  +    await inputs[1]!.setValue('Baru')
+  +    await inputs[2]!.setValue('B')
+  +    await submitForm(wrapper)
+  +
+  +    expect(apiMocks.upsertServicePoint).toHaveBeenCalledWith('SP-BARU', {
+  +      displayName: 'Baru',
+  +      queuePrefix: 'B',
+  +      active: true,
+  +    })
+  +  })
+  +
+  +  it('retires an active service point with active:false', async () => {
+  +    const wrapper = mountPage()
+  +    await flushPromises()
+  +
+  +    const activeRow = wrapper.findAll('tbody tr')[0]!
+  +    const nonaktifkan = activeRow.findAll('button').find((b) => b.text() === 'Nonaktifkan')!
+  +    await nonaktifkan.trigger('click')
+  +    await flushPromises()
+  +
+  +    expect(apiMocks.upsertServicePoint).toHaveBeenCalledWith('SP-ADMISI', {
+  +      displayName: 'Administrasi',
+  +      queuePrefix: 'A',
+  +      active: false,
+  +    })
+  +  })
+  +
+  +  it('does not offer reactivation for retired service points', async () => {
+  +    const wrapper = mountPage()
+  +    await flushPromises()
+  +
+  +    const retiredRow = wrapper.findAll('tbody tr')[1]!
+  +    expect(retiredRow.text()).toContain('tidak dapat diaktifkan kembali melalui aplikasi ini')
+  +    expect(retiredRow.text()).not.toContain('Nonaktifkan')
+  ... (42 lines truncated)
+  +142 -0
+
+packages/api-client/src/__tests__/admissionQueue.spec.ts
+  @@ -92,10 +92,77 @@ describe('getCurrentDisplays', () => {
+  +
+  +describe('upsertServicePoint', () => {
+  +  it('sends a PUT to the service point with the expected body', async () => {
+  +    const fetchImpl = vi.fn(async () =>
+  +      new Response(
+  +        JSON.stringify({
+  +          status: 'success',
+  +          data: {
+  +            servicePointId: 'SP-ADMISI',
+  +            displayName: 'Administrasi',
+  +            queuePrefix: 'A',
+  +            status: 'Active',
+  +          },
+  +        }),
+  +        {
+  +          status: 200,
+  +          headers: { 'Content-Type': 'application/json' },
+  +        },
+  +      ),
+  +    )
+  +    const client = new AdmissionQueueClient({
+  +      baseUrl: 'http://localhost:5000/api',
+  +      auth: createAuth(),
+  +      fetchImpl: fetchImpl as unknown as typeof fetch,
+  +    })
+  +    const api = createAdmissionQueueApi(client)
+  +
+  +    await api.upsertServicePoint('SP-ADMISI', {
+  +      displayName: 'Administrasi',
+  +      queuePrefix: 'A',
+  +      active: true,
+  +    })
+  +
+  +    const request = fetchImpl.mock.calls[0]?.[1] as RequestInit | undefined
+  +    expect(request?.method).toBe('PUT')
+  +    expect(String(fetchImpl.mock.calls[0]?.[0])).toContain(
+  +      '/v1/admission-queue/service-points/SP-ADMISI',
+  +    )
+  +    expect(JSON.parse(String(request?.body))).toEqual({
+  +      displayName: 'Administrasi',
+  +      queuePrefix: 'A',
+  +      active: true,
+  +    })
+  +  })
+  +})
+  +
+  +describe('listAllServicePoints', () => {
+  +  it('requests service points with activeOnly=false', async () => {
+  +    const fetchImpl = vi.fn(async () =>
+  +      new Response(JSON.stringify({ status: 'success', data: [] }), {
+  +        status: 200,
+  +        headers: { 'Content-Type': 'application/json' },
+  +      }),
+  +    )
+  +    const client = new AdmissionQueueClient({
+  +      baseUrl: 'http://localhost:5000/api',
+  +      auth: createAuth(),
+  +      fetchImpl: fetchImpl as unknown as typeof fetch,
+  +    })
+  +
+  +    await createAdmissionQueueApi(client).listAllServicePoints()
+  +
+  +    const url = String(fetchImpl.mock.calls[0]?.[0])
+  +    expect(url).toContain('v1/admission-queue/service-points')
+  +    expect(url).toContain('activeOnly=false')
+  +  })
+  +})
+  +67 -0
+
+packages/api-client/src/admissionQueue.ts
+  @@ -24,20 +24,37 @@ export function buildAdmissionQueueHubUrl(apiBase: string): string {
+  +    listAllServicePoints(): Promise<AdmissionServicePoint[]> {
+  +      return client.getJson('v1/admission-queue/service-points', servicePointsSchema, {
+  +        activeOnly: false,
+  +      })
+  +    },
+  +
+  +    upsertServicePoint(
+  +      servicePointId: string,
+  +      body: { displayName: string; queuePrefix: string; active: boolean },
+  +    ): Promise<AdmissionServicePoint> {
+  +      return client.putJson(
+  +        `v1/admission-queue/service-points/${encodeURIComponent(servicePointId)}`,
+  +        body,
+  +        admissionServicePointSchema,
+  +      )
+  +    },
+  +
+       intake(body: IntakeBody): Promise<AdmissionQueueIntakeResponse> {
+         return client.postJson('v1/admission-queue/intake', body, admissionQueueIntakeResponseSchema)
+       },
+   
+       getCurrentDisplays(loketKey?: string): Promise<CurrentLoketDisplayItem[]> {
+         const query =
+           loketKey !== undefined && loketKey.trim() !== ''
+             ? { loketKey: loketKey.trim() }
+             : undefined
+         return client.getJson('v1/admission-queue/displays/current', currentDisplaysSchema, query)
+  +17 -0
+[full diff: rtk git diff --no-compact]

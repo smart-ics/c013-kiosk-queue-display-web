@@ -1,54 +1,56 @@
-# Task 1 Report: Registration Detail Contract
+# Task 1 Report: Add the Manual Configuration Contract
 
 ## Status: DONE
 
-## What I changed
+## What I Implemented
 
-- `packages/shared-types/src/index.ts`: Added `registrationPrintDataSchema` and exported `RegistrationPrintData` next to the existing HIS registration schema (`returnCreateWalkInSchema`).
-- `packages/shared-types/src/__tests__/hisSchemas.spec.ts`: Imported `registrationPrintDataSchema` and added the two tests exactly as specified in the brief.
+Followed the brief verbatim. Only three files touched:
 
-## Fail step output
+1. `packages/app-config/src/index.ts` — added `fallbackServicePointsSchema` (zod object with `bookingFailure` string, trimmed, optional, transforms empty/whitespace to `undefined`) and the `FallbackServicePoints` type above `appConfigSchema`, plus `fallbackServicePoints: fallbackServicePointsSchema.optional()` on `appConfigSchema`. Matched existing file style (no semicolons).
+2. `packages/app-config/src/index.spec.ts` — appended the three tests from the brief verbatim.
+3. `apps/kiosk-web/public/global_config.json` — added the `fallbackServicePoints.bookingFailure` template key (empty string = no recommendation).
 
-Command: `pnpm --filter @aq/shared-types exec vitest run src/__tests__/hisSchemas.spec.ts`
+## What I Tested and Results
 
-Result:
+- Focused suite `pnpm --filter @aq/app-config exec vitest run src/index.spec.ts`: 8/8 pass (5 pre-existing + 3 new).
+- Full `@aq/app-config` suite: 8/8 pass.
+- Typecheck `pnpm --filter @aq/app-config exec tsc -p tsconfig.json --noEmit`: clean (no output, exit 0).
+- `global_config.json` parses with `ConvertFrom-Json`: valid.
 
-```
- RUN  v3.2.7  E:/PROJECT/ICS/PROJECT-ACTIVE/kiosk-display-config/c013-kiosk-queue-display-web/packages/shared-types
+## TDD Evidence
 
- ❯ src/__tests__/hisSchemas.spec.ts (12 tests | 1 failed) 32ms
-   ✓ hisSchemas > parses returnCreateWalkIn
-   ...
-   × hisSchemas > parses complete registration print data
-     → Cannot read properties of undefined (reading 'parse')
-
- Test Files  1 failed (1)
-      Tests  1 failed | 11 passed (12)
-```
-
-Failure cause: `registrationPrintDataSchema` was not yet defined/exported, so the import resolved to `undefined`.
-
-## Pass step output
-
-Command: `pnpm --filter @aq/shared-types exec vitest run src/__tests__/hisSchemas.spec.ts`
-
-Result:
+**RED** — after appending tests, before implementation:
 
 ```
- RUN  v3.2.7  E:/PROJECT/ICS/PROJECT-ACTIVE/kiosk-display-config/c013-kiosk-queue-display-web/packages/shared-types
-
- ✓ src/__tests__/hisSchemas.spec.ts (12 tests) 25ms
-
- Test Files  1 passed (1)
-      Tests  12 passed (12)
+× appConfigSchema > accepts fallbackServicePoints.bookingFailure
+  → expected undefined to be 'SP-ADMISI' // Object.is equality
+Test Files  1 failed (1)
+     Tests  1 failed | 7 passed (8)
 ```
 
-## Commit
+The other two new tests passed on RED because the schema strips unknown keys (`fallbackServicePoints` becomes undefined), so `toBeUndefined()` assertions held — a known property of unknown-key-stripping; the meaningful failing test asserted the positive case.
 
-- `763a5f1` — `feat(shared-types): add registration print data contract`
-- Files in commit: `packages/shared-types/src/index.ts`, `packages/shared-types/src/__tests__/hisSchemas.spec.ts`
+**GREEN** — after adding the schema property and template:
+
+```
+✓ src/index.spec.ts (8 tests)
+Test Files  1 passed (1)
+     Tests  8 passed (8)
+```
+
+## Files Changed
+
+- `packages/app-config/src/index.ts` (+11)
+- `packages/app-config/src/index.spec.ts` (+24)
+- `apps/kiosk-web/public/global_config.json` (+4/-1)
+
+## Self-Review Findings
+
+- **Completeness**: All 5 brief steps done; schema property, transform, type, and JSON template verbatim.
+- **Quality**: Matches existing no-semicolon style; transform normalizes empty string to `undefined` so a blank template value is treated as "no recommendation".
+- **YAGNI**: No extra code. Did not touch `b09-bilreg-api`, `apps/config-web`, or any app behavior.
+- **Test quality**: Tests assert real parsed values, including the empty-string normalization and optionality.
 
 ## Concerns
 
-- None. Followed the brief steps and only modified the two requested files.
-- Other unrelated modified files in the working tree were left unstaged.
+- None blocking. Minor note: on RED, the "normalizes empty" and "keeps optional" tests passed even before implementation because Zod strips unknown keys (output is `undefined`). The primary failing test covered the positive path, which is the meaningful RED signal.

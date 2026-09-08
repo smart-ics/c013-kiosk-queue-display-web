@@ -1,60 +1,97 @@
-### Task 1: Add Registration Detail Contract
+### Task 1: Add the Manual Configuration Contract
 
 **Files:**
-- Modify: `packages/shared-types/src/index.ts` near the existing HIS registration schemas
-- Test: `packages/shared-types/src/__tests__/hisSchemas.spec.ts`
+- Modify: `packages/app-config/src/index.ts:16-26`
+- Modify: `packages/app-config/src/index.spec.ts`
+- Modify: `apps/kiosk-web/public/global_config.json`
 
 **Interfaces:**
-- Produces `registrationPrintDataSchema` and `RegistrationPrintData` with:
-  `regId: string`, `noAntrian: number`, `pasienName: string`, optional `pasienId`, `tglLahir`, `tipeJaminanName`, `noSep`, `serviceName`, and `dokterName`.
-- The schema must reject missing `regId`, missing `pasienName`, or non-numeric/missing `noAntrian`.
+- Produces `AppConfig.fallbackServicePoints?: { bookingFailure?: string }`.
+- Consumed by `KioskPage.vue` in Task 3.
 
-- [ ] **Step 1: Write failing schema tests**
+- [ ] **Step 1: Write the failing schema tests**
 
-Add tests that parse a complete `RegistrationPrintData` and reject an object with no `noAntrian`.
+Append to `packages/app-config/src/index.spec.ts`:
 
 ```ts
-it('parses complete registration print data', () => {
-  expect(
-    registrationPrintDataSchema.parse({
-      regId: 'RG12345678',
-      noAntrian: 12,
-      pasienName: 'Andi',
-      pasienId: 'PT1',
-      tglLahir: '1990-01-01',
-      tipeJaminanName: 'Umum',
-      noSep: undefined,
-      serviceName: 'Poli Jantung',
-      dokterName: 'Dr. X',
-    }),
-  ).toMatchObject({ regId: 'RG12345678', noAntrian: 12 })
+it('accepts fallbackServicePoints.bookingFailure', () => {
+  const parsed = appConfigSchema.parse({
+    bilregApiBase: 'http://localhost:5000/api',
+    fallbackServicePoints: { bookingFailure: 'SP-ADMISI' },
+  })
+
+  expect(parsed.fallbackServicePoints?.bookingFailure).toBe('SP-ADMISI')
 })
 
-it('rejects registration print data without a queue number', () => {
-  expect(() => registrationPrintDataSchema.parse({ regId: 'RG1', pasienName: 'Andi' })).toThrow()
+it('normalizes an empty bookingFailure assignment to undefined', () => {
+  const parsed = appConfigSchema.parse({
+    bilregApiBase: 'http://localhost:5000/api',
+    fallbackServicePoints: { bookingFailure: '' },
+  })
+
+  expect(parsed.fallbackServicePoints?.bookingFailure).toBeUndefined()
+})
+
+it('keeps fallbackServicePoints optional', () => {
+  const parsed = appConfigSchema.parse({ bilregApiBase: 'http://localhost:5000/api' })
+
+  expect(parsed.fallbackServicePoints).toBeUndefined()
 })
 ```
 
-- [ ] **Step 2: Run the focused schema test and verify it fails**
+- [ ] **Step 2: Run the focused test and verify it fails**
 
-Run: `pnpm --filter @aq/shared-types exec vitest run src/__tests__/hisSchemas.spec.ts`
+Run:
 
-Expected: FAIL because `registrationPrintDataSchema` is not defined.
+```text
+pnpm --filter @aq/app-config exec vitest run src/index.spec.ts
+```
 
-- [ ] **Step 3: Implement the focused schema and type**
+Expected: the new tests fail because the property does not exist on the schema.
 
-Add the Zod object next to the existing HIS response schemas. Keep receipt data focused; do not expose the full backend `RegGetResponse` as an app-facing type.
+- [ ] **Step 3: Add the schema property**
 
-- [ ] **Step 4: Run the focused schema test and verify it passes**
+In `packages/app-config/src/index.ts`, above `appConfigSchema`:
 
-Run: `pnpm --filter @aq/shared-types exec vitest run src/__tests__/hisSchemas.spec.ts`
+```ts
+export const fallbackServicePointsSchema = z.object({
+  bookingFailure: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+})
+
+export type FallbackServicePoints = z.infer<typeof fallbackServicePointsSchema>
+```
+
+Add to `appConfigSchema`:
+
+```ts
+fallbackServicePoints: fallbackServicePointsSchema.optional(),
+```
+
+Keep it optional so existing deployments remain valid.
+
+- [ ] **Step 4: Update the manual deployment template**
+
+In `apps/kiosk-web/public/global_config.json`, add:
+
+```json
+"fallbackServicePoints": {
+  "bookingFailure": ""
+}
+```
+
+An empty string means "no recommendation"; a deployment that needs a default replaces the value with a mapped Service Point ID.
+
+- [ ] **Step 5: Run the focused tests**
+
+Run:
+
+```text
+pnpm --filter @aq/app-config exec vitest run src/index.spec.ts
+```
 
 Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add packages/shared-types/src/index.ts packages/shared-types/src/__tests__/hisSchemas.spec.ts
-git commit -m "feat(shared-types): add registration print data contract"
-```
 
