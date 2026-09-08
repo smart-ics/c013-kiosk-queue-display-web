@@ -81,6 +81,10 @@ function onServicePointChange(servicePointId: string, event: Event) {
   toggleServicePoint(servicePointId, (event.target as HTMLInputElement).checked)
 }
 
+function selectAllServicePoints() {
+  form.servicePointIds = (servicePointsQuery.data.value ?? []).map((x) => x.servicePointId)
+}
+
 async function copyUrl(stationId: string) {
   await navigator.clipboard.writeText(buildCanonicalKioskUrl(stationId))
 }
@@ -147,13 +151,7 @@ const toggleMutation = useMutation({
 
 <template>
   <div class="stack">
-    <div class="row-actions" style="justify-content: space-between">
-      <h2 style="margin: 0">Kiosk</h2>
-      <div v-if="!editingId" class="row-actions">
-        <button type="button" class="secondary" @click="resetForm">Batal</button>
-        <button type="button" @click="saveMutation.mutate()">Buat</button>
-      </div>
-    </div>
+    <h2 style="margin: 0">Kiosk</h2>
 
     <form class="stack" @submit.prevent="saveMutation.mutate()">
       <div class="form-grid">
@@ -195,31 +193,44 @@ const toggleMutation = useMutation({
       <fieldset class="stack">
         <legend>Service Point</legend>
         <p v-if="servicePointsQuery.isPending.value" class="muted">Memuat Service Point…</p>
-        <label
-          v-for="servicePoint in servicePointsQuery.data.value ?? []"
-          :key="servicePoint.servicePointId"
-          class="row-actions"
-        >
-          <input
-            type="checkbox"
-            :checked="form.servicePointIds.includes(servicePoint.servicePointId)"
-            @change="onServicePointChange(servicePoint.servicePointId, $event)"
-          />
-          <span>
-            {{ servicePoint.displayName }} ({{ servicePoint.servicePointId }})
-            <span v-if="servicePoint.status !== 'Active'" class="badge inactive">Nonaktif</span>
-          </span>
-        </label>
-        <p class="muted">
-          Urutan mengikuti urutan pemilihan:
-          {{ form.servicePointIds.join(' → ') || 'belum dipilih' }}
-        </p>
+        <template v-else>
+          <div class="check-actions">
+            <button type="button" @click="selectAllServicePoints">Pilih semua</button>
+            <button type="button" @click="form.servicePointIds = []">Kosongkan</button>
+          </div>
+          <div class="check-list">
+            <label
+              v-for="servicePoint in servicePointsQuery.data.value ?? []"
+              :key="servicePoint.servicePointId"
+              class="check-row"
+              :class="{ 'is-checked': form.servicePointIds.includes(servicePoint.servicePointId) }"
+            >
+              <input
+                type="checkbox"
+                :checked="form.servicePointIds.includes(servicePoint.servicePointId)"
+                @change="onServicePointChange(servicePoint.servicePointId, $event)"
+              />
+              <span class="check-box"></span>
+              <span class="check-text">
+                {{ servicePoint.displayName }} ({{ servicePoint.servicePointId }})
+                <span v-if="servicePoint.status !== 'Active'" class="badge inactive">Nonaktif</span>
+              </span>
+            </label>
+          </div>
+          <p class="check-meta">
+            {{ form.servicePointIds.length }} dipilih. Urutan mengikuti urutan pemilihan:
+            {{ form.servicePointIds.join(' → ') || 'belum dipilih' }}
+          </p>
+        </template>
       </fieldset>
 
       <p v-if="error" class="error">{{ error }}</p>
-      <button type="submit" :disabled="saveMutation.isPending.value">
-        {{ editingId ? 'Simpan kiosk' : 'Buat kiosk' }}
-      </button>
+      <div class="form-actions">
+        <button type="button" class="secondary" @click="resetForm">Batal</button>
+        <button type="submit" :disabled="saveMutation.isPending.value">
+          {{ editingId ? 'Simpan kiosk' : 'Buat kiosk' }}
+        </button>
+      </div>
     </form>
 
     <div v-if="qrDataUrl" class="stack">

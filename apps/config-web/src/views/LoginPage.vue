@@ -56,13 +56,6 @@ async function onSubmit() {
 </template>
 
 <style scoped>
-body {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-}
-
 .login-version {
   margin: 0.75rem 0 0;
   text-align: center;

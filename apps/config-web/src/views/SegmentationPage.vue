@@ -35,6 +35,10 @@ function toggleLoket(loketKey: string) {
   }
 }
 
+function selectAllLokets() {
+  selectedLokets.value = [...(segmentationQuery.data.value?.loketKeys ?? [])]
+}
+
 const saveMutation = useMutation({
   mutationFn: async () => {
     const display = selectedDisplay.value
@@ -89,18 +93,27 @@ const matrix = computed(() => {
     </label>
 
     <div v-if="selectedDisplay" class="stack">
-      <div class="form-grid">
-        <label v-for="loketKey in segmentationQuery.data.value?.loketKeys ?? []" :key="loketKey">
-          <span style="display: flex; gap: 0.5rem; align-items: center">
-            <input
-              type="checkbox"
-              :checked="selectedLokets.includes(loketKey)"
-              @change="toggleLoket(loketKey)"
-            />
-            {{ loketKey }}
-          </span>
+      <div class="check-actions">
+        <button type="button" @click="selectAllLokets">Pilih semua</button>
+        <button type="button" @click="selectedLokets = []">Kosongkan</button>
+      </div>
+      <div class="check-list">
+        <label
+          v-for="loketKey in segmentationQuery.data.value?.loketKeys ?? []"
+          :key="loketKey"
+          class="check-row"
+          :class="{ 'is-checked': selectedLokets.includes(loketKey) }"
+        >
+          <input
+            type="checkbox"
+            :checked="selectedLokets.includes(loketKey)"
+            @change="toggleLoket(loketKey)"
+          />
+          <span class="check-box"></span>
+          <span class="check-text">{{ loketKey }}</span>
         </label>
       </div>
+      <p class="check-meta">{{ selectedLokets.length }} loket dipilih</p>
       <p v-if="error" class="error">{{ error }}</p>
       <button type="button" :disabled="saveMutation.isPending.value" @click="saveMutation.mutate()">
         Simpan mapping

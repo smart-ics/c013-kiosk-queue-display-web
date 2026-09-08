@@ -25,9 +25,9 @@ function onLogout() {
     <nav class="shell-nav">
       <RouterLink :to="{ name: 'summary' }">Ringkasan</RouterLink>
       <RouterLink :to="{ name: 'workstations' }">Workstation</RouterLink>
-      <RouterLink :to="{ name: 'displays' }">Queue Display</RouterLink>
-      <RouterLink :to="{ name: 'kiosks' }">Kiosk</RouterLink>
       <RouterLink :to="{ name: 'service-points' }">Service Point</RouterLink>
+      <RouterLink :to="{ name: 'kiosks' }">Kiosk</RouterLink>
+      <RouterLink :to="{ name: 'displays' }">Queue Display</RouterLink>
       <RouterLink :to="{ name: 'segmentation' }">Segmentasi</RouterLink>
       <RouterLink :to="{ name: 'audit' }">Riwayat</RouterLink>
     </nav>

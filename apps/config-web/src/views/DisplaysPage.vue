@@ -151,13 +151,7 @@ const toggleMutation = useMutation({
 
 <template>
   <div class="stack">
-    <div class="row-actions" style="justify-content: space-between">
-      <h2 style="margin: 0">Queue Display</h2>
-      <div v-if="!editingId" class="row-actions">
-        <button type="button" class="secondary" @click="resetForm">Batal</button>
-        <button type="button" @click="saveMutation.mutate()">Buat</button>
-      </div>
-    </div>
+    <h2 style="margin: 0">Queue Display</h2>
 
     <form class="stack" @submit.prevent="saveMutation.mutate()">
       <div class="form-grid">
@@ -201,9 +195,12 @@ const toggleMutation = useMutation({
         </label>
       </div>
       <p v-if="error" class="error">{{ error }}</p>
-      <button type="submit" :disabled="saveMutation.isPending.value">
-        {{ editingId ? 'Simpan display' : 'Buat display' }}
-      </button>
+      <div class="form-actions">
+        <button type="button" class="secondary" @click="resetForm">Batal</button>
+        <button type="submit" :disabled="saveMutation.isPending.value">
+          {{ editingId ? 'Simpan display' : 'Buat display' }}
+        </button>
+      </div>
     </form>
 
     <div v-if="qrDataUrl" class="stack">

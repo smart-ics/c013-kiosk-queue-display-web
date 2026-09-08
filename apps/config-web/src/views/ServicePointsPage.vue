@@ -85,18 +85,7 @@ const retireMutation = useMutation({
 
 <template>
   <div class="stack">
-    <div class="row-actions" style="justify-content: space-between">
-      <h2 style="margin: 0">Service Point</h2>
-      <div v-if="!editingId" class="row-actions">
-        <button type="button" class="secondary" @click="resetForm">Batal</button>
-        <button type="button" :disabled="saveMutation.isPending.value" @click="saveMutation.mutate()">
-          Buat
-        </button>
-      </div>
-      <div v-else class="row-actions">
-        <button type="button" class="secondary" @click="resetForm">Batal</button>
-      </div>
-    </div>
+    <h2 style="margin: 0">Service Point</h2>
 
     <form class="stack" @submit.prevent="saveMutation.mutate()">
       <div class="form-grid">
@@ -132,9 +121,12 @@ const retireMutation = useMutation({
       </p>
 
       <p v-if="error" class="error">{{ error }}</p>
-      <button type="submit" :disabled="saveMutation.isPending.value">
-        {{ editingId ? 'Simpan service point' : 'Buat service point' }}
-      </button>
+      <div class="form-actions">
+        <button type="button" class="secondary" @click="resetForm">Batal</button>
+        <button type="submit" :disabled="saveMutation.isPending.value">
+          {{ editingId ? 'Simpan service point' : 'Buat service point' }}
+        </button>
+      </div>
     </form>
 
     <p v-if="listQuery.isLoading.value" class="muted">Memuat Service Point…</p>
