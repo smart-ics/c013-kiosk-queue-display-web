@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.9] - 2026-09-08
+
+### Added
+
+- **Booking failure service point fallback (kiosk-web)**: `global_config.json` now supports an optional `fallbackServicePoints.bookingFailure` assignment. When the assigned Service Point is active and mapped to the current kiosk station, a failed booking registration automatically creates and prints the assistance queue ticket for that Service Point and shows an admisi-redirect confirmation. When the assignment is empty, inactive, or unmapped, the existing manual Service Point selector remains available; walk-in and other failure paths stay manual.
+- **Service Point master data (config-web)**: Added a Service Point screen that lists active and retired Service Points with create/edit through the existing admission queue API. Retired records stay visible and editable, but cannot be reactivated from this screen.
+
 ## [0.2.8] - 2026-09-07
 
 ### Added
