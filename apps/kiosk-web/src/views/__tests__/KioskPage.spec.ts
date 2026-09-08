@@ -16,18 +16,29 @@ const selfPrintMocks = vi.hoisted(() => ({
   resetPrintState: vi.fn(),
 }))
 
+const registrationMocks = vi.hoisted(() => ({
+  searchBooking: vi.fn(async () => []),
+  bookingAssistance: vi.fn(async () => ({ queueLabel: 'BOK-001', antrianId: 'A1', noUrut: 1 })),
+}))
+
 vi.mock('../../infrastructure', () => ({
   getDeviceConfigProvider: vi.fn(async () => ({
-    getConfig: vi.fn(async () => ({ deviceId: 'K01', role: 'kiosk', printerProxyPort: 5050 })),
+     getConfig: vi.fn(async () => ({
+       deviceId: 'K01',
+       role: 'kiosk',
+       printerProxyPort: 5050,
+       servicePointIds: ['BOK'],
+     })),
   })),
   getAdmissionQueueApi: vi.fn(() => ({
     listServicePoints: vi.fn(async () => [
-      { servicePointId: 'SP1', displayName: 'Poli Jantung', queuePrefix: 'PJ', status: 'Active' },
+       { servicePointId: 'BOK', displayName: 'Loket Bantuan', queuePrefix: 'BOK', status: 'Active' },
     ]),
   })),
   getHisApi: vi.fn(() => ({
     getBusinessDate: vi.fn(async () => ({ businessDate: '2026-09-02' })),
-    searchBooking: vi.fn(async () => []),
+    searchBooking: registrationMocks.searchBooking,
+    bookingAssistance: registrationMocks.bookingAssistance,
     patientContextSearch: vi.fn(async () => ({
       businessDate: '2026-09-02',
       bookings: { items: [], total: 0, hasMore: false },
@@ -87,7 +98,11 @@ vi.mock('../../infrastructure', () => ({
 
 vi.mock('@aq/app-config', () => ({
   configService: {
-    getConfig: () => ({ bilregApiBase: 'http://x', kioskDefaultKarcisId: 'K' }),
+    getConfig: () => ({
+      bilregApiBase: 'http://x',
+      kioskDefaultKarcisId: 'K',
+      fallbackServicePoints: { bookingFailure: 'BOK' },
+    }),
   },
 }))
 
@@ -194,5 +209,27 @@ describe('KioskPage direct registration reprint flow', () => {
 
     expect(wrapper.findAll('[data-testid="reprint-reg-id"]').length).toBe(0)
     expect(wrapper.findAll('[data-testid="search-keyword"]').length).toBe(1)
+  })
+})
+
+describe('KioskPage booking fallback assistance', () => {
+  it('automatically creates and prints assistance for a mapped fallback', async () => {
+    registrationMocks.searchBooking.mockRejectedValueOnce(new Error('booking failed'))
+    selfPrintMocks.printQueueTicket.mockClear()
+    registrationMocks.bookingAssistance.mockClear()
+    const wrapper = mountPage()
+
+    await flushPromises()
+    await flushPromises()
+    await wrapper.get('[data-testid="search-keyword"]').setValue('0002036512473')
+    await wrapper.get('[data-testid="search-submit"]').trigger('click')
+    await flushPromises()
+    await flushPromises()
+
+    expect(registrationMocks.bookingAssistance).toHaveBeenCalledWith(
+      expect.objectContaining({ servicePointId: 'BOK' }),
+    )
+    expect(selfPrintMocks.printQueueTicket).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('[data-testid="assist-BOK"]').exists()).toBe(false)
   })
 })

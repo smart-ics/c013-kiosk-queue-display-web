@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Allow each kiosk deployment to manually configure a recommended fallback service point for booking-registration failures while preserving the current mapped-service-point fallback, and add Service Point master-data CRUD to `config-web`.
+**Goal:** Allow each kiosk deployment to manually configure an automatic fallback service point for booking-registration failures, print the resulting assistance ticket automatically, preserve the current mapped-service-point selector when no valid fallback exists, and add Service Point master-data CRUD to `config-web`.
 
-**Architecture:** `kiosk-web/public/global_config.json` remains the manual runtime configuration source for fallback assignments, structured as `fallbackServicePoints.bookingFailure` so future edge cases can be added as sibling keys. `kiosk-web` validates the configured assignment against the current kiosk's active mapped service points returned by the existing API. If the configured value is absent or invalid, the existing `offerings` list is retained and no card is recommended. `config-web` receives a separate Service Point master-data CRUD screen that consumes the existing BE endpoints; it does not write `global_config.json`.
+**Architecture:** `kiosk-web/public/global_config.json` remains the manual runtime configuration source for fallback assignments, structured as `fallbackServicePoints.bookingFailure` so future edge cases can be added as sibling keys. `kiosk-web` validates the configured assignment against the current kiosk's active mapped service points returned by the existing API. A valid booking fallback automatically uses the existing assistance flow, which creates and prints the assistance ticket; an absent or invalid assignment leaves the existing `offerings` selector available. `config-web` receives a separate Service Point master-data CRUD screen that consumes the existing BE endpoints; it does not write `global_config.json`.
 
 **Tech Stack:** Vue 3, TypeScript, Zod, Vitest, TanStack Vue Query, existing `@aq/app-config`, `@aq/api-client`, and `@aq/shared-types` contracts.
 
@@ -15,8 +15,9 @@
 - All `global_config.json` changes are performed manually by the user after deployment; `config-web` must not write that file.
 - `config-web` Service Point CRUD is master-data maintenance only; it must not read or write `fallbackServicePoints`.
 - Keep `global_config.json` limited to runtime/deployment configuration; Service Point master data remains owned by the existing BE API.
-- Do not automatically create an assistance queue from the recommended service point; the kiosk user must still click a card.
-- If the configured fallback assignment is empty, not active, or not mapped to the current kiosk station, ignore it and mark no card recommended while keeping all active mapped service points visible.
+- When a valid booking fallback is configured and mapped to the current kiosk, automatically create and print the assistance queue ticket without requiring a card click.
+- When no valid booking fallback is configured or mapped, show the existing Service Point selector and require an explicit user click before creating or printing an assistance ticket.
+- If the configured fallback assignment is empty, not active, or not mapped to the current kiosk station, ignore it and keep all active mapped service points visible for manual selection.
 - Use `pnpm` package filters; never raw `vite`, `vitest`, `tsc`, or `vue-tsc` commands.
 - Existing inactive/retired Service Points stay visible in the `config-web` master list, but the config screen must not falsely claim it can reactivate a retired Service Point through the existing upsert API.
 
@@ -32,7 +33,7 @@ The manually edited kiosk configuration supports a nested fallback map so future
 }
 ```
 
-`bookingFailure` selects the recommended assistance service point shown when a booking registration fails. An empty string or a missing key means "no recommendation": all active service points mapped to the kiosk station remain available and none is recommended. Example future sibling keys could be `bpjsVerificationFailure` or `registrationFailure`; this plan implements only `bookingFailure` but keeps the container map.
+`bookingFailure` selects the assistance service point used automatically when a booking registration fails. An empty string or a missing key means "no automatic fallback": all active service points mapped to the kiosk station remain available for explicit selection. If the configured ID is not active or not mapped to the current kiosk, the same selector is shown. Example future sibling keys could be `bpjsVerificationFailure` or `registrationFailure`; this plan implements only `bookingFailure` but keeps the container map.
 
 The contract is deployment-wide because `global_config.json` is shared by the kiosk app deployment. It is not a per-station database setting.
 
@@ -43,7 +44,7 @@ The contract is deployment-wide because `global_config.json` is shared by the ki
 - Add `fallbackServicePoints.bookingFailure` to the app configuration schema.
 - Document the manually edited property in the kiosk `global_config.json` template.
 - Resolve a valid recommendation against the existing current-kiosk `offerings` list.
-- Visually mark the resolved service point as the recommended assistance choice while retaining all fallback choices and requiring explicit user click. The marker appears ONLY in booking mode; walk-in and other failure paths show no recommendation.
+- Automatically create and print assistance for the resolved service point in booking mode. When no valid fallback resolves, retain the existing explicit Service Point selector. Walk-in and other failure paths remain manual and do not use this fallback.
 - Add Service Point master-data CRUD to `config-web` using the existing BE API (list all + upsert); no new BE endpoints.
 - Add unit/component coverage for valid, missing, empty, inactive, and unmapped assignments.
 
@@ -51,7 +52,7 @@ The contract is deployment-wide because `global_config.json` is shared by the ki
 
 - Adding endpoints or database changes to `b09-bilreg-api`.
 - Moving Service Point master data from the BE API into `global_config.json`.
-- Automatically issuing an assistance queue ticket from the recommended choice.
+- Applying the booking fallback to walk-in or other failure paths.
 - Adding fallback keys other than `bookingFailure` (the container map supports them later).
 - Reactivating a retired Service Point through `config-web` (the existing upsert API does not support it).
 
@@ -80,9 +81,11 @@ The contract is deployment-wide because `global_config.json` is shared by the ki
 - Create `apps/config-web/src/views/__tests__/ServicePointsPage.spec.ts`: CRUD screen coverage.
 - Create `apps/kiosk-web/src/lib/fallbackServicePoint.ts`: pure recommendation-resolution helper.
 - Create `apps/kiosk-web/src/lib/__tests__/fallbackServicePoint.spec.ts`: resolver tests.
-- Modify `apps/kiosk-web/src/views/KioskPage.vue`: resolve the recommendation from the existing `offerings` and pass it to `FailureStep`.
-- Modify `apps/kiosk-web/src/views/steps/FailureStep.vue`: accept `recommendedServicePointId` and mark the matching card.
-- Create `apps/kiosk-web/src/views/steps/__tests__/FailureStep.spec.ts`: recommendation marker behavior.
+- Modify `apps/kiosk-web/src/views/KioskPage.vue`: resolve the fallback from the existing `offerings` and automatically invoke the assistance flow after a booking failure.
+- Modify `apps/kiosk-web/src/views/steps/FailureStep.vue`: retain the manual selector for cases without an automatic fallback.
+- Modify `apps/kiosk-web/src/views/steps/AssistanceQueueStep.vue`: render an admisi-redirect confirmation when automatic booking assistance created the ticket.
+- Create `apps/kiosk-web/src/views/steps/__tests__/FailureStep.spec.ts`: manual selector behavior.
+- Create `apps/kiosk-web/src/views/steps/__tests__/AssistanceQueueStep.spec.ts`: admisi-redirect and generic assistance layouts.
 
 ## Implementation Plan
 
@@ -284,53 +287,19 @@ Expected: PASS.
 **Files:**
 - Modify: `apps/kiosk-web/src/views/KioskPage.vue`
 - Modify: `apps/kiosk-web/src/views/steps/FailureStep.vue`
+- Modify: `apps/kiosk-web/src/views/steps/AssistanceQueueStep.vue`
 - Create: `apps/kiosk-web/src/views/steps/__tests__/FailureStep.spec.ts`
+- Create: `apps/kiosk-web/src/views/steps/__tests__/AssistanceQueueStep.spec.ts`
 
 **Interfaces:**
 - Consumes `configService.getConfig().fallbackServicePoints?.bookingFailure`.
-- Produces a `recommendedServicePointId?: string` prop for `FailureStep`; this is a visual recommendation, not an automatic queue submission.
+- Produces a resolved `string | undefined` used to trigger the existing booking assistance flow automatically. The FailureStep selector remains available when the resolver returns `undefined`.
 
-- [ ] **Step 1: Write the failing FailureStep test**
+- [ ] **Step 1: Write the failing automatic-assistance tests**
 
-Create `apps/kiosk-web/src/views/steps/__tests__/FailureStep.spec.ts`:
+Extend `apps/kiosk-web/src/views/__tests__/KioskPage.spec.ts` or the nearest registration-flow test with coverage that a valid booking fallback invokes `confirmAssistance` once and that missing/unmapped assignments do not invoke it. Keep the existing `FailureStep` tests for manual selection coverage.
 
-```ts
-import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
-import type { AdmissionServicePoint } from '@aq/shared-types'
-import FailureStep from '../FailureStep.vue'
-import type { FailureContext } from '../../../composables/useKioskRegistration'
-
-const offerings: AdmissionServicePoint[] = [
-  { servicePointId: 'SP-A', displayName: 'Admisi Umum', queuePrefix: 'A', status: 'Active' },
-  { servicePointId: 'SP-B', displayName: 'Admisi BPJS', queuePrefix: 'B', status: 'Active' },
-]
-
-const errorContext: FailureContext = { code: 'BACKEND_ERROR', message: 'gagal' }
-
-function mountStep(props: { recommendedServicePointId?: string } = {}) {
-  return mount(FailureStep, {
-    props: { errorContext, offerings, pending: false, ...props },
-  })
-}
-
-describe('FailureStep recommended service point', () => {
-  it('marks the recommended card and does not auto-emit', () => {
-    const wrapper = mountStep({ recommendedServicePointId: 'SP-B' })
-    const recommended = wrapper.findAll('[data-recommended="true"]')
-
-    expect(recommended).toHaveLength(1)
-    expect(recommended[0].attributes('data-testid')).toBe('assist-SP-B')
-    expect(wrapper.emitted('selectServicePoint')).toBeUndefined()
-  })
-
-  it('marks no card when no recommendation is given', () => {
-    const wrapper = mountStep()
-
-    expect(wrapper.findAll('[data-recommended="true"]')).toHaveLength(0)
-  })
-})
-```
+The page test must assert that a mapped `BOK` fallback calls `bookingAssistance` once and `printQueueTicket` once after the submit lock is released. Add companion cases for missing/unmapped fallback IDs and walk-in failures, asserting that no automatic assistance call occurs and the selector remains available.
 
 - [ ] **Step 2: Run the focused test and verify it fails**
 
@@ -340,9 +309,9 @@ Run:
 pnpm --filter kiosk-web exec vitest run src/views/steps/__tests__/FailureStep.spec.ts
 ```
 
-Expected: FAIL because `FailureStep` does not yet render a `data-recommended` marker.
+Expected: FAIL because `KioskPage.vue` does not yet trigger automatic assistance.
 
-- [ ] **Step 3: Resolve the recommendation in `KioskPage.vue`**
+ - [ ] **Step 3: Trigger automatic assistance in `KioskPage.vue`**
 
 Import the helper. Use the existing `offerings` computed value and do not make another Service Point API call:
 
@@ -355,41 +324,27 @@ const recommendedFallbackServicePointId = computed(() =>
 )
 ```
 
-Pass it to `FailureStep`, gated so the recommendation appears ONLY in booking mode (walk-in and other failure paths show no recommendation):
+Add a single-run watcher for the booking failure state. It must wait until `registration.submitting.value` is false, then call `registration.confirmAssistance(recommendedFallbackServicePointId.value)` only when `registration.flow.value === 'FAILURE'`, `registration.mode.value === 'booking'`, and the resolved ID is present. Reset the single-run guard after leaving the failure state. `confirmAssistance` already calls `bookingAssistance` and `printQueueTicket`; do not duplicate either call.
 
-```vue
-:recommended-service-point-id="isBookingMode ? recommendedFallbackServicePointId : undefined"
-```
+Pass no fallback marker to `FailureStep`. When the resolver returns `undefined`, render `FailureStep` with its existing offerings and click behavior.
 
-- [ ] **Step 4: Render the recommendation in `FailureStep.vue`**
+ - [ ] **Step 4: Keep manual selection in `FailureStep.vue`**
 
-Add the optional prop to the existing `defineProps` block:
+Keep the existing click handler unchanged. It remains the fallback for missing, invalid, inactive, or unmapped assignments. The selector must remain available for walk-in and other failure paths.
 
-```ts
-recommendedServicePointId?: string
-```
+ - [ ] **Step 5: Show an admisi-redirect confirmation in `AssistanceQueueStep.vue`**
 
-On the assistance card button, mark only the matching card with a stable attribute. Keep the existing click handler unchanged:
+When automatic assistance created a queue ticket for an admisi help desk, the confirmation screen must explain to the patient that poli registration failed on the kiosk and that they must first queue at Loket Admisi. Render:
 
-```vue
-:data-recommended="sp.servicePointId === recommendedServicePointId ? 'true' : undefined"
-```
+- Context alert: `Registrasi di Kiosk belum berhasil` (no separate body paragraph).
+- Queue card labeled `Nomor Antrian Admisi` with the same `queueLabel`/`noUrut`/`antrianId` shown on the printed ticket.
+- A hint block: `Silakan menuju Loket Admisi dan tunggu nomor antrian Anda dipanggil. Petugas akan membantu menyelesaikan pendaftaran ke poli Anda.`
+- Printing status text using `admisi` wording.
+- No `Layanan:` label, no Service Point ID.
 
-Add a visible badge inside the card content so the recommendation is obvious to the kiosk user:
+Keep the generic assistance layout (`title`, optional `servicePointName`) for walk-in assistance. Gate the variant in `KioskPage.vue` via a `variant` prop computed as `'admisiRedirect'` when `isBookingMode` is true, else `'assistance'`. Add `AssistanceQueueStep.spec.ts` covering both variants and the reprint/finish actions.
 
-```vue
-<span
-  v-if="sp.servicePointId === recommendedServicePointId"
-  class="recommended-badge"
-  style="display:inline-block;margin-top:4px;background:var(--brand-soft);color:var(--brand-strong);padding:2px 10px;border-radius:999px;font-weight:700;font-size:0.8rem;"
->
-  Rekomendasi
-</span>
-```
-
-The existing click handler must remain unchanged. The visual marker is the only behavior change; the user still chooses the service point explicitly. The marker must appear ONLY in booking mode — in walk-in and other failure paths, no card is recommended.
-
-- [ ] **Step 5: Run the focused tests**
+- [ ] **Step 6: Run the focused tests**
 
 Run:
 
@@ -544,11 +499,11 @@ Expected: both production builds succeed.
 
 Verify these deployment scenarios:
 
-1. `fallbackServicePoints` absent or `bookingFailure` empty: all active service points mapped to the current station are shown and none is recommended.
-2. Valid mapped ID in booking mode: the matching assistance card is marked as recommended.
-3. Unmapped ID: no card is recommended and all existing fallback cards remain shown.
-4. Walk-in failure or any non-booking failure path: no card is recommended regardless of the configured assignment.
-5. Clicking a service point still requires explicit user action before `bookingAssistance` or `intake` is called.
+1. `fallbackServicePoints` absent or `bookingFailure` empty: all active service points mapped to the current station are shown and no automatic assistance call is made.
+2. Valid mapped ID in booking mode: assistance is created for that ID and the resulting ticket is printed automatically, and the confirmation screen explains the redirect to Loket Admisi with the printed queue number.
+3. Unmapped, inactive, or invalid ID: no automatic call is made and all existing Service Point cards remain available.
+4. Walk-in failure or any non-booking failure path: no automatic assistance occurs regardless of the configured assignment and the generic assistance screen is shown.
+5. If automatic booking assistance fails, the failure selector remains available for explicit retry/selection.
 6. Walk-in flow and normal intake selection remain unchanged.
 7. `config-web` Service Point screen lists active and retired records, supports create/edit, and never shows `fallbackServicePoints`.
 
@@ -568,7 +523,7 @@ Do not mark a slice `GO` until the review agent verifies the acceptance criteria
 |---|---|---|---|
 | S1 | Manual `global_config.json` contract (`fallbackServicePoints.bookingFailure`) | PLANNED | None |
 | S2 | Pure recommendation resolver | PLANNED | S1 |
-| S3 | Failure UI recommendation marker | PLANNED | S2 |
+| S3 | Automatic booking fallback assistance and ticket printing | PLANNED | S2 |
 | S4 | Service Point master CRUD in `config-web` | PLANNED | None |
 | S5 | Full verification and handoff | PLANNED | S1, S2, S3, S4 |
 
@@ -586,5 +541,5 @@ No BE implementation is included. The following proposal may be sent to the BE c
 
 - Spec coverage: nested manual configuration, current kiosk mapping fallback, invalid/empty configuration fallback, no BE changes, Service Point master CRUD, and the BE adaptation proposal are all covered.
 - Placeholder scan: no `TBD`, `TODO`, or unspecified implementation step remains.
-- Type consistency: `fallbackServicePoints.bookingFailure` is defined in `AppConfig`, consumed by `resolveFallbackServicePointId`, and passed to `FailureStep` as `recommendedServicePointId`. In the template the marker is gated to booking mode via `isBookingMode`; it is never referenced inside the `recommendedFallbackServicePointId` computed because `registration` is declared after it.
+- Type consistency: `fallbackServicePoints.bookingFailure` is defined in `AppConfig`, consumed by `resolveFallbackServicePointId`, and used by the booking-failure watcher to call `confirmAssistance`. The existing `FailureStep` remains the manual path when the resolver returns `undefined`.
 - Scope check: no task modifies `b09-bilreg-api`; Service Point CRUD is limited to master-data maintenance in `config-web`, while the fallback assignment remains manual JSON configuration.

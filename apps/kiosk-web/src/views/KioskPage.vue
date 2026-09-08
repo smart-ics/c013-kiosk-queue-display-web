@@ -268,6 +268,46 @@ onUnmounted(() => {
 })
 
 const isBookingMode = computed(() => registration.mode.value === 'booking')
+const automaticFallbackAttempted = ref(false)
+const automaticFallbackFailed = ref(false)
+
+const automaticFallbackActive = computed(
+  () =>
+    isBookingMode.value &&
+    registration.flow.value === 'FAILURE' &&
+    !!recommendedFallbackServicePointId.value &&
+    automaticFallbackAttempted.value &&
+    !automaticFallbackFailed.value,
+)
+
+watch(
+  () =>
+    [
+      registration.flow.value,
+      registration.mode.value,
+      registration.submitting.value,
+      recommendedFallbackServicePointId.value,
+    ] as const,
+  ([flow, mode, submitting, fallbackServicePointId]) => {
+    if (flow !== 'FAILURE') {
+      automaticFallbackAttempted.value = false
+      automaticFallbackFailed.value = false
+      return
+    }
+    if (
+      automaticFallbackAttempted.value ||
+      mode !== 'booking' ||
+      submitting ||
+      !fallbackServicePointId
+    )
+      return
+
+    automaticFallbackAttempted.value = true
+    void registration.confirmAssistance(fallbackServicePointId).then(() => {
+      if (registration.flow.value === 'FAILURE') automaticFallbackFailed.value = true
+    })
+  },
+)
 
 const loadingMessage = computed(() => {
   if (bootError.value) return null
@@ -549,20 +589,27 @@ const loadingMessage = computed(() => {
             @reprint="onReprintRegistration"
             @finish="onHome"
           />
-          <FailureStep
-            v-else-if="registration.flow.value === 'FAILURE'"
-            :error-context="registration.errorContext.value!"
-            :offerings="offerings"
-            :pending="registration.submitting.value"
-            :recommended-service-point-id="isBookingMode ? recommendedFallbackServicePointId : undefined"
-            @select-service-point="registration.confirmAssistance"
-            @back="onHome"
-          />
+          <template v-else-if="registration.flow.value === 'FAILURE'">
+            <section v-if="automaticFallbackActive" class="panel">
+              <p class="status" style="text-align: center; font-weight: 600;">
+                Mengambil nomor antrian admisi…
+              </p>
+            </section>
+            <FailureStep
+              v-else
+              :error-context="registration.errorContext.value!"
+              :offerings="offerings"
+              :pending="registration.submitting.value"
+              @select-service-point="registration.confirmAssistance"
+              @back="onHome"
+            />
+          </template>
           <AssistanceQueueStep
             v-else-if="registration.flow.value === 'ASSISTANCE_QUEUE'"
             :ticket="registration.assistanceTicket.value!"
             :title="assistanceTitle"
             :service-point-name="assistanceServicePointName"
+            :variant="isBookingMode ? 'admisiRedirect' : 'assistance'"
             :print-pending="selfPrint.printPending.value"
             :print-succeeded="selfPrint.printSucceeded.value"
             :print-error="selfPrint.printError.value"
