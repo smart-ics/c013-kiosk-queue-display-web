@@ -231,7 +231,7 @@ describe('KioskPage booking fallback assistance', () => {
     registrationMocks.searchBooking.mockReset()
     registrationMocks.searchBooking.mockResolvedValue([])
     registrationMocks.bookingAssistance.mockReset()
-    registrationMocks.bookingAssistance.mockResolvedValue({
+registrationMocks.bookingAssistance.mockResolvedValue({
       queueLabel: 'BOK-001',
       antrianId: 'A1',
       noUrut: 1,
@@ -268,6 +268,7 @@ describe('KioskPage booking fallback assistance', () => {
     await flushPromises()
     await flushPromises()
 
+    expect(registrationMocks.bookingAssistance).toHaveBeenCalledTimes(1)
     expect(registrationMocks.bookingAssistance).toHaveBeenCalledWith(
       expect.objectContaining({ servicePointId: 'BOK' }),
     )
@@ -402,6 +403,23 @@ describe('KioskPage booking fallback assistance', () => {
 
     expect(wrapper.find('[data-testid="assist-BOK"]').exists()).toBe(true)
     expect(registrationMocks.bookingAssistance).not.toHaveBeenCalled()
+    expect(selfPrintMocks.printQueueTicket).not.toHaveBeenCalled()
+  })
+
+  it('restores the selector when automatic assistance fails', async () => {
+    registrationMocks.searchBooking.mockRejectedValueOnce(new Error('booking failed'))
+    registrationMocks.bookingAssistance.mockRejectedValueOnce(new Error('assist failed'))
+    const wrapper = mountPage()
+
+    await flushPromises()
+    await flushPromises()
+    await wrapper.get('[data-testid="search-keyword"]').setValue('0002036512473')
+    await wrapper.get('[data-testid="search-submit"]').trigger('click')
+    await flushPromises()
+    await flushPromises()
+
+    expect(registrationMocks.bookingAssistance).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('[data-testid="assist-BOK"]').exists()).toBe(true)
     expect(selfPrintMocks.printQueueTicket).not.toHaveBeenCalled()
   })
 })
