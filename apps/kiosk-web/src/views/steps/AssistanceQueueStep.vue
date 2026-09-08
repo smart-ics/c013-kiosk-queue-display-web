@@ -58,7 +58,7 @@ defineEmits<{ reprint: []; finish: [] }>()
     <template v-else>
       <h1 class="aq-title" style="text-align: center;">{{ title }}</h1>
       <p v-if="servicePointName" class="aq-sp-name" style="text-align: center;">
-        {{ servicePointName }}
+        Layanan: {{ servicePointName }}
       </p>
 
       <div class="hero-queue-container">
