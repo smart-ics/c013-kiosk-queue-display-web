@@ -521,11 +521,11 @@ Do not mark a slice `GO` until the review agent verifies the acceptance criteria
 
 | Slice | Scope | Status | Dependencies |
 |---|---|---|---|
-| S1 | Manual `global_config.json` contract (`fallbackServicePoints.bookingFailure`) | PLANNED | None |
-| S2 | Pure recommendation resolver | PLANNED | S1 |
-| S3 | Automatic booking fallback assistance and ticket printing | PLANNED | S2 |
-| S4 | Service Point master CRUD in `config-web` | PLANNED | None |
-| S5 | Full verification and handoff | PLANNED | S1, S2, S3, S4 |
+| S1 | Manual `global_config.json` contract (`fallbackServicePoints.bookingFailure`) | GO | None |
+| S2 | Pure recommendation resolver | GO | S1 |
+| S3 | Automatic booking fallback assistance and ticket printing | GO | S2 |
+| S4 | Service Point master CRUD in `config-web` | GO | None |
+| S5 | Full verification and handoff | GO | S1, S2, S3, S4 |
 
 ## Deferred BE Proposal
 
