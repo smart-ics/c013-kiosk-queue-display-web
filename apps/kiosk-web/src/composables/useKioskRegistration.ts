@@ -428,6 +428,17 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
           tglLahir: item.birthDate,
         }
         mode.value = 'walkin'
+
+        const todayRegistrations = patientContextResult.value?.registrations?.items.filter(
+          (r) => r.patientId === item.patientId && r.visitDate === businessDate.value,
+        ) ?? []
+        if (todayRegistrations.length === 1) {
+          const data = await deps.getRegistrationPrintData(todayRegistrations[0].registrationId!)
+          registrationReprintData.value = data
+          transition('REGISTRATION_REPRINT')
+          return
+        }
+
         transition('WALKIN_SELECT_GUARANTEE')
       } catch (error) {
         setFailure(mapErrorToFailureCode(error), messageFromError(error))

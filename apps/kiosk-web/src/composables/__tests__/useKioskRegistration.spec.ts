@@ -77,7 +77,7 @@ const registrationItem = {
   kind: 'Registration' as const,
   id: 'RG12345678',
   patientName: 'Cici',
-  patientId: 'PT2',
+  patientId: 'PT1',
   birthDate: '1985-05-05',
   gender: 'P',
   locality: 'Jakarta',
@@ -468,6 +468,23 @@ describe('useKioskRegistration patient context cascade', () => {
     expect(reg.flow.value).toBe('WALKIN_SELECT_GUARANTEE')
     expect(reg.selectedPatient.value?.pasienId).toBe('PT1')
     expect(reg.selectedPatient.value?.pasienName).toBe('Budi')
+  })
+
+  it('confirmPatientContext maps to reprint flow when patient has today\'s registration', async () => {
+    const searchPatientContext = vi.fn(async () => registrationContextResponse)
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext,
+      getRegistrationPrintData: vi.fn(async () => registrationPrintData),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('Budi')
+    expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
+    await reg.confirmPatientContext(contextItem)
+    expect(reg.flow.value).toBe('REGISTRATION_REPRINT')
+    expect(reg.registrationReprintData.value).toEqual(registrationPrintData)
+    expect(deps.getRegistrationPrintData).toHaveBeenCalledWith('RG12345678')
   })
 
   it('cancelPatientContext returns to home', () => {
