@@ -7,12 +7,14 @@ const props = defineProps<{
   bestMatch: PatientContextItem | null
   patients: PatientContextItem[]
   pending: boolean
+  registrationReprintData?: Record<string, unknown> | null
 }>()
 
 const emit = defineEmits<{
   confirm: [item: PatientContextItem]
   intake: []
   retry: []
+  reprint: []
 }>()
 
 const currentPage = ref(1)
@@ -325,6 +327,28 @@ function disambiguator(item: PatientContextItem): string {
           <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
         </svg>
         <span>Cari Ulang</span>
+      </button>
+
+      <button
+        v-if="registrationReprintData"
+        type="button"
+        style="
+          appearance: none;
+          background: var(--surface);
+          border: 1.5px solid var(--brand-soft);
+          border-radius: var(--radius-md, 12px);
+          color: var(--brand-strong);
+          font-size: 1rem;
+          font-weight: 700;
+          cursor: pointer;
+          padding: 12px 20px;
+          transition: all 120ms ease;
+        "
+        :disabled="pending"
+        data-testid="reprint-btn"
+        @click="emit('reprint')"
+      >
+        Cetak Ulang Karcis
       </button>
 
       <button

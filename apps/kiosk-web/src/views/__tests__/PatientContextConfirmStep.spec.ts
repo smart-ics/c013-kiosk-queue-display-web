@@ -36,6 +36,11 @@ const alt: PatientContextItem = {
   rank: 2,
 }
 
+const registrationReprintData: Record<string, unknown> = {
+  registrationId: 'RG12345678',
+  queueLabel: 'A001',
+}
+
 describe('PatientContextConfirmStep', () => {
   it('shows bestMatch in selector list with badge', () => {
     const wrapper = mount(PatientContextConfirmStep, {
@@ -106,5 +111,37 @@ describe('PatientContextConfirmStep', () => {
     })
     await wrapper.get('[data-testid="retry-search"]').trigger('click')
     expect(wrapper.emitted('retry')).toHaveLength(1)
+  })
+
+  it('shows reprint button when registrationReprintData is available', async () => {
+    const wrapper = mount(PatientContextConfirmStep, {
+      props: {
+        bestMatch: best,
+        patients: [],
+        pending: false,
+        registrationReprintData,
+      },
+    })
+    expect(wrapper.find('[data-testid="reprint-btn"]').exists()).toBe(true)
+  })
+
+  it('hides reprint button when registrationReprintData is null', () => {
+    const wrapper = mount(PatientContextConfirmStep, {
+      props: { bestMatch: best, patients: [], pending: false, registrationReprintData: null },
+    })
+    expect(wrapper.find('[data-testid="reprint-btn"]').exists()).toBe(false)
+  })
+
+  it('emits reprint when reprint button clicked', async () => {
+    const wrapper = mount(PatientContextConfirmStep, {
+      props: {
+        bestMatch: best,
+        patients: [],
+        pending: false,
+        registrationReprintData,
+      },
+    })
+    await wrapper.get('[data-testid="reprint-btn"]').trigger('click')
+    expect(wrapper.emitted('reprint')).toHaveLength(1)
   })
 })
