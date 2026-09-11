@@ -429,9 +429,10 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         }
         mode.value = 'walkin'
 
-        const todayRegistrations = patientContextResult.value?.registrations?.items.filter(
-          (r) => r.patientId === item.patientId && r.visitDate === businessDate.value,
-        ) ?? []
+        const todayRegistrations =
+          patientContextResult.value?.registrations?.items.filter(
+            (r) => r.patientId === item.patientId && r.visitDate === businessDate.value,
+          ) ?? []
         if (todayRegistrations.length === 1) {
           const data = await deps.getRegistrationPrintData(todayRegistrations[0].registrationId!)
           registrationReprintData.value = data
@@ -830,7 +831,8 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         : (selectedPatient.value?.pasienName ?? ''),
       pasienId: isBooking ? bookingDetail.value?.reg.pasienId : selectedPatient.value?.pasienId,
       tglLahir: formatBirthDate(rawTglLahir),
-      umur: rawTglLahir && businessDate.value ? formatAge(rawTglLahir, businessDate.value) : undefined,
+      umur:
+        rawTglLahir && businessDate.value ? formatAge(rawTglLahir, businessDate.value) : undefined,
       tipeJaminanName: isBooking
         ? bookingEligibility.value?.tipeJaminanName
         : walkinEligibility.value?.tipeJaminanName,

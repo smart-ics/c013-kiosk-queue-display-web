@@ -107,7 +107,7 @@ function disambiguator(item: PatientContextItem): string {
               class="radio-card-icon"
               :style="{
                 background: item.gender === 'L' || item.gender === 'M' ? '#eff6ff' : '#fdf2f8',
-                color: item.gender === 'L' || item.gender === 'M' ? '#2563eb' : '#db2777'
+                color: item.gender === 'L' || item.gender === 'M' ? '#2563eb' : '#db2777',
               }"
             >
               <svg
