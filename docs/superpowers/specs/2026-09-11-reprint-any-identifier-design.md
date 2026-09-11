@@ -22,9 +22,11 @@ the post-pick check is binary.
    `WALKIN_SELECT_GUARANTEE`, filter cached `patientContextResult.registrations.items`
    for `patientId == picked.patientId` scoped to today's `businessDate`:
    - **Found (exactly 1):** `getRegistrationPrintData(regId)` → `REGISTRATION_REPRINT`.
-   - **Not found:** existing behavior → `WALKIN_SELECT_GUARANTEE`.
-   - **Stale/empty cache:** fall back to single `getRegistrationPrintData` attempt only
-     when a candidate regId is known; otherwise walk-in path.
+   - **Not found:** if cache has no registrations at all (deep-search path), re-query
+     backend via `searchPatientContext({ keyword: numericPatientIdSuffix, businessDate })`.
+     The keyword is the trailing numeric pasienId suffix because backend `PasienFinder` parses pasienId only from numeric input. Backend finds registrations for that patient on today's date. If still 0 → walk-in.
+     If exactly 1 → reprint. If >1 → error (should not happen).
+   - **Not found with cached registrations:** existing behavior → `WALKIN_SELECT_GUARANTEE`.
 4. **Scope guard:** only today's businessDate registrations qualify. Older ones are ignored.
 
 ## Non-goals
@@ -42,6 +44,7 @@ the post-pick check is binary.
 
 - Added `PATIENT_CONTEXT_CONFIRM -> REGISTRATION_REPRINT` transition in `flow.ts`.
 - Added post-pick check in `confirmPatientContext()` that filters cached registrations for `patientId == picked.patientId` scoped to today's `businessDate`. If exactly 1 match, fetches print data via `getRegistrationPrintData` and transitions to `REGISTRATION_REPRINT`.
+- Added fallback re-query for deep-search results with empty cached registrations; re-query keyword uses the trailing numeric pasienId suffix (for example `RS0100000001` → `00000001`) to match backend `PasienFinder` behavior.
 - Added `registrationReprintData` prop and `reprint` emit to `PatientContextConfirmStep`; added "Cetak Ulang Karcis" button in the footer (styled matching the "Ambil Antrian Pendaftaran" existing button).
 - Wired `:registration-reprint-data` and `@reprint` in `KioskPage.vue` template.
 - Verified end-to-end flow with DOM-driven test: booking search → patient context confirm → reprint button click → print functions called.

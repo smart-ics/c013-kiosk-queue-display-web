@@ -96,6 +96,11 @@ function isCanonicalRegistrationIdKeyword(value: string): boolean {
   return FULL_REGISTRATION_ID_PATTERN.test(value)
 }
 
+function normalizePasienIdKeyword(value: string): string {
+  const digits = value.replace(/\D/g, '')
+  return digits ? digits.slice(-8) : value
+}
+
 function messageFromError(error: unknown): string {
   return mapBackendErrorToUserMessage(error)
 }
@@ -437,7 +442,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         if (todayRegistrations.length === 0) {
           const tgl = businessDate.value || (await ensureBusinessDate())
           const fresh = await deps.searchPatientContext({
-            keyword: item.patientId,
+            keyword: normalizePasienIdKeyword(item.patientId),
             businessDate: tgl,
           })
           patientContextResult.value = fresh

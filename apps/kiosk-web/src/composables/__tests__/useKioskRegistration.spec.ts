@@ -514,9 +514,46 @@ describe('useKioskRegistration patient context cascade', () => {
     await reg.confirmPatientContext(contextItem)
     expect(reg.flow.value).toBe('REGISTRATION_REPRINT')
     expect(deps.searchPatientContext).toHaveBeenCalledWith(
-      expect.objectContaining({ keyword: 'PT1' }),
+      expect.objectContaining({ keyword: '1' }),
     )
     expect(reg.registrationReprintData.value).toEqual(registrationPrintData)
+  })
+
+  it('confirmPatientContext sends only pasienId numeric suffix when re-querying', async () => {
+    const prefixedPatient = { ...contextItem, patientId: 'RS0100000001' }
+    const prefixedRegistration = {
+      ...registrationItem,
+      patientId: 'RS0100000001',
+    }
+    const mockDeepSearchResult = {
+      pasienId: 'RS0100000001',
+      isActive: true,
+      person: {
+        personName: 'Budi',
+        tglLahir: '1990-01-01',
+        gender: 'L' as const,
+        alamat: { alamat: ['Jl. A'], kota: 'Jakarta', kodePos: '40111' },
+        contact: { jenisContact: 2, contactDetail: '0812' },
+        identity: { jenisId: 'NIK', nomorId: '3273' },
+      },
+    }
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      deepSearchPasien: vi.fn(async () => [mockDeepSearchResult]),
+      searchPatientContext: vi.fn(async () => ({
+        ...registrationContextResponse,
+        registrations: { items: [prefixedRegistration], total: 1, hasMore: false },
+      })),
+      getRegistrationPrintData: vi.fn(async () => registrationPrintData),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('Budi')
+    await reg.confirmPatientContext(prefixedPatient)
+    expect(deps.searchPatientContext).toHaveBeenCalledWith(
+      expect.objectContaining({ keyword: '00000001' }),
+    )
+    expect(reg.flow.value).toBe('REGISTRATION_REPRINT')
   })
 
   it('confirmPatientContext re-queries but walks-in when still no registrations after re-query', async () => {
