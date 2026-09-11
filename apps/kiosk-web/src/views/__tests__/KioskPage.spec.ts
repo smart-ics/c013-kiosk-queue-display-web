@@ -283,6 +283,96 @@ describe('KioskPage direct registration reprint flow', () => {
 
     expect(selfPrintMocks.printRegistration).not.toHaveBeenCalled()
   })
+
+  it('completes the reprint flow from booking search to reprint', async () => {
+    selfPrintMocks.printRegistration.mockClear()
+    selfPrintMocks.printPatientLabel.mockClear()
+    registrationMocks.patientContextSearch.mockImplementationOnce(async () => ({
+      businessDate: '2026-09-02',
+      bookings: { items: [], total: 0, hasMore: false },
+      registrations: {
+        items: [
+          {
+            kind: 'Registration',
+            id: 'RG12345678',
+            patientName: 'Andi',
+            patientId: 'PT1',
+            birthDate: '1990-01-01',
+            gender: 'L',
+            locality: null,
+            maskedNik: null,
+            maskedPhone: null,
+            visitDate: '2026-09-02',
+            visitTime: '08:30',
+            serviceName: 'Poli Jantung',
+            doctorName: 'Dr. Budi',
+            state: 'Active',
+            bookingId: null,
+            registrationId: 'RG12345678',
+            matchType: 'Exact',
+            isExactMatch: true,
+            rank: 1,
+            warnings: [],
+          },
+        ],
+        total: 1,
+        hasMore: false,
+      },
+      patients: { items: [], total: 0, hasMore: false },
+      bestMatch: {
+        kind: 'Registration',
+        id: 'RG12345678',
+        patientName: 'Andi',
+        patientId: 'PT1',
+        birthDate: '1990-01-01',
+        gender: 'L',
+        locality: null,
+        maskedNik: null,
+        maskedPhone: null,
+        visitDate: '2026-09-02',
+        visitTime: '08:30',
+        serviceName: 'Poli Jantung',
+        doctorName: 'Dr. Budi',
+        state: 'Active',
+        bookingId: null,
+        registrationId: 'RG12345678',
+        matchType: 'Exact',
+        isExactMatch: true,
+        rank: 1,
+        warnings: [],
+      },
+      canCreatePatient: false,
+    }))
+    const wrapper = mountPage()
+
+    await flushPromises()
+    await flushPromises()
+    await wrapper.get('[data-testid="search-keyword"]').setValue('Andi')
+    await wrapper.get('[data-testid="search-submit"]').trigger('click')
+    await flushPromises()
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'PatientContextConfirmStep' }).exists()).toBe(true)
+
+    await wrapper.get('[data-testid="patient-RG12345678"]').trigger('click')
+    await flushPromises()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Cetak Ulang Karcis Registrasi')
+    expect(wrapper.get('[data-testid="reprint-no-antrian"]').text()).toBe('12')
+
+    await wrapper.get('[data-testid="reprint-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(selfPrintMocks.printRegistration).toHaveBeenCalledTimes(1)
+    expect(selfPrintMocks.printRegistration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: { regId: 'RG12345678', noAntrian: 12 },
+        pasienName: 'Andi',
+      }),
+    )
+    expect(selfPrintMocks.printPatientLabel).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('KioskPage booking fallback assistance', () => {
