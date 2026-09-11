@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.10] - 2026-09-11
+
+### Added
+
+- **Cetak ulang registrasi dari kiosk (kiosk-web)**: Petugas kini dapat memulai cetak ulang bukti registrasi dari kiosk menggunakan nomor registrasi, nomor rekam medis, NIK, atau kartu. Sistem menampilkan ulang konteks pasien bila data registrasi belum tersedia, lalu mempertahankan hasil cetak agar dapat dicetak ulang kembali tanpa mengulang pencarian.
+
 ## [0.2.9] - 2026-09-08
 
 ### Added
