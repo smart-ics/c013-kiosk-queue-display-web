@@ -537,9 +537,11 @@ const loadingMessage = computed(() => {
             :best-match="registration.patientContextResult.value?.bestMatch ?? null"
             :patients="registration.patientContextResult.value?.patients.items ?? []"
             :pending="registration.submitting.value"
+            :registration-reprint-data="registration.registrationReprintData.value"
             @confirm="onConfirmPatientContext"
             @intake="onIntakeFromContext"
             @retry="onCancelPatientContext"
+            @reprint="onReprintExistingRegistration"
           />
           <BiometricStep
             v-else-if="registration.flow.value === 'BIOMETRIC_VERIFY'"
@@ -597,7 +599,7 @@ const loadingMessage = computed(() => {
           />
           <template v-else-if="registration.flow.value === 'FAILURE'">
             <section v-if="automaticFallbackActive" class="panel">
-              <p class="status" style="text-align: center; font-weight: 600;">
+              <p class="status" style="text-align: center; font-weight: 600">
                 Mengambil nomor antrian admisi…
               </p>
             </section>

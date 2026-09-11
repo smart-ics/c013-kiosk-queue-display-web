@@ -7,10 +7,9 @@ import KioskPage from '../KioskPage.vue'
 
 const selfPrintMocks = vi.hoisted(() => ({
   printRegistration: vi.fn(
-    async (_ctx: {
-      result: { regId: string; noAntrian: number }
-      pasienName?: string
-    }) => ({ printed: true }),
+    async (_ctx: { result: { regId: string; noAntrian: number }; pasienName?: string }) => ({
+      printed: true,
+    }),
   ),
   printPatientLabel: vi.fn(async () => ({ printed: true })),
   printQueueTicket: vi.fn(async () => ({ printed: true })),
@@ -78,22 +77,22 @@ const appConfigMocks = vi.hoisted(() => ({
 
 vi.mock('../../infrastructure', () => ({
   getDeviceConfigProvider: vi.fn(async () => ({
-     getConfig: vi.fn(async () => ({
-       deviceId: 'K01',
-       role: 'kiosk',
-       printerProxyPort: 5050,
-       servicePointIds: ['BOK'],
-     })),
+    getConfig: vi.fn(async () => ({
+      deviceId: 'K01',
+      role: 'kiosk',
+      printerProxyPort: 5050,
+      servicePointIds: ['BOK'],
+    })),
   })),
-getAdmissionQueueApi: vi.fn(() => ({
+  getAdmissionQueueApi: vi.fn(() => ({
     listServicePoints: vi.fn(async () => [
-       { servicePointId: 'BOK', displayName: 'Loket Bantuan', queuePrefix: 'BOK', status: 'Active' },
+      { servicePointId: 'BOK', displayName: 'Loket Bantuan', queuePrefix: 'BOK', status: 'Active' },
     ]),
     intake: registrationMocks.intake,
   })),
   getHisApi: vi.fn(() => ({
     getBusinessDate: vi.fn(async () => ({ businessDate: '2026-09-02' })),
-searchBooking: registrationMocks.searchBooking,
+    searchBooking: registrationMocks.searchBooking,
     bookingAssistance: registrationMocks.bookingAssistance,
     patientContextSearch: registrationMocks.patientContextSearch,
     deepSearchPasien: registrationMocks.deepSearchPasien,
@@ -230,20 +229,78 @@ describe('KioskPage direct registration reprint flow', () => {
     expect(wrapper.findAll('[data-testid="reprint-reg-id"]').length).toBe(0)
     expect(wrapper.findAll('[data-testid="search-keyword"]').length).toBe(1)
   })
+
+  it('handles reprint event from PatientContextConfirmStep', async () => {
+    selfPrintMocks.printRegistration.mockClear()
+    registrationMocks.patientContextSearch.mockImplementationOnce(async () => ({
+      businessDate: '2026-09-02',
+      bookings: { items: [], total: 0, hasMore: false },
+      registrations: { items: [], total: 0, hasMore: false },
+      patients: {
+        items: [
+          {
+            kind: 'Patient' as const,
+            id: 'PT1',
+            patientName: 'Andi',
+            patientId: 'PT1',
+            birthDate: '1990-01-01',
+            gender: 'L',
+            locality: null,
+            maskedNik: null,
+            maskedPhone: null,
+            visitDate: null,
+            visitTime: null,
+            serviceName: null,
+            doctorName: null,
+            state: '',
+            bookingId: null,
+            registrationId: null,
+            matchType: 'Exact' as const,
+            isExactMatch: true,
+            rank: 1,
+            warnings: [],
+          },
+        ],
+        total: 1,
+        hasMore: false,
+      },
+      bestMatch: null,
+      canCreatePatient: false,
+    }))
+    const wrapper = mountPage()
+
+    await flushPromises()
+    await flushPromises()
+    await wrapper.get('[data-testid="search-keyword"]').setValue('Andi')
+    await wrapper.get('[data-testid="search-submit"]').trigger('click')
+    await flushPromises()
+    await flushPromises()
+
+    const step = wrapper.findComponent({ name: 'PatientContextConfirmStep' })
+    expect(step.exists()).toBe(true)
+    step.vm.$emit('reprint')
+    await flushPromises()
+
+    expect(selfPrintMocks.printRegistration).not.toHaveBeenCalled()
+  })
 })
 
 describe('KioskPage booking fallback assistance', () => {
   beforeEach(() => {
     registrationMocks.searchBooking.mockReset()
     registrationMocks.searchBooking.mockResolvedValue([])
-registrationMocks.bookingAssistance.mockReset()
+    registrationMocks.bookingAssistance.mockReset()
     registrationMocks.bookingAssistance.mockResolvedValue({
       queueLabel: 'BOK-001',
       antrianId: 'A1',
       noUrut: 1,
     })
     registrationMocks.intake.mockReset()
-    registrationMocks.intake.mockResolvedValue({ queueLabel: 'BOK-001', antrianId: 'A1', noUrut: 1 })
+    registrationMocks.intake.mockResolvedValue({
+      queueLabel: 'BOK-001',
+      antrianId: 'A1',
+      noUrut: 1,
+    })
     registrationMocks.patientContextSearch.mockReset()
     registrationMocks.patientContextSearch.mockImplementation(async () => ({
       businessDate: '2026-09-02',
