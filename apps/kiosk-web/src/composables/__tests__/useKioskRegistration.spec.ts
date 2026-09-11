@@ -470,7 +470,7 @@ describe('useKioskRegistration patient context cascade', () => {
     expect(reg.selectedPatient.value?.pasienName).toBe('Budi')
   })
 
-  it('confirmPatientContext maps to reprint flow when patient has today\'s registration', async () => {
+  it("confirmPatientContext maps to reprint flow when patient has today's registration", async () => {
     const searchPatientContext = vi.fn(async () => registrationContextResponse)
     const deps = makeDeps({
       searchBooking: vi.fn(async () => []),
@@ -485,6 +485,65 @@ describe('useKioskRegistration patient context cascade', () => {
     expect(reg.flow.value).toBe('REGISTRATION_REPRINT')
     expect(reg.registrationReprintData.value).toEqual(registrationPrintData)
     expect(deps.getRegistrationPrintData).toHaveBeenCalledWith('RG12345678')
+  })
+
+  it('confirmPatientContext re-queries searchPatientContext when deep-search cache has empty registrations and finds reprint', async () => {
+    const mockDeepSearchResult = {
+      pasienId: 'PT1',
+      isActive: true,
+      person: {
+        personName: 'Budi',
+        tglLahir: '1990-01-01',
+        gender: 'L' as const,
+        alamat: { alamat: ['Jl. A'], kota: 'Jakarta', kodePos: '40111' },
+        contact: { jenisContact: 2, contactDetail: '0812' },
+        identity: { jenisId: 'NIK', nomorId: '3273' },
+      },
+    }
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      deepSearchPasien: vi.fn(async () => [mockDeepSearchResult]),
+      searchPatientContext: vi.fn(async () => registrationContextResponse),
+      getRegistrationPrintData: vi.fn(async () => registrationPrintData),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('Budi')
+    expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
+    expect(reg.patientContextResult.value?.registrations.items).toHaveLength(0)
+    await reg.confirmPatientContext(contextItem)
+    expect(reg.flow.value).toBe('REGISTRATION_REPRINT')
+    expect(deps.searchPatientContext).toHaveBeenCalledWith(
+      expect.objectContaining({ keyword: 'PT1' }),
+    )
+    expect(reg.registrationReprintData.value).toEqual(registrationPrintData)
+  })
+
+  it('confirmPatientContext re-queries but walks-in when still no registrations after re-query', async () => {
+    const mockDeepSearchResult = {
+      pasienId: 'PT1',
+      isActive: true,
+      person: {
+        personName: 'Budi',
+        tglLahir: '1990-01-01',
+        gender: 'L' as const,
+        alamat: { alamat: ['Jl. A'], kota: 'Jakarta', kodePos: '40111' },
+        contact: { jenisContact: 2, contactDetail: '0812' },
+        identity: { jenisId: 'NIK', nomorId: '3273' },
+      },
+    }
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      deepSearchPasien: vi.fn(async () => [mockDeepSearchResult]),
+      searchPatientContext: vi.fn(async () => contextResponse),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('Budi')
+    expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
+    expect(reg.patientContextResult.value?.registrations.items).toHaveLength(0)
+    await reg.confirmPatientContext(contextItem)
+    expect(reg.flow.value).toBe('WALKIN_SELECT_GUARANTEE')
   })
 
   it('cancelPatientContext returns to home', () => {

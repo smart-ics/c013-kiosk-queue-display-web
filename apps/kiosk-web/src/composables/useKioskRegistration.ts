@@ -429,10 +429,24 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         }
         mode.value = 'walkin'
 
-        const todayRegistrations =
+        let todayRegistrations =
           patientContextResult.value?.registrations?.items.filter(
             (r) => r.patientId === item.patientId && r.visitDate === businessDate.value,
           ) ?? []
+
+        if (todayRegistrations.length === 0) {
+          const tgl = businessDate.value || (await ensureBusinessDate())
+          const fresh = await deps.searchPatientContext({
+            keyword: item.patientId,
+            businessDate: tgl,
+          })
+          patientContextResult.value = fresh
+          todayRegistrations =
+            fresh.registrations?.items.filter(
+              (r) => r.patientId === item.patientId && r.visitDate === tgl,
+            ) ?? []
+        }
+
         if (todayRegistrations.length === 1) {
           const data = await deps.getRegistrationPrintData(todayRegistrations[0].registrationId!)
           registrationReprintData.value = data
