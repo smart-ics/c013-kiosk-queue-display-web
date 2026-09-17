@@ -32,7 +32,12 @@ import {
   UMAT_TIPE_JAMINAN_ID,
 } from '../lib/eligibility'
 import { IDLE_RESET_MS, KIOSK_USER_ID } from '../lib/constants'
-import { mapErrorToFailureCode, type FailureCode } from '../lib/failureCode'
+import {
+  mapErrorToFailureCode,
+  FAILURE_CODES,
+  getFailureMessage,
+  type FailureCode,
+} from '../lib/failureCode'
 import { mapBackendErrorToUserMessage } from '@aq/api-client'
 import type { BiometricVerdict } from '../lib/biometric'
 import type { RegistrationPrintContext, RegistrationPrintResult } from './useKioskSelfPrint'
@@ -406,10 +411,52 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         transition('PATIENT_CONTEXT_CONFIRM')
       } else {
         setFailure(
-          'BOOKING_NOT_FOUND',
-          'Data pasien tidak ditemukan. Silakan coba lagi atau ambil antrian pendaftaran.',
+          FAILURE_CODES.PATIENT_NOT_REGISTERED,
+          getFailureMessage(FAILURE_CODES.PATIENT_NOT_REGISTERED),
         )
       }
+    } catch (error) {
+      setFailure(mapErrorToFailureCode(error), messageFromError(error))
+    }
+  }
+
+  async function proceedToBookingConfirm(bookingId: string): Promise<void> {
+    try {
+      const detail = await deps.getBookingDetail(bookingId)
+      selectedBooking.value = detail
+      const polisList = await deps.listPolis(detail.reg.pasienId)
+
+      const hasBpjsPolicy = polisList.some((p) => {
+        const name = (p.tipeJaminan?.tipeJaminanName || '').toLowerCase()
+        const id = (p.tipeJaminan?.tipeJaminanId || '').toLowerCase()
+        return (
+          name.includes('bpjs') ||
+          name.includes('jkn') ||
+          id.includes('bpjs') ||
+          id.includes('jkn')
+        )
+      })
+      if (detail.coverageInfo?.noPeserta && !hasBpjsPolicy) {
+        setFailure(
+          'BPJS_VALIDATION_FAILED',
+          'Data kartu BPJS Anda belum terdaftar di rumah sakit ini. Silakan menuju Loket Pendaftaran untuk pendaftaran pertama kali.',
+        )
+        return
+      }
+
+      const jaminan = deriveBookingJaminan(detail, polisList)
+      const group =
+        jaminan.tipeJaminanId === UMAT_TIPE_JAMINAN_ID
+          ? null
+          : await deps.getGroupJaminanMap(jaminan.tipeJaminanId)
+      bookingDetail.value = detail
+      bookingEligibility.value = {
+        tipeJaminanId: jaminan.tipeJaminanId,
+        tipeJaminanName: jaminan.tipeJaminanName,
+        noPeserta: jaminan.noPeserta,
+        needsEligibility: computeNeedsEligibility(jaminan.tipeJaminanId, group),
+      }
+      transition('BOOKING_CONFIRM')
     } catch (error) {
       setFailure(mapErrorToFailureCode(error), messageFromError(error))
     }
@@ -419,10 +466,17 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     touch()
     return withSubmit(async () => {
       try {
+        if (item.bookingId || item.kind === 'Booking') {
+          await proceedToBookingConfirm(item.bookingId!)
+          return
+        }
+
         if (!item.patientId) {
           throw new Error('Data Rekam Medis pasien ini tidak valid (Patient ID kosong).')
         }
+
         selectedContextPatient.value = item
+
         const polisList = await deps.listPolis(item.patientId)
         patientPolicies.value = polisList
         selectedPatient.value = {
@@ -439,13 +493,16 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
             (r) => r.patientId === item.patientId && r.visitDate === businessDate.value,
           ) ?? []
 
-        if (todayRegistrations.length === 0) {
+        if (
+          todayRegistrations.length === 0 &&
+          item.kind === 'Registration' &&
+          item.registrationId
+        ) {
           const tgl = businessDate.value || (await ensureBusinessDate())
           const fresh = await deps.searchPatientContext({
             keyword: normalizePasienIdKeyword(item.patientId),
             businessDate: tgl,
           })
-          patientContextResult.value = fresh
           todayRegistrations =
             fresh.registrations?.items.filter(
               (r) => r.patientId === item.patientId && r.visitDate === tgl,
@@ -891,8 +948,11 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     touch()
     return withSubmit(async () => {
       try {
+        const noBookingCode =
+          errorContext.value?.code === 'BOOKING_NOT_FOUND' ||
+          errorContext.value?.code === FAILURE_CODES.PATIENT_NOT_REGISTERED
         const ticket =
-          mode.value === 'booking' && errorContext.value?.code !== 'BOOKING_NOT_FOUND'
+          mode.value === 'booking' && !noBookingCode
             ? await deps.bookingAssistance({
                 bookingId: selectedBooking.value?.bookingId,
                 servicePointId,

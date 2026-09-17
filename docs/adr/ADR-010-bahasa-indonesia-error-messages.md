@@ -1,4 +1,4 @@
-# ADR-001: Bahasa Indonesia Error Messages for Kiosk Display
+# ADR-010: Bahasa Indonesia Error Messages for Kiosk Display
 
 **Status:** Accepted
 **Date:** 2026-09-02

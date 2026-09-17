@@ -1468,6 +1468,7 @@ button {
 
 .context-card-badge {
   display: inline-block;
+  align-self: flex-start;
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 0.75rem;
@@ -1479,46 +1480,157 @@ button {
   letter-spacing: 0.05em;
 }
 
-/* Physical-Style Smart Cards */
+/* Kiosk Smart Cards (premium themed) */
 .smart-card {
+  position: relative;
   background: var(--color-surface-card);
-  border-radius: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
-  margin: 24px auto;
-  max-width: 600px;
+  border-radius: 28px;
+  box-shadow:
+    0 4px 6px -1px rgba(15, 23, 42, 0.04),
+    0 16px 36px -4px rgba(15, 23, 42, 0.08),
+    0 0 0 1px color-mix(in srgb, var(--brand-strong) 4%, transparent);
   border: 1px solid var(--border-soft);
+  overflow: hidden;
+  margin: 0 auto;
+  width: min(100%, 880px);
+}
+.smart-card::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  top: -72px;
+  right: -72px;
+  width: 240px;
+  height: 240px;
+  background:
+    linear-gradient(var(--brand-strong), var(--brand-strong)) center / 152px 44px no-repeat,
+    linear-gradient(var(--brand-strong), var(--brand-strong)) center / 44px 152px no-repeat;
+  opacity: 0.04;
+  pointer-events: none;
+}
+.smart-card::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  bottom: -64px;
+  left: -64px;
+  width: 184px;
+  height: 184px;
+  border: 4px solid var(--brand-strong);
+  border-radius: 50%;
+  opacity: 0.04;
+  pointer-events: none;
 }
 .smart-card-header {
-  padding: 32px 32px 24px;
+  position: relative;
+  z-index: 1;
+  padding: clamp(24px, 4vw, 36px) clamp(24px, 4vw, 36px) clamp(16px, 2.5vw, 24px);
   border-bottom: 2px dashed var(--border-soft);
   background: var(--color-surface-bg);
 }
 .smart-card-header h3 {
   margin: 0 0 8px 0;
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  font-weight: 800;
   color: var(--color-text-main);
+  line-height: 1.2;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .smart-card-body {
-  padding: 24px 32px 32px;
+  position: relative;
+  z-index: 1;
+  padding: clamp(20px, 3vw, 28px) clamp(24px, 4vw, 36px) clamp(28px, 4vw, 36px);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: clamp(16px, 2.4vh, 24px);
+}
+.smart-identity {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2vw, 20px);
+}
+.smart-identity-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.smart-icon-tile {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-soft);
+  color: var(--brand-strong);
 }
 .smart-info-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 1.15rem;
+  gap: clamp(12px, 2vw, 20px);
+  min-width: 0;
+}
+.smart-info-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 .smart-info-label {
   color: var(--text-tertiary);
-  font-weight: 500;
+  font-weight: 600;
+  font-size: clamp(0.68rem, 1.4vw, 0.8rem);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
 }
 .smart-info-value {
   color: var(--color-text-main);
   font-weight: 700;
-  text-align: right;
+  font-size: clamp(1rem, 2.1vw, 1.3rem);
+  line-height: 1.35;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.smart-value-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.smart-identity-seal {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(56px, 6vw, 68px);
+  height: clamp(56px, 6vw, 68px);
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+.smart-identity-seal svg {
+  display: block;
+}
+.smart-icon-tile {
+  width: clamp(44px, 6vw, 56px);
+  height: clamp(44px, 6vw, 56px);
+  border-radius: 16px;
+}
+.smart-icon-tile svg {
+  display: block;
+}
+@media (max-width: 640px) {
+  .smart-card-header,
+  .smart-card-body {
+    padding-left: clamp(20px, 5vw, 24px);
+    padding-right: clamp(20px, 5vw, 24px);
+  }
+  .smart-identity {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 /* Hero Queue Number */

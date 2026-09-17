@@ -288,8 +288,9 @@ watch(
       registration.mode.value,
       registration.submitting.value,
       recommendedFallbackServicePointId.value,
+      registration.errorContext.value?.code,
     ] as const,
-  ([flow, mode, submitting, fallbackServicePointId]) => {
+  ([flow, mode, submitting, fallbackServicePointId, errorCode]) => {
     if (flow !== 'FAILURE') {
       automaticFallbackAttempted.value = false
       automaticFallbackFailed.value = false
@@ -300,7 +301,9 @@ watch(
       automaticFallbackAttempted.value ||
       mode !== 'booking' ||
       submitting ||
-      !fallbackServicePointId
+      !fallbackServicePointId ||
+      errorCode === 'BOOKING_NOT_FOUND' ||
+      errorCode === 'PATIENT_NOT_REGISTERED'
     )
       return
 

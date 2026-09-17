@@ -279,4 +279,4 @@ auto-generate desktop shortcuts:
 - [Domain Model](domain-model.md) — entities, aggregates, value objects
 - [Glossary](glossary.md) — domain terms
 - [API contracts](api/) — V1 endpoint specifications
-- [ADR-001: Bahasa Indonesia error messages](adr/ADR-001-bahasa-indonesia-error-messages.md)
+- [ADR-010: Bahasa Indonesia error messages](adr/ADR-010-bahasa-indonesia-error-messages.md)

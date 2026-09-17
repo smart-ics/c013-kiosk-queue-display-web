@@ -578,7 +578,7 @@ describe('KioskPage booking fallback assistance', () => {
     expect(selfPrintMocks.printQueueTicket).not.toHaveBeenCalled()
   })
 
-  it('auto-intakes to the fallback when booking is not found', async () => {
+  it('does not auto-intake when patient context returns no results', async () => {
     registrationMocks.searchBooking.mockResolvedValueOnce([])
     registrationMocks.patientContextSearch.mockImplementationOnce(async () => ({
       businessDate: '2026-09-02',
@@ -597,9 +597,10 @@ describe('KioskPage booking fallback assistance', () => {
     await flushPromises()
     await flushPromises()
 
-    expect(registrationMocks.intake).toHaveBeenCalledWith({ servicePointId: 'BOK' })
+    expect(registrationMocks.intake).not.toHaveBeenCalled()
     expect(registrationMocks.bookingAssistance).not.toHaveBeenCalled()
-    expect(wrapper.find('[data-testid="assist-redirect-queue"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="assist-redirect-queue"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="assist-BOK"]').exists()).toBe(true)
   })
 
   it('shows the generic layout for a manual booking selection after failure', async () => {

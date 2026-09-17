@@ -217,7 +217,7 @@ describe('useKioskRegistration booking flow', () => {
     reg.startBookingFlow()
     await reg.submitBookingKeyword('NOPE')
     expect(reg.flow.value).toBe('FAILURE')
-    expect(reg.errorContext.value?.code).toBe('BOOKING_NOT_FOUND')
+    expect(reg.errorContext.value?.code).toBe('PATIENT_NOT_REGISTERED')
   })
 
   it('shows confirm with needsEligibility for BPJS booking', async () => {
@@ -421,10 +421,10 @@ describe('useKioskRegistration patient context cascade', () => {
     reg.startBookingFlow()
     await reg.submitBookingKeyword('XYZ')
     expect(reg.flow.value).toBe('FAILURE')
-    expect(reg.errorContext.value?.code).toBe('BOOKING_NOT_FOUND')
+    expect(reg.errorContext.value?.code).toBe('PATIENT_NOT_REGISTERED')
   })
 
-  it('calls intake instead of bookingAssistance when error code is BOOKING_NOT_FOUND', async () => {
+  it('calls intake instead of bookingAssistance when error code is PATIENT_NOT_REGISTERED', async () => {
     const emptyContext = {
       businessDate: '2026-08-03',
       bookings: { items: [], total: 0, hasMore: false },
@@ -448,7 +448,7 @@ describe('useKioskRegistration patient context cascade', () => {
     reg.startBookingFlow()
     await reg.submitBookingKeyword('XYZ')
     expect(reg.flow.value).toBe('FAILURE')
-    expect(reg.errorContext.value?.code).toBe('BOOKING_NOT_FOUND')
+    expect(reg.errorContext.value?.code).toBe('PATIENT_NOT_REGISTERED')
 
     await reg.confirmAssistance('BPJS')
     expect(reg.flow.value).toBe('ASSISTANCE_QUEUE')
@@ -487,31 +487,26 @@ describe('useKioskRegistration patient context cascade', () => {
     expect(deps.getRegistrationPrintData).toHaveBeenCalledWith('RG12345678')
   })
 
-  it('confirmPatientContext re-queries searchPatientContext when deep-search cache has empty registrations and finds reprint', async () => {
-    const mockDeepSearchResult = {
-      pasienId: 'PT1',
-      isActive: true,
-      person: {
-        personName: 'Budi',
-        tglLahir: '1990-01-01',
-        gender: 'L' as const,
-        alamat: { alamat: ['Jl. A'], kota: 'Jakarta', kodePos: '40111' },
-        contact: { jenisContact: 2, contactDetail: '0812' },
-        identity: { jenisId: 'NIK', nomorId: '3273' },
-      },
+  it('confirmPatientContext with Registration kind re-queries when cached result has empty registrations', async () => {
+    const registrationContextWithEmptyRegistrations = {
+      businessDate: '2026-08-03',
+      bookings: { items: [], total: 0, hasMore: false },
+      registrations: { items: [], total: 0, hasMore: false },
+      patients: { items: [], total: 0, hasMore: false },
+      bestMatch: registrationItem,
+      canCreatePatient: false,
     }
     const deps = makeDeps({
       searchBooking: vi.fn(async () => []),
-      deepSearchPasien: vi.fn(async () => [mockDeepSearchResult]),
       searchPatientContext: vi.fn(async () => registrationContextResponse),
       getRegistrationPrintData: vi.fn(async () => registrationPrintData),
     })
     const reg = useKioskRegistration(deps)
     reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
-    expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
+    reg.patientContextResult.value = registrationContextWithEmptyRegistrations
     expect(reg.patientContextResult.value?.registrations.items).toHaveLength(0)
-    await reg.confirmPatientContext(contextItem)
+    await reg.confirmPatientContext(registrationItem)
     expect(reg.flow.value).toBe('REGISTRATION_REPRINT')
     expect(deps.searchPatientContext).toHaveBeenCalledWith(
       expect.objectContaining({ keyword: '1' }),
@@ -519,27 +514,22 @@ describe('useKioskRegistration patient context cascade', () => {
     expect(reg.registrationReprintData.value).toEqual(registrationPrintData)
   })
 
-  it('confirmPatientContext sends only pasienId numeric suffix when re-querying', async () => {
-    const prefixedPatient = { ...contextItem, patientId: 'RS0100000001' }
+  it('confirmPatientContext with Registration kind re-queries using only pasienId numeric suffix', async () => {
+    const prefixedPatient = { ...registrationItem, patientId: 'RS0100000001' }
     const prefixedRegistration = {
       ...registrationItem,
       patientId: 'RS0100000001',
     }
-    const mockDeepSearchResult = {
-      pasienId: 'RS0100000001',
-      isActive: true,
-      person: {
-        personName: 'Budi',
-        tglLahir: '1990-01-01',
-        gender: 'L' as const,
-        alamat: { alamat: ['Jl. A'], kota: 'Jakarta', kodePos: '40111' },
-        contact: { jenisContact: 2, contactDetail: '0812' },
-        identity: { jenisId: 'NIK', nomorId: '3273' },
-      },
+    const registrationContextWithEmptyRegistrations = {
+      businessDate: '2026-08-03',
+      bookings: { items: [], total: 0, hasMore: false },
+      registrations: { items: [], total: 0, hasMore: false },
+      patients: { items: [], total: 0, hasMore: false },
+      bestMatch: prefixedPatient,
+      canCreatePatient: false,
     }
     const deps = makeDeps({
       searchBooking: vi.fn(async () => []),
-      deepSearchPasien: vi.fn(async () => [mockDeepSearchResult]),
       searchPatientContext: vi.fn(async () => ({
         ...registrationContextResponse,
         registrations: { items: [prefixedRegistration], total: 1, hasMore: false },
@@ -549,6 +539,7 @@ describe('useKioskRegistration patient context cascade', () => {
     const reg = useKioskRegistration(deps)
     reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
+    reg.patientContextResult.value = registrationContextWithEmptyRegistrations
     await reg.confirmPatientContext(prefixedPatient)
     expect(deps.searchPatientContext).toHaveBeenCalledWith(
       expect.objectContaining({ keyword: '00000001' }),
@@ -581,6 +572,155 @@ describe('useKioskRegistration patient context cascade', () => {
     expect(reg.patientContextResult.value?.registrations.items).toHaveLength(0)
     await reg.confirmPatientContext(contextItem)
     expect(reg.flow.value).toBe('WALKIN_SELECT_GUARANTEE')
+  })
+
+  it('confirmPatientContext with booking item transitions to BOOKING_CONFIRM without re-query', async () => {
+    const bookingContextItem = {
+      ...contextItem,
+      kind: 'Booking' as const,
+      bookingId: 'BK-FROM-CONTEXT',
+    }
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => ({
+        businessDate: '2026-08-03',
+        bookings: { items: [bookingContextItem], total: 1, hasMore: false },
+        registrations: { items: [], total: 0, hasMore: false },
+        patients: { items: [], total: 0, hasMore: false },
+        bestMatch: bookingContextItem,
+        canCreatePatient: false,
+      })),
+      getBookingDetail: vi.fn(async () => bpjsDetail),
+      listPolis: vi.fn(async () => [bpjsPolis]),
+      getGroupJaminanMap: vi.fn(async () => group),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('Budi')
+    expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
+
+    await reg.confirmPatientContext(bookingContextItem)
+
+    expect(reg.flow.value).toBe('BOOKING_CONFIRM')
+    expect(reg.mode.value).toBe('booking')
+    expect(reg.bookingDetail.value).toEqual(bpjsDetail)
+  })
+
+  it('confirmPatientContext with booking item by bookingId (Patient kind) transitions to BOOKING_CONFIRM', async () => {
+    const patientWithBookingId = {
+      ...contextItem,
+      kind: 'Patient' as const,
+      bookingId: 'BK-FROM-PATIENT',
+    }
+    const detailWithBookingId = { ...bpjsDetail, bookingId: 'BK-FROM-PATIENT' }
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => ({
+        businessDate: '2026-08-03',
+        bookings: { items: [], total: 0, hasMore: false },
+        registrations: { items: [], total: 0, hasMore: false },
+        patients: { items: [patientWithBookingId], total: 1, hasMore: false },
+        bestMatch: patientWithBookingId,
+        canCreatePatient: true,
+      })),
+      getBookingDetail: vi.fn(async () => detailWithBookingId),
+      listPolis: vi.fn(async () => [bpjsPolis]),
+      getGroupJaminanMap: vi.fn(async () => group),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('Budi')
+    expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
+
+    await reg.confirmPatientContext(patientWithBookingId)
+
+    expect(reg.flow.value).toBe('BOOKING_CONFIRM')
+    expect(reg.mode.value).toBe('booking')
+    expect(deps.getBookingDetail).toHaveBeenCalledWith('BK-FROM-PATIENT')
+  })
+
+  it('confirmPatientContext with Registration kind re-query does not overwrite patientContextResult', async () => {
+    const regItem = {
+      ...registrationItem,
+      patientId: 'PT2',
+      registrationId: 'RG99999999',
+    }
+    const regItemForRequery = {
+      kind: 'Registration' as const,
+      id: 'REG-FOR-REQUERY',
+      patientName: 'Budi',
+      patientId: 'PT2',
+      birthDate: '1990-01-01',
+      gender: 'L',
+      locality: 'Jakarta',
+      maskedNik: null,
+      maskedPhone: null,
+      visitDate: null,
+      visitTime: null,
+      serviceName: null,
+      doctorName: null,
+      state: 'Active',
+      bookingId: null,
+      registrationId: 'REG-FOR-REQUERY',
+      matchType: 'Fuzzy',
+      isExactMatch: false,
+      rank: 5,
+      warnings: [],
+    }
+    const originalContext = {
+      businessDate: '2026-08-03',
+      bookings: { items: [], total: 0, hasMore: false },
+      registrations: { items: [], total: 0, hasMore: false },
+      patients: { items: [regItemForRequery], total: 1, hasMore: false },
+      bestMatch: regItemForRequery,
+      canCreatePatient: false,
+    }
+    const freshContextWithReg = {
+      businessDate: '2026-08-03',
+      bookings: { items: [], total: 0, hasMore: false },
+      registrations: { items: [regItem], total: 1, hasMore: false },
+      patients: { items: [], total: 0, hasMore: false },
+      bestMatch: regItem,
+      canCreatePatient: false,
+    }
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => freshContextWithReg),
+      getRegistrationPrintData: vi.fn(async () => ({
+        ...registrationPrintData,
+        regId: 'RG99999999',
+      })),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('PT2')
+
+    reg.patientContextResult.value = originalContext
+
+    await reg.confirmPatientContext(regItemForRequery)
+
+    expect(reg.flow.value).toBe('REGISTRATION_REPRINT')
+    expect(reg.patientContextResult.value).toEqual(originalContext)
+    expect(deps.searchPatientContext).toHaveBeenCalled()
+  })
+
+  it('confirmPatientContext does not re-query for Patient kind with empty registrations', async () => {
+    const searchPatientContextMock = vi.fn(async () => contextResponse)
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: searchPatientContextMock,
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('Budi')
+    expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
+
+    const callCountBefore = searchPatientContextMock.mock.calls.length
+
+    await reg.confirmPatientContext(contextItem)
+
+    expect(reg.flow.value).toBe('WALKIN_SELECT_GUARANTEE')
+    expect(searchPatientContextMock.mock.calls.length).toBe(callCountBefore)
   })
 
   it('cancelPatientContext returns to home', () => {

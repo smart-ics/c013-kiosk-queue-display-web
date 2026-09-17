@@ -2,25 +2,9 @@
   "bilregApiBase": "http://dev.smart-ics.com:8888/bilregapi/api",
   "jetliApiBase": "http://dev.smart-ics.com:8089/JetliAPi/api",
   "mediaInfoDir": "media",
-  "kioskDefaultKarcisId": "04",
-  "mappingLayananKarcis": [
-    { "layananId": "00025", "karcisId": "25", "name": "Layanan CST" },
-    { "layananId": "00111", "karcisId": "21", "name": "Layanan VCT" }
-  ],
-  "mappingJmnLayananKarcis": [
-    {
-      "tipeJaminanId": "00000",
-      "layananId": "00025",
-      "karcisId": "25",
-      "name": "Umum - Layanan CST"
-    },
-    {
-      "tipeJaminanId": "00000",
-      "layananId": "*",
-      "karcisId": "01",
-      "name": "Umum - Semua Layanan"
-    }
-  ],
+  "kioskDefaultKarcisId": "30",
+  "mappingLayananKarcis": [],
+  "mappingJmnLayananKarcis": [],
   "branding": {
     "name": "RS Mekarsari",
     "address": "",
@@ -32,6 +16,6 @@
   "enablePatientLabelPrint": true,
   "theme": "clinical-blue",
   "fallbackServicePoints": {
-    "bookingFailure": ""
+    "bookingFailure": "BF"
   }
 }
