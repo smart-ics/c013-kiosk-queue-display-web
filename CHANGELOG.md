@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.11] - 2026-09-18
+
+### Changed
+
+- **Desain kartu konfirmasi pendaftaran (kiosk-web)**: Memperbarui tampilan kartu konfirmasi booking (`BookingConfirmStep`) dan konfirmasi data layanan (`WalkinConfirmStep`) menggunakan layout `.smart-card` premium bertema kiosk. Kartu kini menampilkan lambang verifikasi (`.smart-identity-seal`) di sisi kiri, badge jaminan responsif mengikuti panjang teks, serta susunan informasi ber-ikon tile yang konsisten.
+
 ## [0.2.10] - 2026-09-11
 
 ### Added
