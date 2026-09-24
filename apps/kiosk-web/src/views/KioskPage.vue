@@ -400,6 +400,8 @@ const loadingMessage = computed(() => {
               'BIOMETRIC_VERIFY',
               'REGISTRATION_SUCCESS',
               'ASSISTANCE_QUEUE',
+              'REGISTRATION_REPRINT',
+              'FAILURE',
             ].includes(registration.flow.value)
           "
         >

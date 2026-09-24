@@ -45,6 +45,14 @@ describe('KioskHome', () => {
     expect(wrapper.emitted('startIntake')).toHaveLength(1)
   })
 
+  it('disables startIntake button when intakeAvailable is false', async () => {
+    const wrapper = mount(KioskHome, { props: { intakeAvailable: false, businessDate: null } })
+    const btn = wrapper.get('[data-testid="start-intake"]')
+    expect(btn.attributes('disabled')).toBeDefined()
+    await btn.trigger('click')
+    expect(wrapper.emitted('startIntake')).toBeUndefined()
+  })
+
   it('renders split layout with ad panel', () => {
     const wrapper = mount(KioskHome, { props: { intakeAvailable: true, businessDate: null } })
     expect(wrapper.find('[data-testid="kiosk-ad-panel"]').exists()).toBe(true)

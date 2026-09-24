@@ -1,4 +1,5 @@
 import { ref, type Ref } from 'vue'
+import { z } from 'zod'
 import type {
   AdmissionQueueIntakeResponse,
   BookingAssistanceBody,
@@ -159,6 +160,23 @@ function resolveDefaultKarcisId(
   return appConfig.kioskDefaultKarcisId ?? ''
 }
 
+const bpjsDiagnosaSchema = z.object({
+  kode: z.string().optional(),
+  nama: z.string().optional(),
+}).passthrough()
+
+const skdpItemSchema = z.object({
+  noSkdp: z.string().optional(),
+  tglMulai: z.string().optional(),
+  diagnosa: bpjsDiagnosaSchema.optional(),
+}).passthrough()
+
+const rujukanItemSchema = z.object({
+  noRujukan: z.string().optional(),
+  tglRujukan: z.string().optional(),
+  diagnosa: bpjsDiagnosaSchema.optional(),
+}).passthrough()
+
 export type BpjsReference = {
   type: 'skdp' | 'rujukan'
   id: string // noSkdp or noRujukan
@@ -167,7 +185,7 @@ export type BpjsReference = {
   diagnosaName: string
   kelasRawatId: string
   tglLahir: string
-  original: any
+  original: Record<string, unknown>
 }
 
 export function useKioskRegistration(deps: KioskRegistrationDeps) {
@@ -580,8 +598,9 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     const res = await deps.getRujukanSkpd(noPeserta)
     const parsedRefs: BpjsReference[] = []
 
-    if (res.listSkdp) {
-      for (const skdp of res.listSkdp as any[]) {
+    if (res.listSkdp && Array.isArray(res.listSkdp)) {
+      for (const item of res.listSkdp) {
+        const skdp = skdpItemSchema.parse(item)
         if (skdp.noSkdp) {
           parsedRefs.push({
             type: 'skdp',
@@ -591,24 +610,26 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
             diagnosaName: skdp.diagnosa?.nama || '',
             kelasRawatId: res.peserta.hakKelas.kode,
             tglLahir: res.peserta.tglLahir,
-            original: skdp,
+            original: skdp as Record<string, unknown>,
           })
         }
       }
     }
 
-    const rujukan = res.rujukan as any
-    if (rujukan && rujukan.noRujukan) {
-      parsedRefs.push({
-        type: 'rujukan',
-        id: rujukan.noRujukan,
-        date: rujukan.tglRujukan || '',
-        diagnosaId: rujukan.diagnosa?.kode || 'Z00.0',
-        diagnosaName: rujukan.diagnosa?.nama || '',
-        kelasRawatId: res.peserta.hakKelas.kode,
-        tglLahir: res.peserta.tglLahir,
-        original: rujukan,
-      })
+    if (res.rujukan) {
+      const rujukan = rujukanItemSchema.parse(res.rujukan)
+      if (rujukan.noRujukan) {
+        parsedRefs.push({
+          type: 'rujukan',
+          id: rujukan.noRujukan,
+          date: rujukan.tglRujukan || '',
+          diagnosaId: rujukan.diagnosa?.kode || 'Z00.0',
+          diagnosaName: rujukan.diagnosa?.nama || '',
+          kelasRawatId: res.peserta.hakKelas.kode,
+          tglLahir: res.peserta.tglLahir,
+          original: rujukan as Record<string, unknown>,
+        })
+      }
     }
 
     if (parsedRefs.length === 0) {
