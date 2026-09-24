@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
 import { ApiClientError } from '@aq/api-client'
 import type { BookingDetail, BookingSearchItem, GroupJaminanMap, Polis } from '@aq/shared-types'
@@ -1574,5 +1575,25 @@ describe('useKioskRegistration PATIENT_CONTEXT_SEARCH entry', () => {
     await p
     expect(reg.flow.value).toBe('HOME')
     expect(deps.getBookingDetail).not.toHaveBeenCalled()
+  })
+
+  it('ignores a late biometric verdict after going home', async () => {
+    let release!: (v: { outcome: 'SUCCESS' }) => void
+    const deps = makeDeps({
+      verifyBiometric: vi.fn(() => new Promise<{ outcome: 'SUCCESS' }>((r) => { release = r })),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    const p = reg.confirmBooking()
+    await flushPromises()
+    expect(reg.flow.value).toBe('BIOMETRIC_VERIFY')
+    await vi.waitFor(() => expect(release).toBeDefined())
+    reg.goHome()
+    release({ outcome: 'SUCCESS' })
+    await p
+    await flushPromises()
+    expect(reg.flow.value).toBe('HOME')
+    expect(reg.errorContext.value).toBeNull()
   })
 })

@@ -207,6 +207,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   const lastActivity = ref(deps.now ? deps.now() : Date.now())
   let idleTimer: number | null = null
   let patientSearchSeq = 0
+  let biometricSeq = 0
 
   function touch() {
     lastActivity.value = deps.now ? deps.now() : Date.now()
@@ -226,6 +227,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
 
   function goHome() {
     patientSearchSeq++
+    biometricSeq++
     flow.value = 'HOME'
     mode.value = null
     businessDate.value = null
@@ -660,7 +662,9 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   async function runBiometricForWalkin(noPeserta: string): Promise<void> {
     biometricVerdict.value = null
     try {
+      const seq = ++biometricSeq
       const verdict = await deps.verifyBiometric(noPeserta)
+      if (seq !== biometricSeq) return
       biometricVerdict.value = verdict
       if (verdict.outcome === 'SUCCESS' || verdict.outcome === 'READY') {
         if (selectedBpjsReference.value) {
@@ -734,7 +738,9 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   async function runBiometric(currentMode: FlowMode, noPeserta: string): Promise<void> {
     biometricVerdict.value = null
     try {
+      const seq = ++biometricSeq
       const verdict = await deps.verifyBiometric(noPeserta)
+      if (seq !== biometricSeq) return
       biometricVerdict.value = verdict
       if (verdict.outcome === 'SUCCESS' || verdict.outcome === 'READY') {
         if (selectedBpjsReference.value) {
