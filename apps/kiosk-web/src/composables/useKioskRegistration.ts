@@ -291,7 +291,9 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       try {
         transition('PATIENT_CONTEXT_SEARCH')
         const tgl = await ensureBusinessDate()
+        if (seq !== patientSearchSeq) return
         const matches = await deps.searchBooking(tgl, normalizedKeyword)
+        if (seq !== patientSearchSeq) return
         if (matches.length === 0) {
           if (isCanonicalRegistrationIdKeyword(normalizedKeyword)) {
             await searchPatientContextFor(normalizedKeyword, seq)
@@ -377,6 +379,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         }
         transition('BOOKING_CONFIRM')
       } catch (error) {
+        if (seq !== patientSearchSeq) return
         setFailure(mapErrorToFailureCode(error), messageFromError(error))
       }
     })

@@ -1556,4 +1556,23 @@ describe('useKioskRegistration PATIENT_CONTEXT_SEARCH entry', () => {
     await p
     expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
   })
+
+  it('ignores a late booking result after cancelling the search', async () => {
+    let release!: (v: BookingSearchItem[]) => void
+    const deps = makeDeps({
+      searchBooking: vi.fn(
+        () => new Promise<BookingSearchItem[]>((resolve) => { release = resolve }),
+      ),
+    })
+    const reg = useKioskRegistration(deps)
+    const p = reg.submitBookingKeyword('BK1')
+    expect(reg.flow.value).toBe('PATIENT_CONTEXT_SEARCH')
+    await vi.waitFor(() => expect(release).toBeDefined())
+    reg.cancelPatientContext()
+    expect(reg.flow.value).toBe('HOME')
+    release([bookingItem])
+    await p
+    expect(reg.flow.value).toBe('HOME')
+    expect(deps.getBookingDetail).not.toHaveBeenCalled()
+  })
 })
