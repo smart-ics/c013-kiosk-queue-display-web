@@ -559,7 +559,7 @@ const loadingMessage = computed(() => {
           <BiometricStep
             v-else-if="registration.flow.value === 'BIOMETRIC_VERIFY'"
             :pending="registration.submitting.value"
-            :error-message="null"
+            @back="onHome"
           />
           <WalkinSelectGuaranteeStep
             v-else-if="registration.flow.value === 'WALKIN_SELECT_GUARANTEE'"
