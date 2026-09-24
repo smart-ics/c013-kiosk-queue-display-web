@@ -1538,3 +1538,22 @@ describe('useKioskRegistration gap closure features', () => {
     })
   })
 })
+
+describe('useKioskRegistration PATIENT_CONTEXT_SEARCH entry', () => {
+  it('enters PATIENT_CONTEXT_SEARCH while searching, then confirms', async () => {
+    let release!: (v: typeof contextResponse) => void
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(
+        () => new Promise<typeof contextResponse>((resolve) => { release = resolve }),
+      ),
+    })
+    const reg = useKioskRegistration(deps)
+    const p = reg.submitBookingKeyword('Andi')
+    expect(reg.flow.value).toBe('PATIENT_CONTEXT_SEARCH')
+    await vi.waitFor(() => expect(release).toBeDefined())
+    release(contextResponse)
+    await p
+    expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
+  })
+})

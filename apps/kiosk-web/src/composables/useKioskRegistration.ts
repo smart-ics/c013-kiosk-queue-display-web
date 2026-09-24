@@ -286,6 +286,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     registrationReprintData.value = null
     return withSubmit(async () => {
       try {
+        transition('PATIENT_CONTEXT_SEARCH')
         const tgl = await ensureBusinessDate()
         const matches = await deps.searchBooking(tgl, normalizedKeyword)
         if (matches.length === 0) {

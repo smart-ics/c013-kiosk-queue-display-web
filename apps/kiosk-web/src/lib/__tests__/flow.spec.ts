@@ -37,6 +37,11 @@ describe('canTransition', () => {
     expect(canTransition('REGISTRATION_REPRINT', 'REGISTRATION_SUCCESS')).toBe(false)
   })
 
+  it('allows home → patient context search → booking confirm', () => {
+    expect(canTransition('HOME', 'PATIENT_CONTEXT_SEARCH')).toBe(true)
+    expect(canTransition('PATIENT_CONTEXT_SEARCH', 'BOOKING_CONFIRM')).toBe(true)
+  })
+
   it('rejects skipping steps', () => {
     expect(canTransition('HOME', 'REGISTRATION_SUCCESS')).toBe(false)
   })
