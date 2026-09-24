@@ -206,6 +206,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
 
   const lastActivity = ref(deps.now ? deps.now() : Date.now())
   let idleTimer: number | null = null
+  let patientSearchSeq = 0
 
   function touch() {
     lastActivity.value = deps.now ? deps.now() : Date.now()
@@ -224,6 +225,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   }
 
   function goHome() {
+    patientSearchSeq++
     flow.value = 'HOME'
     mode.value = null
     businessDate.value = null
@@ -285,16 +287,18 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     mode.value = 'booking'
     registrationReprintData.value = null
     return withSubmit(async () => {
+      const seq = ++patientSearchSeq
       try {
         transition('PATIENT_CONTEXT_SEARCH')
         const tgl = await ensureBusinessDate()
         const matches = await deps.searchBooking(tgl, normalizedKeyword)
         if (matches.length === 0) {
           if (isCanonicalRegistrationIdKeyword(normalizedKeyword)) {
-            await searchPatientContextFor(normalizedKeyword)
+            await searchPatientContextFor(normalizedKeyword, seq)
             return
           }
           const deepMatches = await deps.deepSearchPasien(normalizedKeyword)
+          if (seq !== patientSearchSeq) return
           if (deepMatches.length > 0) {
             const mapped = deepMatches.map((item) => ({
               kind: 'Patient' as const,
@@ -329,7 +333,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
             transition('PATIENT_CONTEXT_CONFIRM')
             return
           }
-          await searchPatientContextFor(normalizedKeyword)
+          await searchPatientContextFor(normalizedKeyword, seq)
           return
         }
         if (matches.length > 1) {
@@ -378,13 +382,15 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     })
   }
 
-  async function searchPatientContextFor(keyword: string): Promise<void> {
+  async function searchPatientContextFor(keyword: string, seq: number): Promise<void> {
+    const stale = () => seq !== patientSearchSeq
     try {
       const tgl = await ensureBusinessDate()
       const result = await deps.searchPatientContext({
         keyword,
         businessDate: tgl,
       })
+      if (stale()) return
       patientContextResult.value = result
       if (isCanonicalRegistrationIdKeyword(keyword)) {
         const exactMatches = result.registrations.items.filter(
@@ -399,6 +405,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         }
         if (exactMatches.length === 1) {
           const data = await deps.getRegistrationPrintData(keyword)
+          if (stale()) return
           registrationReprintData.value = data
           transition('REGISTRATION_REPRINT')
           return
@@ -417,6 +424,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         )
       }
     } catch (error) {
+      if (stale()) return
       setFailure(mapErrorToFailureCode(error), messageFromError(error))
     }
   }

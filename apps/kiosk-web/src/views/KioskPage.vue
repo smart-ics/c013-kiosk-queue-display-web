@@ -525,6 +525,16 @@ const loadingMessage = computed(() => {
           <section v-else-if="registration.flow.value === 'PATIENT_CONTEXT_SEARCH'" class="panel">
             <h1>Mencari Data</h1>
             <p class="status">Mencari data pasien…</p>
+            <div class="actions" style="justify-content: center">
+              <button
+                type="button"
+                class="secondary-btn"
+                data-testid="patient-search-cancel"
+                @click="onCancelPatientContext"
+              >
+                Batal
+              </button>
+            </div>
           </section>
           <BookingConfirmStep
             v-else-if="registration.flow.value === 'BOOKING_CONFIRM'"

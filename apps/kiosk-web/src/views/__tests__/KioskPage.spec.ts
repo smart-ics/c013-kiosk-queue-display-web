@@ -624,3 +624,33 @@ describe('KioskPage booking fallback assistance', () => {
     expect(wrapper.get('[data-testid="assist-queue-label"]').text()).toBe('BOK-001')
   })
 })
+
+describe('KioskPage cancellable patient search', () => {
+  it('ignores a late patient-context result after cancelling the search', async () => {
+    let release!: (v: PatientContextSearchResponse) => void
+    registrationMocks.patientContextSearch.mockImplementationOnce(
+      () => new Promise<PatientContextSearchResponse>((resolve) => { release = resolve }),
+    )
+    const wrapper = mountPage()
+    await flushPromises()
+    await flushPromises()
+    await wrapper.get('[data-testid="search-keyword"]').setValue('Andi')
+    await wrapper.get('[data-testid="search-submit"]').trigger('click')
+    await flushPromises()
+    await vi.waitFor(() => expect(release).toBeDefined())
+    expect(wrapper.find('[data-testid="patient-search-cancel"]').exists()).toBe(true)
+    await wrapper.get('[data-testid="patient-search-cancel"]').trigger('click')
+    await flushPromises()
+    release({
+      businessDate: '2026-09-02',
+      bookings: { items: [], total: 0, hasMore: false },
+      registrations: { items: [], total: 0, hasMore: false },
+      patients: { items: [], total: 0, hasMore: false },
+      bestMatch: null,
+      canCreatePatient: false,
+    })
+    await flushPromises()
+    await flushPromises()
+    expect(wrapper.findAll('[data-testid="search-keyword"]').length).toBe(1)
+  })
+})
