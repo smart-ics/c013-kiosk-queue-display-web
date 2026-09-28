@@ -26,10 +26,10 @@ GO is not sufficient to start testing.
 | Item | Value |
 |--------|--------|
 | Total Cases | 15 |
-| Passed | 1 |
+| Passed | 5 |
 | Failed | 1 |
-| Blocked | 0 |
-| Not Tested | 13 |
+| Blocked | 2 |
+| Not Tested | 7 |
 
 ---
 
@@ -135,31 +135,45 @@ Notes:
 
 ## TC-BR-01 — Rujukan registration uses the mapped local RujukanId, never the BPJS number
 
-Status: NOT TESTED
+Status: PASS
 
 Notes:
 
-(awaiting execution)
+DB verification against Bilreg dev using registration RG01378143 and BPJS
+NoRujukan `030107010217Y001465` (from TC-RE-02 payload):
+
+- Q1 (`ta_registrasi`): local `RujukanIdLokal` = `0174B009` (not the BPJS number).
+- Q2 (`ta_rujukan` join): mapped rujukan local id = `0174B009` — matches Q1,
+  confirming it is the PPK-mapped local rujukan.
+- Q3 (lookup for the BPJS number as local rujukanId): 0 rows — the BPJS
+  NoRujukan is never copied into the local `rujukanId`.
 
 ---
 
 ## TC-BR-02 — SKDP registration skips PPK lookup and uses DATANG SENDIRI
 
-Status: NOT TESTED
+Status: BLOCKED
 
-Notes:
+Reason:
 
-(awaiting execution)
+No viable SKDP test participant available in the dev environment: the current
+dev database is older than the kiosk business date, so SKDP records appear
+expired and no patient data can be used for the SKDP flow. A database backup
+exists that could supply test data in the future (data owner would insert
+backup records into the current dev database). Not a product defect.
 
 ---
 
 ## TC-BR-03 — SEP payload differs correctly by reference type
 
-Status: NOT TESTED
+Status: BLOCKED
 
-Notes:
+Reason:
 
-(awaiting execution)
+Same blocker as TC-BR-02: no active SKDP participant in the dev environment
+(database older than business date → SKDP expired). The SKDP SEP payload cannot
+be captured end-to-end. A database backup exists that could provide test data in
+the future. Not a product defect.
 
 ---
 
@@ -205,11 +219,22 @@ Notes:
 
 ## TC-ERR-01 — SEP-create failure never re-creates and routes to admisi preserving the registration
 
-Status: NOT TESTED
+Status: PASS
 
 Notes:
 
-(awaiting execution)
+Executed while DEF-001 was present (SEP create fails with 400 "Invalid string
+date"), which provided the exact failure scenario this test targets.
+
+- No second SEP-create attempt: exactly one `POST /sep` request was issued and
+  it failed; the kiosk did not retry or re-create.
+- The direct registration already created was preserved: same `regId` retained
+  (RG01378143, antrian no. 4).
+- Admisi fallback notice printed with BOTH lines:
+  - `Berhasil Registrasi regid : RG01378143`
+  - `Silakan menuju Loket Admisi untuk penyelesaian berkas.`
+- Patient routed to the configured default service point.
+- DB evidence: exactly one registration; no successful SEP created.
 
 ---
 
@@ -265,21 +290,33 @@ Notes:
 
 ## TC-REG-02 — No stale "cancel / late-result" stuck states in the surrounding flow
 
-Status: NOT TESTED
+Status: PASS
 
 Notes:
 
-(awaiting execution)
+- Scenario A (cancel during patient search): kiosk returned to home; no error;
+  no jump to a new step after waiting beyond the normal search duration.
+- Scenario B (cancel during biometric verification): kiosk returned to home; no
+  UI error; no jump to a new step. Note: the biometric device window still
+  appeared (separate non-browser window) — this is device/window behavior, not
+  a kiosk flow state; the kiosk UI itself stayed on home.
+- Flow remained usable for subsequent tests.
 
 ---
 
 ## TC-REG-03 — No development-only print/download behavior in the production path
 
-Status: NOT TESTED
+Status: PASS
 
 Notes:
 
-(awaiting execution)
+Production build of `kiosk-web` succeeded (`vue-tsc` + `vite build`, 231 modules,
+served via `vite preview` on port 4173). Ran the registration flow and the print
+step against the production bundle:
+
+- Print went through the normal printer path (browser print dialog/printer).
+- No automatic browser download of `antrian_*.png` / `label_*.png` occurred.
+- No DEV auto-download behavior present in the production path.
 
 ---
 
