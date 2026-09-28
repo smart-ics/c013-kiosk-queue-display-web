@@ -57,20 +57,20 @@ Slice dependencies are listed on every slice below. Independent repository slice
 
 # 4. Progress Summary
 
-Execution Approval: PENDING
+Execution Approval: APPROVED
 
 | Phase | Implementation Status | Review Status | Progress |
 |---------|---------|---------|---------|
-| P1 - Provider and local contract foundations | IN-PROGRESS | NOT-REVIEWED | 2/2 |
-| P2 - Kiosk orchestration and client realization | IN-PROGRESS | NOT-REVIEWED | 3/3 |
-| P3 - Recovery, printing, and integration evidence | IN-PROGRESS | NOT-REVIEWED | 2/2 |
+| P1 - Provider and local contract foundations | IMPLEMENTED | GO | 2/2 |
+| P2 - Kiosk orchestration and client realization | IMPLEMENTED | GO | 3/3 |
+| P3 - Recovery, printing, and integration evidence | IMPLEMENTED | GO | 2/2 |
 
 # 5. Phases
 
 ## P1 - Provider and local contract foundations
 
-Implementation Status: IN-PROGRESS
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 ### P1-S01
 
@@ -142,8 +142,8 @@ Notes:
 
 ## P2 - Kiosk orchestration and client realization
 
-Implementation Status: IN-PROGRESS
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 ### P2-S03
 
@@ -251,8 +251,8 @@ Notes:
 
 ## P3 - Recovery, printing, and integration evidence
 
-Implementation Status: IN-PROGRESS
-Review Status: NOT-REVIEWED
+Implementation Status: IMPLEMENTED
+Review Status: GO
 
 ### P3-S06
 
@@ -331,3 +331,4 @@ Notes:
 - 2026-09-24: P2-S05 implemented — reference-specific SEP payload construction (`buildSepPayloadPolicy` per TD-005: Rujukan standard outpatient defaults, SKDP control policy with `tujuanKunjunganId "2"`/`assesmentPelayananId "5"`/empty `flagProcedureId`/`penunjangId`/`faskesPerujukId` and selected NoSkdp as NoRujukan; diagnosis from selected reference with no `Z00.0` fallback; one-time create preserved).
 - 2026-09-24: P3-S06 implemented — post-registration retry and admisi fallback state (TD-006/TD-007): `postRegistrationPhase` lifecycle, registration retained with existing `regId` before SEP processing, one-time SEP creation (no blind second create, string business-error responses treated as failure), `uploadSep` and `Reg/setDataEligibility` capped at 3 attempts via `withAttemptLimit`, exhaustion routed through `enterAdmisiFallback()` to the configured `fallbackServicePoints.bookingFailure` service point; `KioskPage` auto-fallback watch extended so walk-in post-registration recovery also auto-routes to the configured default service point while ordinary walk-in failures keep the manual selector. 13 new tests (12 composable + 1 KioskPage UI).
 - 2026-09-24: P3-S07 implemented — recovery print output and repository-local implementation evidence: fallback printing now includes `Berhasil Registrasi regid : <regId>` and the admisi instruction (`Silakan menuju Loket Admisi untuk penyelesaian berkas.`) via a queue-ticket notice built only in the `ADMISI_FALLBACK` post-registration phase; normal SEP/queue-ticket printing unchanged; no DEV print/download snippets remain in kiosk-web production paths. Added `queueTicket.spec.ts`, selfPrint notice tests, a `useKioskRegistration` P3-S07 test block, and extended `KioskPage.spec.ts`; full repo gate `pnpm turbo run typecheck test` passes.
+- 2026-09-28: Aggregate status reconciled per RV-001 (Architect) — phase-level status fields for P1, P2, and P3 set to `IMPLEMENTED` / `GO`, and the section 4 Progress Summary table aligned to the same completed state, with the `Execution Approval` value reconciled to `APPROVED` (matching the frontmatter). Slice-level statuses, plan structure, slice count, ordering, dependencies, and completion criteria are unchanged.
