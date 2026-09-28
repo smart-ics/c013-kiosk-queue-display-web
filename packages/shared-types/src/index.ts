@@ -530,17 +530,90 @@ export const pesertaBpjsSchema = z.object({
 })
 export type PesertaBpjs = z.infer<typeof pesertaBpjsSchema>
 
-// Assumed shapes (ADR-002 open items): rujukan/SKDP payloads vary by provider.
-// Keep them permissive until confirmed against the live Jetli API.
-export const rujukanSchema = z.object({}).catchall(z.unknown())
-export const skdpSchema = z.object({}).catchall(z.unknown())
-
-export const rujukanSkpdResponseSchema = z.object({
-  peserta: pesertaBpjsSchema,
-  rujukan: rujukanSchema.nullable(),
-  listSkdp: z.array(skdpSchema),
+// Jetli Rujukan/SKDP response vocabulary (Jetli.Application SepFeature
+// RujukanBpjsGetQuery.cs). Missing required Jetli fields are validation
+// failures, never implicit Z00.0 or empty-date fallbacks.
+export const faskesPerujukSchema = z.object({
+  faskesId: z.string(),
+  faskesName: z.string(),
+  tipeFaskes: z
+    .object({ tipeFaskesId: z.string(), tipeFaskesName: z.string() })
+    .nullable()
+    .optional(),
 })
-export type RujukanSkpdResponse = z.infer<typeof rujukanSkpdResponseSchema>
+export type FaskesPerujuk = z.infer<typeof faskesPerujukSchema>
+
+export const diagnosaRujukanSchema = z.object({
+  icd10Id: z.string(),
+  icd10Name: z.string(),
+})
+export type DiagnosaRujukan = z.infer<typeof diagnosaRujukanSchema>
+
+export const rujukanBpjsInfoSchema = z.object({
+  noRujukan: z.string(),
+  tglRujukan: z.string(),
+  tujuan: z.object({ poliBpjsId: z.string(), poliBpjsName: z.string() }),
+  faskesPerujuk: faskesPerujukSchema,
+  diagnosaRujukan: diagnosaRujukanSchema,
+})
+export type RujukanBpjsInfo = z.infer<typeof rujukanBpjsInfoSchema>
+
+export const skdpInfoSchema = z.object({
+  noSkdp: z.string(),
+  tglRencanaKontrol: z.string(),
+  tglExpired: z.string(),
+  isSpri: z.boolean(),
+  poliPerujuk: z.object({ layananId: z.string(), layananName: z.string() }),
+  poliTujuan: z.object({ layananId: z.string(), layananName: z.string() }),
+  diagnosa: diagnosaRujukanSchema,
+  keterangan: z.string(),
+})
+export type SkdpInfo = z.infer<typeof skdpInfoSchema>
+
+export const rujukanBpjsGetResponseSchema = z.object({
+  peserta: pesertaBpjsSchema,
+  rujukan: rujukanBpjsInfoSchema.nullable(),
+  listSkdp: z.array(skdpInfoSchema),
+})
+export type RujukanBpjsGetResponse = z.infer<typeof rujukanBpjsGetResponseSchema>
+
+// Selected-reference discriminator (architecture TD-002). Orchestration must
+// retain `type: 'rujukan' | 'skdp'`; the two models stay distinct.
+export const rujukanReferenceSchema = z.object({
+  type: z.literal('rujukan'),
+  noRujukan: z.string(),
+  faskesPerujukId: z.string(),
+  diagnosisId: z.string(),
+  diagnosisName: z.string(),
+})
+export type RujukanReference = z.infer<typeof rujukanReferenceSchema>
+
+export const skdpReferenceSchema = z.object({
+  type: z.literal('skdp'),
+  noSkdp: z.string(),
+  tglRencanaKontrol: z.string(),
+  diagnosisId: z.string(),
+  diagnosisName: z.string(),
+})
+export type SkdpReference = z.infer<typeof skdpReferenceSchema>
+
+// Bilreg Rujukan PPK mapping (Bilreg.Application RujukanFeature
+// RjkGetByPpkIdQuery.cs).
+export const rjkGetByPpkIdResponseSchema = z.object({
+  rujukanId: z.string(),
+  rujukanName: z.string(),
+  isAktif: z.boolean(),
+  ppkId: z.string(),
+  alamat: z.object({}).passthrough(),
+  telepon: z.string(),
+  rujukanTipeId: z.string(),
+  rujukanTipeName: z.string(),
+  kelasId: z.string(),
+  kelasName: z.string(),
+  caraMasukDkId: z.string(),
+  caraMasukDkName: z.string(),
+})
+export type RjkGetByPpkIdResponse = z.infer<typeof rjkGetByPpkIdResponseSchema>
 
 export const sepCreateBodySchema = z
   .object({
@@ -555,6 +628,7 @@ export const sepCreateBodySchema = z
     flagProcedureId: z.string().optional(),
     assesmentPelayananId: z.string().optional(),
     penunjangId: z.string().optional(),
+    faskesPerujukId: z.string().optional(),
     katarak: z.string().optional(),
     catatan: z.string().optional(),
     kll: z.string().optional(),

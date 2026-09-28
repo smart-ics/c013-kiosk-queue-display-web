@@ -161,6 +161,7 @@ const registration = useKioskRegistration({
   verifyBiometric: (noka) => createBiometricClient({ port: printerProxyPort.value }).verify(noka),
   listKarcis: (layananId) => getHisApi().listKarcis(layananId),
   getRujukanSkpd: (noPeserta) => getJetliApi().getRujukanSkpd(noPeserta),
+  getRujukanByPpk: (ppkId) => getHisApi().getRujukanByPpk(ppkId),
   registerBooking: (ctx) => getHisApi().registerByBookingDirect(ctx),
   registerWalkin: (ctx) => getHisApi().registerWalkInDirect(ctx),
   createSep: (body) => getJetliApi().createSep(body),
@@ -297,13 +298,15 @@ watch(
       if (flow !== 'ASSISTANCE_QUEUE') automaticFallbackUsed.value = false
       return
     }
+    const postRegistrationRecovery =
+      registration.postRegistrationPhase.value === 'ADMISI_FALLBACK'
     if (
       automaticFallbackAttempted.value ||
-      mode !== 'booking' ||
       submitting ||
       !fallbackServicePointId ||
       errorCode === 'BOOKING_NOT_FOUND' ||
-      errorCode === 'PATIENT_NOT_REGISTERED'
+      errorCode === 'PATIENT_NOT_REGISTERED' ||
+      (mode !== 'booking' && !postRegistrationRecovery)
     )
       return
 

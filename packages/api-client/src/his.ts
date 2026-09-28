@@ -16,7 +16,8 @@ import {
   responseSepByRegSchema,
   responseUploadSepUnionSchema,
   returnCreateWalkInSchema,
-  rujukanSkpdResponseSchema,
+  rujukanBpjsGetResponseSchema,
+  rjkGetByPpkIdResponseSchema,
   sepCreateBodySchema,
   sepUploadBodySchema,
   payloadDirectRegisterRajalWalkInSchema,
@@ -41,7 +42,8 @@ import {
   type ResponseSepByReg,
   type ResponseUploadSep,
   type ReturnCreateWalkIn,
-  type RujukanSkpdResponse,
+  type RujukanBpjsGetResponse,
+  type RjkGetByPpkIdResponse,
   type SepCreateBody,
   type SepUploadBody,
   type ServiceItem,
@@ -271,6 +273,10 @@ export function createHisApi(client: AdmissionQueueClient) {
       return client.patchJson('Reg/setDataEligibility', parsed, z.string())
     },
 
+    getRujukanByPpk(ppkId: string): Promise<RjkGetByPpkIdResponse> {
+      return client.getJson(`Rujukan/ppk/${encodeURIComponent(ppkId)}`, rjkGetByPpkIdResponseSchema)
+    },
+
     bookingAssistance(body: BookingAssistanceBody): Promise<AdmissionQueueIntakeResponse> {
       const parsed = bookingAssistanceBodySchema.parse(body)
       return client.postJson(
@@ -324,10 +330,10 @@ export function createJetliApi(client: AdmissionQueueClient) {
       )
     },
 
-    getRujukanSkpd(noPeserta: string): Promise<RujukanSkpdResponse> {
+    getRujukanSkpd(noPeserta: string): Promise<RujukanBpjsGetResponse> {
       return client.getJson(
         `Sep/rujukan/${encodeURIComponent(noPeserta)}/peserta`,
-        rujukanSkpdResponseSchema,
+        rujukanBpjsGetResponseSchema,
       )
     },
 
