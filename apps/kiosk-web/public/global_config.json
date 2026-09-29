@@ -1,6 +1,6 @@
 {
   "bilregApiBase": "http://dev.smart-ics.com:8888/bilregapi/api",
-  "jetliApiBase": "http://dev.smart-ics.com:8089/JetliAPi/api",
+  "jetliApiBase": "http://dev.smart-ics.com:8888/JknTrustedLink/api",
   "mediaInfoDir": "media",
   "kioskDefaultKarcisId": "30",
   "mappingLayananKarcis": [],
