@@ -44,12 +44,27 @@ kode mati / UI placeholder / wiring putus. Acuan verifikasi tiap item:
 
 ## P1 — Alur salah / ganda
 
-- [ ] **P1-1. Dual print/intake hidup berdampingan — butuh keputusan**
-  - Status: **OPEN** — belum ada keputusan A/B; jangan hapus sebelum diputuskan.
-  - Lama: `useKioskIntake` + `useKioskPrint.printCommittedLabel`
-    (`KioskPage.vue:120-145,178-182,351-385`) vs baru: `useKioskSelfPrint`.
-  - Opsi A pertahankan dengan state terpisah jelas, atau opsi B migrasi grid intake
-    ke `printQueueTicket` lalu hapus `useKioskPrint`. Jangan hapus sebelum diputuskan.
+- [x] **P1-1. Dual print/intake hidup berdampingan**
+  - Status: **DONE** - `24bccf4`, **keputusan Opsi B** (migrasi grid intake ke
+    `printQueueTicket`, lalu hapus `useKioskPrint`).
+  - `useKioskPrint.ts` (89 baris) dan spec-nya (105 baris) dihapus; intake
+    auto-print dan reprint kini lewat `selfPrint.printQueueTicket`. Tidak ada
+    lagi `useKioskPrint` / `printCommittedLabel` di seluruh `src/`.
+  - Tiga perbedaan perilaku ikut hilang dan satu yang penting:
+    - `printPng(blob, 'antrian')` kini mengirim doctype eksplisit
+      (sebelumnya default yang sama, jadi tanpa perubahan).
+    - `checkHealth()` pre-check dihapus - fungsi ini sudah no-op
+      (`printProxy.ts:28` selalu return `null`), jadi tidak ada gate yang hilang.
+    - `lastPrintedLabel` tidak ada padanannya; tidak pernah dibaca di luar
+      composable, jadi aman dihapus.
+  - Test reprint-safety dimigrasikan ke `useKioskSelfPrint.spec.ts` (36 file /
+    305 test hijau, typecheck bersih).
+  - Catatan: state print kini dipakai bersama antara jalur intake dan jalur
+    registrasi. Ini memang tujuan Opsi B (satu state machine, satu jalur
+    cetak), tapi berarti `printPending`/`printError`/`printSucceeded` tidak
+    lagi terisolasi per jalur. Print registration + label tetap memakai
+    `printRegistration`/`printPatientLabel`, yang masing-masing menjaga guard
+    `printPending`.
 - [x] **P1-2. Prop `intakeAvailable` tidak di-wire (quick-win)**
   - Status: **DONE** — `e6a5f5a` (resolve P1-2 `intakeAvailable` prop, P2 stepper
     states and Zod parsing for BPJS references).
