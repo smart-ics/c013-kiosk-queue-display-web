@@ -10,8 +10,17 @@ import type {
   ResponseCreateSep,
   ResponseUploadSep,
 } from '@aq/shared-types'
-import { useKioskRegistration, buildSepPayloadPolicy, type BpjsReference, type KioskRegistrationDeps } from '../useKioskRegistration'
+import { sepCreateBodySchema } from '@aq/shared-types'
+import {
+  useKioskRegistration,
+  buildSepPayloadPolicy,
+  type BpjsReference,
+  type KioskRegistrationDeps,
+} from '../useKioskRegistration'
+import { SEP_DATE_TIME_PATTERN, SepDateContractError } from '../../lib/sepDate'
+import { SEP_CONTRACT_FAILURE_LOG_PREFIX } from '../../lib/sepContract'
 import { ADMISI_FALLBACK_NOTICE_TEXT } from '../../lib/queueTicket'
+import { UPLOAD_IDENTITY_INVALID_LOG_PREFIX } from '../../lib/uploadIdentity'
 
 const bookingItem: BookingSearchItem = {
   bookingId: 'BK1',
@@ -235,6 +244,14 @@ function makeDeps(overrides: Partial<KioskRegistrationDeps> = {}): KioskRegistra
 afterEach(() => {
   vi.useRealTimers()
 })
+
+// Built from local-time components so the composed `HH:mm:ss` is 14:05:06 in any
+// host timezone; its own date (2026-08-03) is the same as the fixture business
+// date, so the clock date never masks the business-date source.
+const SEP_CLOCK = new Date(2026, 7, 3, 14, 5, 6).getTime()
+// Clock date deliberately differs from the business date, proving the date part
+// of `sepDate` comes from the business date and never from the kiosk host clock.
+const SEP_CLOCK_OTHER_DAY = new Date(2026, 7, 4, 22, 30, 9).getTime()
 
 describe('useKioskRegistration booking flow', () => {
   it('routes booking-not-found straight to failure', async () => {
@@ -1606,7 +1623,10 @@ describe('useKioskRegistration PATIENT_CONTEXT_SEARCH entry', () => {
     const deps = makeDeps({
       searchBooking: vi.fn(async () => []),
       searchPatientContext: vi.fn(
-        () => new Promise<typeof contextResponse>((resolve) => { release = resolve }),
+        () =>
+          new Promise<typeof contextResponse>((resolve) => {
+            release = resolve
+          }),
       ),
     })
     const reg = useKioskRegistration(deps)
@@ -1622,7 +1642,10 @@ describe('useKioskRegistration PATIENT_CONTEXT_SEARCH entry', () => {
     let release!: (v: BookingSearchItem[]) => void
     const deps = makeDeps({
       searchBooking: vi.fn(
-        () => new Promise<BookingSearchItem[]>((resolve) => { release = resolve }),
+        () =>
+          new Promise<BookingSearchItem[]>((resolve) => {
+            release = resolve
+          }),
       ),
     })
     const reg = useKioskRegistration(deps)
@@ -1640,7 +1663,12 @@ describe('useKioskRegistration PATIENT_CONTEXT_SEARCH entry', () => {
   it('ignores a late biometric verdict after going home', async () => {
     let release!: (v: { outcome: 'SUCCESS' }) => void
     const deps = makeDeps({
-      verifyBiometric: vi.fn(() => new Promise<{ outcome: 'SUCCESS' }>((r) => { release = r })),
+      verifyBiometric: vi.fn(
+        () =>
+          new Promise<{ outcome: 'SUCCESS' }>((r) => {
+            release = r
+          }),
+      ),
     })
     const reg = useKioskRegistration(deps)
     reg.startBookingFlow()
@@ -1877,7 +1905,10 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
   }
 
   it('builds the standard outpatient SEP payload for a rujukan booking', async () => {
-    const deps = makeDeps({ getRujukanSkpd: vi.fn(async () => rujukanOnlyResponse) })
+    const deps = makeDeps({
+      getRujukanSkpd: vi.fn(async () => rujukanOnlyResponse),
+      now: () => SEP_CLOCK,
+    })
     const reg = useKioskRegistration(deps)
     reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
@@ -1888,7 +1919,7 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
     expect(payload).toMatchObject({
       sepId: '',
       noPeserta: '000123456',
-      sepDate: '2026-08-03',
+      sepDate: '2026-08-03 14:05:06',
       noRujukan: 'REF1',
       pasienId: 'PT1',
       kelasRawatId: '3',
@@ -1906,7 +1937,10 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
   })
 
   it('builds the SKDP control SEP payload for a skdp booking', async () => {
-    const deps = makeDeps({ getRujukanSkpd: vi.fn(async () => skdpOnlyResponse) })
+    const deps = makeDeps({
+      getRujukanSkpd: vi.fn(async () => skdpOnlyResponse),
+      now: () => SEP_CLOCK,
+    })
     const reg = useKioskRegistration(deps)
     reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
@@ -1917,6 +1951,7 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
     const payload = vi.mocked(deps.createSep).mock.calls[0][0]
     expect(payload).toMatchObject({
       noPeserta: '000123456',
+      sepDate: '2026-08-03 14:05:06',
       pasienId: 'PT1',
       noRujukan: 'SKDP_99',
       tujuanKunjunganId: '2',
@@ -1936,6 +1971,7 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
       searchPatientContext: vi.fn(async () => contextResponse),
       getRujukanSkpd: vi.fn(async () => skdpOnlyResponse),
       verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
+      now: () => SEP_CLOCK,
     })
     const reg = useKioskRegistration(deps)
     reg.startBookingFlow()
@@ -1958,6 +1994,7 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
     const payload = vi.mocked(deps.createSep).mock.calls[0][0]
     expect(payload).toMatchObject({
       noPeserta: '000123456',
+      sepDate: '2026-08-03 14:05:06',
       pasienId: 'PT1',
       noRujukan: 'SKDP_99',
       tujuanKunjunganId: '2',
@@ -2013,7 +2050,8 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
     const payload = buildSepPayloadPolicy({
       ref,
       noPeserta: '000123456',
-      sepDate: '2026-08-03',
+      businessDate: '2026-08-03',
+      clock: SEP_CLOCK,
       pasienId: 'PT1',
       fallbackNoRujukan: '',
     })
@@ -2042,7 +2080,8 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
     const payload = buildSepPayloadPolicy({
       ref,
       noPeserta: '000123456',
-      sepDate: '2026-08-03',
+      businessDate: '2026-08-03',
+      clock: SEP_CLOCK,
       pasienId: 'PT1',
       fallbackNoRujukan: 'BOOKING-REF-NOT-USED',
     })
@@ -2073,7 +2112,8 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
       buildSepPayloadPolicy({
         ref: emptyDiagnosis,
         noPeserta: '000123456',
-        sepDate: '2026-08-03',
+        businessDate: '2026-08-03',
+        clock: SEP_CLOCK,
         pasienId: 'PT1',
         fallbackNoRujukan: '',
       }),
@@ -2082,11 +2122,230 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
       buildSepPayloadPolicy({
         ref: null,
         noPeserta: '000123456',
-        sepDate: '2026-08-03',
+        businessDate: '2026-08-03',
+        clock: SEP_CLOCK,
         pasienId: 'PT1',
         fallbackNoRujukan: 'BOOKING-REF',
       }),
     ).toThrow('Diagnosa')
+  })
+
+  it('composes sepDate as the business date plus the injected clock time', () => {
+    const rujukanRef: BpjsReference = {
+      type: 'rujukan',
+      id: 'REF1',
+      date: '2026-08-01',
+      diagnosaId: 'E11.8',
+      diagnosaName: 'Type 2 DM',
+      kelasRawatId: '3',
+      tglLahir: '1990-01-01',
+      faskesPerujukId: '0137R016',
+      original: {},
+    }
+    const skdpRef: BpjsReference = { ...rujukanRef, type: 'skdp', id: 'SKDP_X' }
+
+    const rujukanPayload = buildSepPayloadPolicy({
+      ref: rujukanRef,
+      noPeserta: '000123456',
+      businessDate: '2026-08-03',
+      clock: SEP_CLOCK,
+      pasienId: 'PT1',
+      fallbackNoRujukan: '',
+    })
+    expect(rujukanPayload.sepDate).toBe('2026-08-03 14:05:06')
+    expect(rujukanPayload.sepDate).toMatch(SEP_DATE_TIME_PATTERN)
+    expect(sepCreateBodySchema.parse(rujukanPayload).sepDate).toBe('2026-08-03 14:05:06')
+
+    const skdpPayload = buildSepPayloadPolicy({
+      ref: skdpRef,
+      noPeserta: '000123456',
+      businessDate: '2026-08-03',
+      clock: SEP_CLOCK,
+      pasienId: 'PT1',
+      fallbackNoRujukan: '',
+    })
+    expect(skdpPayload.sepDate).toBe('2026-08-03 14:05:06')
+    expect(sepCreateBodySchema.parse(skdpPayload).sepDate).toBe('2026-08-03 14:05:06')
+  })
+
+  it('keeps the business date as the date component when it differs from the clock date', () => {
+    const ref: BpjsReference = {
+      type: 'rujukan',
+      id: 'REF1',
+      date: '2026-08-01',
+      diagnosaId: 'E11.8',
+      diagnosaName: 'Type 2 DM',
+      kelasRawatId: '3',
+      tglLahir: '1990-01-01',
+      faskesPerujukId: '0137R016',
+      original: {},
+    }
+    const payload = buildSepPayloadPolicy({
+      ref,
+      noPeserta: '000123456',
+      businessDate: '2026-08-03',
+      clock: SEP_CLOCK_OTHER_DAY,
+      pasienId: 'PT1',
+      fallbackNoRujukan: '',
+    })
+    expect(payload.sepDate).toBe('2026-08-03 22:30:09')
+  })
+
+  it('rejects a business date that is not yyyy-MM-dd as a contract failure', () => {
+    const ref: BpjsReference = {
+      type: 'rujukan',
+      id: 'REF1',
+      date: '2026-08-01',
+      diagnosaId: 'E11.8',
+      diagnosaName: 'Type 2 DM',
+      kelasRawatId: '3',
+      tglLahir: '1990-01-01',
+      faskesPerujukId: '0137R016',
+      original: {},
+    }
+    expect(() =>
+      buildSepPayloadPolicy({
+        ref,
+        noPeserta: '000123456',
+        businessDate: '',
+        clock: SEP_CLOCK,
+        pasienId: 'PT1',
+        fallbackNoRujukan: '',
+      }),
+    ).toThrow(SepDateContractError)
+  })
+
+  it('emits a sepDate conforming to the Jetli contract from the rujukan branch when the clock date differs', async () => {
+    const deps = makeDeps({
+      getRujukanSkpd: vi.fn(async () => rujukanOnlyResponse),
+      now: () => SEP_CLOCK_OTHER_DAY,
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    await reg.confirmBooking()
+
+    const payload = vi.mocked(deps.createSep).mock.calls[0][0]
+    expect(payload.sepDate).toBe('2026-08-03 22:30:09')
+    expect(payload.sepDate).toMatch(SEP_DATE_TIME_PATTERN)
+    expect(sepCreateBodySchema.parse(payload).sepDate).toBe('2026-08-03 22:30:09')
+  })
+
+  it('rejects the SEP payload when the business date is unavailable, without a fallback date', async () => {
+    const deps = makeDeps({
+      getRujukanSkpd: vi.fn(async () => rujukanOnlyResponse),
+      getBusinessDate: vi.fn(async () => ''),
+    })
+    const reg = useKioskRegistration(deps)
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    await reg.confirmBooking()
+
+    expect(deps.createSep).not.toHaveBeenCalled()
+  })
+})
+
+describe('useKioskRegistration P2-S04 SEP contract-failure behaviour', () => {
+  async function reachBookingRegister(reg: ReturnType<typeof useKioskRegistration>) {
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    await reg.confirmBooking()
+  }
+
+  function warnSpy() {
+    return vi.spyOn(console, 'warn').mockImplementation(() => {})
+  }
+
+  function contractLogLines(warn: ReturnType<typeof warnSpy>): string[] {
+    return warn.mock.calls
+      .map((call) => String(call[0]))
+      .filter((line) => line.includes(SEP_CONTRACT_FAILURE_LOG_PREFIX))
+  }
+
+  it('issues no SEP request and preserves the regId when sepDate cannot be composed', async () => {
+    const warn = warnSpy()
+    const deps = makeDeps({ now: () => Number.NaN })
+    const reg = useKioskRegistration(deps)
+    await reachBookingRegister(reg)
+
+    expect(deps.createSep).not.toHaveBeenCalled()
+    expect(deps.registerBooking).toHaveBeenCalledTimes(1)
+    expect(deps.uploadSep).not.toHaveBeenCalled()
+    expect(deps.setDataEligibility).not.toHaveBeenCalled()
+    expect(reg.flow.value).toBe('FAILURE')
+    expect(reg.postRegistrationPhase.value).toBe('ADMISI_FALLBACK')
+    expect(reg.registrationResult.value?.regId).toBe('R1')
+    expect(reg.errorContext.value?.message).toContain('Pendaftaran berhasil (R1)')
+    warn.mockRestore()
+  })
+
+  it('logs the rejection as a contract failure naming sepDate, without identity or body', async () => {
+    const warn = warnSpy()
+    const deps = makeDeps({ now: () => Number.NaN })
+    const reg = useKioskRegistration(deps)
+    await reachBookingRegister(reg)
+
+    const lines = contractLogLines(warn)
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toContain('field=sepDate')
+    expect(lines[0]).not.toContain('000123456')
+    expect(lines[0]).not.toContain('Andi')
+    expect(lines[0]).not.toContain('diagnosaId')
+    warn.mockRestore()
+  })
+
+  it('recovers once, without retrying, when the shared client contract rejects the payload', async () => {
+    const warn = warnSpy()
+    const createSep = vi.fn(() => {
+      // Mirrors the shared client contract in the API client: a synchronous
+      // rejection before any POST /sep request is issued.
+      sepCreateBodySchema.parse({ noPeserta: '000123456', sepDate: '2026-08-03' })
+      return Promise.resolve({ sepId: 'sep-1', sepNo: '0112R' })
+    })
+    const deps = makeDeps({ createSep: createSep as unknown as KioskRegistrationDeps['createSep'] })
+    const reg = useKioskRegistration(deps)
+    await reachBookingRegister(reg)
+
+    expect(createSep).toHaveBeenCalledTimes(1)
+    expect(deps.uploadSep).not.toHaveBeenCalled()
+    expect(deps.setDataEligibility).not.toHaveBeenCalled()
+    expect(deps.registerBooking).toHaveBeenCalledTimes(1)
+    expect(reg.postRegistrationPhase.value).toBe('ADMISI_FALLBACK')
+    expect(reg.registrationResult.value?.regId).toBe('R1')
+    expect(reg.errorContext.value?.message).toContain('Pendaftaran berhasil (R1)')
+    const lines = contractLogLines(warn)
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toContain('field=sepDate')
+    warn.mockRestore()
+  })
+
+  it('does not log a contract failure for a Jetli business rejection', async () => {
+    const warn = warnSpy()
+    const deps = makeDeps({
+      createSep: vi.fn(async () => 'SEP sudah ada untuk pasien ini' as ResponseCreateSep),
+    })
+    const reg = useKioskRegistration(deps)
+    await reachBookingRegister(reg)
+
+    expect(reg.postRegistrationPhase.value).toBe('ADMISI_FALLBACK')
+    expect(reg.registrationResult.value?.regId).toBe('R1')
+    expect(contractLogLines(warn)).toHaveLength(0)
+    warn.mockRestore()
+  })
+
+  it('does not log a contract failure for a transport error', async () => {
+    const warn = warnSpy()
+    const deps = makeDeps({
+      createSep: vi.fn(async () => {
+        throw new ApiClientError('Network request failed', 0)
+      }),
+    })
+    const reg = useKioskRegistration(deps)
+    await reachBookingRegister(reg)
+
+    expect(reg.postRegistrationPhase.value).toBe('ADMISI_FALLBACK')
+    expect(contractLogLines(warn)).toHaveLength(0)
+    warn.mockRestore()
   })
 })
 
@@ -2136,6 +2395,40 @@ describe('useKioskRegistration P3-S06 post-registration retry and admisi fallbac
     expect(reg.registrationResult.value?.regId).toBe('R1')
     expect(deps.uploadSep).toHaveBeenCalledTimes(1)
     expect(deps.setDataEligibility).toHaveBeenCalledTimes(1)
+  })
+
+  it('records eligibility with the upload SEP identity when create returns a placeholder number', async () => {
+    const deps = makeDeps({
+      createSep: vi.fn(async () => ({
+        sepId: 'sep-create',
+        sepNo: '-',
+        noPeserta: '123',
+        namaPeserta: 'A',
+      })),
+      uploadSep: vi.fn(async () => ({
+        sepId: 'sep-upload',
+        sepNo: '0112R',
+        noPeserta: '123',
+        namaPeserta: 'A',
+      })),
+    })
+    const reg = useKioskRegistration(deps)
+    await reachBookingRegister(reg)
+
+    expect(deps.createSep).toHaveBeenCalledTimes(1)
+    expect(deps.uploadSep).toHaveBeenCalledTimes(1)
+    // TD-SJP-01: the create `sepId` survives only as the upload request key.
+    expect(deps.uploadSep).toHaveBeenCalledWith({ sepId: 'sep-create', regId: 'R1' })
+    expect(deps.setDataEligibility).toHaveBeenCalledTimes(1)
+    expect(deps.setDataEligibility).toHaveBeenCalledWith({
+      regId: 'R1',
+      sjpNo: '0112R',
+      pesertaJaminanId: '000123456',
+      sjpId: 'sep-upload',
+    })
+    expect(reg.postRegistrationPhase.value).toBe('ELIGIBILITY_RECORDED')
+    expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
+    expect(deps.printRegistration).toHaveBeenCalledWith(expect.objectContaining({ noSep: '0112R' }))
   })
 
   it('keeps REGISTRATION_CREATED when no SEP processing is required', async () => {
@@ -2370,6 +2663,200 @@ describe('useKioskRegistration P3-S06 post-registration retry and admisi fallbac
       expect.objectContaining({ bookingId: 'BK1', servicePointId: 'ADMISI' }),
     )
     expect(reg.registrationResult.value?.regId).toBe('R1')
+  })
+})
+
+describe('useKioskRegistration P1-S02 invalid upload identity guard', () => {
+  async function reachBookingRegister(reg: ReturnType<typeof useKioskRegistration>) {
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('BK1')
+    await reg.confirmBooking()
+  }
+
+  async function reachWalkinRegister(reg: ReturnType<typeof useKioskRegistration>) {
+    reg.startBookingFlow()
+    await reg.submitBookingKeyword('Budi')
+    await reg.confirmPatientContext(contextItem)
+    await reg.selectWalkinGuarantee({
+      tipeJaminanId: 'BPJS',
+      tipeJaminanName: 'BPJS',
+      noPeserta: '000123456',
+    })
+    reg.selectService({
+      poli: { id: 'PO1', name: 'Poli Jantung' },
+      dokter: { id: 'DP1', name: 'Dr. X' },
+      jadwal: { jadwalId: 'J1', ppaId: 'DP1', jamPraktek: '08:00', sisaKuota: 5 },
+    })
+    await reg.confirmWalkin()
+  }
+
+  function warnSpy() {
+    return vi.spyOn(console, 'warn').mockImplementation(() => {})
+  }
+
+  function uploadIdentityLogLines(warn: ReturnType<typeof warnSpy>): string[] {
+    return warn.mock.calls
+      .map((call) => String(call[0]))
+      .filter((line) => line.includes(UPLOAD_IDENTITY_INVALID_LOG_PREFIX))
+  }
+
+  const invalidIdentities: Array<[string, () => Promise<ResponseUploadSep>]> = [
+    ['placeholder', async () => ({ sepId: 'sep-upload', sepNo: '-' }) as ResponseUploadSep],
+    [
+      'padded-placeholder',
+      async () => ({ sepId: 'sep-upload', sepNo: '  -  ' }) as ResponseUploadSep,
+    ],
+    ['blank', async () => ({ sepId: 'sep-upload', sepNo: '   ' }) as ResponseUploadSep],
+    ['empty', async () => ({ sepId: 'sep-upload', sepNo: '' }) as ResponseUploadSep],
+    ['missing', async () => ({ sepId: 'sep-upload' }) as unknown as ResponseUploadSep],
+  ]
+
+  for (const [name, upload] of invalidIdentities) {
+    it(`routes an ${name} upload number to admisi fallback without calling eligibility`, async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const deps = makeDeps({
+        // The create result carries a real number so a create-identity
+        // substitution would be observable; the guard must ignore it.
+        createSep: vi.fn(async () => ({
+          sepId: 'sep-create',
+          sepNo: '0112CREATE',
+          noPeserta: '123',
+          namaPeserta: 'A',
+        })),
+        uploadSep: vi.fn(upload),
+      })
+      const reg = useKioskRegistration(deps)
+      await reachBookingRegister(reg)
+
+      expect(deps.createSep).toHaveBeenCalledTimes(1)
+      expect(deps.uploadSep).toHaveBeenCalledTimes(1)
+      expect(deps.setDataEligibility).not.toHaveBeenCalled()
+      expect(deps.printRegistration).not.toHaveBeenCalled()
+      expect(reg.flow.value).toBe('FAILURE')
+      expect(reg.postRegistrationPhase.value).toBe('ADMISI_FALLBACK')
+      expect(reg.registrationResult.value?.regId).toBe('R1')
+      expect(reg.errorContext.value?.message).toContain('Pendaftaran berhasil (R1)')
+      const lines = uploadIdentityLogLines(warn)
+      expect(lines).toHaveLength(1)
+      expect(lines[0]).toContain('regId=R1')
+      expect(lines[0]).not.toContain('0112CREATE')
+      warn.mockRestore()
+    })
+  }
+
+  it('routes the invalid identity to the configured admisi fallback intake', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const deps = makeDeps({
+      uploadSep: vi.fn(async () => ({ sepId: 'sep-upload', sepNo: '-' }) as ResponseUploadSep),
+    })
+    const reg = useKioskRegistration(deps)
+    await reachBookingRegister(reg)
+    expect(reg.postRegistrationPhase.value).toBe('ADMISI_FALLBACK')
+
+    await reg.confirmAssistance('ADMISI')
+
+    expect(reg.flow.value).toBe('ASSISTANCE_QUEUE')
+    expect(deps.bookingAssistance).toHaveBeenCalledWith(
+      expect.objectContaining({ bookingId: 'BK1', servicePointId: 'ADMISI' }),
+    )
+    expect(deps.printQueueTicket).toHaveBeenCalledWith(
+      expect.anything(),
+      'ADMISI',
+      expect.objectContaining({ regId: 'R1', instruction: ADMISI_FALLBACK_NOTICE_TEXT }),
+    )
+    expect(reg.registrationResult.value?.regId).toBe('R1')
+    warn.mockRestore()
+  })
+
+  it('keeps a string business-error upload out of the identity guard and eligibility', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const deps = makeDeps({
+      uploadSep: vi.fn(async () => 'Upload SEP ditolak' as ResponseUploadSep),
+    })
+    const reg = useKioskRegistration(deps)
+    await reachBookingRegister(reg)
+
+    expect(deps.uploadSep).toHaveBeenCalledTimes(3)
+    expect(deps.setDataEligibility).not.toHaveBeenCalled()
+    expect(reg.flow.value).toBe('FAILURE')
+    expect(reg.postRegistrationPhase.value).toBe('ADMISI_FALLBACK')
+    expect(reg.registrationResult.value?.regId).toBe('R1')
+    expect(uploadIdentityLogLines(warn)).toHaveLength(0)
+    warn.mockRestore()
+  })
+
+  it('applies the same guard to the walk-in flow', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const deps = makeDeps({
+      searchBooking: vi.fn(async () => []),
+      searchPatientContext: vi.fn(async () => contextResponse),
+      uploadSep: vi.fn(async () => ({ sepId: 'sep-upload', sepNo: '-' }) as ResponseUploadSep),
+      verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
+    })
+    const reg = useKioskRegistration(deps)
+    await reachWalkinRegister(reg)
+
+    expect(deps.registerWalkin).toHaveBeenCalledTimes(1)
+    expect(deps.createSep).toHaveBeenCalledTimes(1)
+    expect(deps.uploadSep).toHaveBeenCalledTimes(1)
+    expect(deps.setDataEligibility).not.toHaveBeenCalled()
+    expect(reg.flow.value).toBe('FAILURE')
+    expect(reg.postRegistrationPhase.value).toBe('ADMISI_FALLBACK')
+    expect(reg.registrationResult.value?.regId).toBe('R2')
+    expect(reg.errorContext.value?.message).toContain('Pendaftaran berhasil (R2)')
+    const lines = uploadIdentityLogLines(warn)
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toContain('regId=R2')
+    warn.mockRestore()
+  })
+
+  it('sends and prints the upload number when the create number differs', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const deps = makeDeps({
+      createSep: vi.fn(async () => ({
+        sepId: 'sep-create',
+        sepNo: '0112CREATE',
+        noPeserta: '123',
+        namaPeserta: 'A',
+      })),
+      uploadSep: vi.fn(async () => ({
+        sepId: 'sep-upload',
+        sepNo: '0112UPLOAD',
+        noPeserta: '123',
+        namaPeserta: 'A',
+      })),
+    })
+    const reg = useKioskRegistration(deps)
+    await reachBookingRegister(reg)
+
+    expect(deps.setDataEligibility).toHaveBeenCalledTimes(1)
+    expect(deps.setDataEligibility).toHaveBeenCalledWith({
+      regId: 'R1',
+      sjpNo: '0112UPLOAD',
+      pesertaJaminanId: '000123456',
+      sjpId: 'sep-upload',
+    })
+    expect(reg.postRegistrationPhase.value).toBe('ELIGIBILITY_RECORDED')
+    expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
+    expect(deps.printRegistration).toHaveBeenCalledWith(
+      expect.objectContaining({ noSep: '0112UPLOAD' }),
+    )
+    expect(uploadIdentityLogLines(warn)).toHaveLength(0)
+    warn.mockRestore()
+  })
+
+  it('sends and prints the upload number for a valid number padded with whitespace', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const deps = makeDeps({
+      uploadSep: vi.fn(async () => ({ sepId: 'sep-upload', sepNo: ' 0112R ' })),
+    })
+    const reg = useKioskRegistration(deps)
+    await reachBookingRegister(reg)
+
+    expect(deps.setDataEligibility).toHaveBeenCalledTimes(1)
+    expect(reg.postRegistrationPhase.value).toBe('ELIGIBILITY_RECORDED')
+    expect(uploadIdentityLogLines(warn)).toHaveLength(0)
+    warn.mockRestore()
   })
 })
 

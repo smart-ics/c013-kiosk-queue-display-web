@@ -33,6 +33,9 @@ import {
   UMAT_TIPE_JAMINAN_ID,
 } from '../lib/eligibility'
 import { IDLE_RESET_MS, KIOSK_USER_ID } from '../lib/constants'
+import { composeSepDate } from '../lib/sepDate'
+import { reportSepContractFailure } from '../lib/sepContract'
+import { isValidUploadSepNo, reportInvalidUploadIdentity } from '../lib/uploadIdentity'
 import {
   mapErrorToFailureCode,
   FAILURE_CODES,
@@ -41,10 +44,7 @@ import {
 } from '../lib/failureCode'
 import { mapBackendErrorToUserMessage } from '@aq/api-client'
 import type { BiometricVerdict } from '../lib/biometric'
-import {
-  buildAdmisiFallbackNotice,
-  type QueueTicketNotice,
-} from '../lib/queueTicket'
+import { buildAdmisiFallbackNotice, type QueueTicketNotice } from '../lib/queueTicket'
 import type { RegistrationPrintContext, RegistrationPrintResult } from './useKioskSelfPrint'
 
 export type FlowMode = 'booking' | 'walkin'
@@ -194,15 +194,20 @@ export type BpjsReference = {
  *   `faskesPerujukId`, and the selected NoSkdp as Jetli `NoRujukan`.
  * Diagnosis always comes from the selected Jetli reference. Missing
  * diagnosis is a validation failure — never an implicit `Z00.0` fallback.
+ *
+ * `sepDate` is composed here, at the request boundary, per ARCHITECTURE TD-008:
+ * the date part is the HIS business date, the time part is the supplied kiosk
+ * host clock. Both reference branches share this one contract.
  */
 export function buildSepPayloadPolicy(input: {
   ref: BpjsReference | null
   noPeserta: string
-  sepDate: string
+  businessDate: string
+  clock: number
   pasienId: string
   fallbackNoRujukan: string
 }): SepCreateBody {
-  const { ref, noPeserta, sepDate, pasienId, fallbackNoRujukan } = input
+  const { ref, noPeserta, businessDate, clock, pasienId, fallbackNoRujukan } = input
   const isSkdp = ref?.type === 'skdp'
   const diagnosaId = ref?.diagnosaId
   if (!diagnosaId) {
@@ -211,7 +216,7 @@ export function buildSepPayloadPolicy(input: {
   return {
     sepId: '',
     noPeserta,
-    sepDate,
+    sepDate: composeSepDate(businessDate, clock),
     noRujukan: ref?.id ?? fallbackNoRujukan,
     pasienId,
     kelasRawatId: ref?.kelasRawatId || '3',
@@ -263,7 +268,9 @@ async function withAttemptLimit<T>(
     } catch (error) {
       lastError = error
       // eslint-disable-next-line no-console
-      console.warn(`[kiosk] ${label} gagal (percobaan ${attempt}/${attempts}) regId=${context.regId}`)
+      console.warn(
+        `[kiosk] ${label} gagal (percobaan ${attempt}/${attempts}) regId=${context.regId}`,
+      )
     }
   }
   throw lastError
@@ -558,10 +565,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         const name = (p.tipeJaminan?.tipeJaminanName || '').toLowerCase()
         const id = (p.tipeJaminan?.tipeJaminanId || '').toLowerCase()
         return (
-          name.includes('bpjs') ||
-          name.includes('jkn') ||
-          id.includes('bpjs') ||
-          id.includes('jkn')
+          name.includes('bpjs') || name.includes('jkn') || id.includes('bpjs') || id.includes('jkn')
         )
       })
       if (detail.coverageInfo?.noPeserta && !hasBpjsPolicy) {
@@ -902,46 +906,70 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
             ? bookingDetail.value!.reg.pasienId
             : selectedPatient.value!.pasienId
         const noPeserta = eligibility.noPeserta ?? ''
-        const sepPayload = buildSepPayloadPolicy({
-          ref: selectedBpjsReference.value,
-          noPeserta,
-          sepDate: businessDate.value ?? '',
-          pasienId: patientId,
-          fallbackNoRujukan:
-            currentMode === 'booking' ? (bookingDetail.value?.extAppRef?.reffId ?? '') : '',
-        })
+        // TD-009: a non-conforming `sepDate` is a local contract failure. Both
+        // the composer and the shared client contract reject it before any
+        // `POST /sep` request is issued; the rejection is logged as a contract
+        // failure naming the field, then rethrown to the post-registration
+        // recovery path below. No retry, no fallback date, no second SEP.
+        let sepRes: ResponseCreateSep
+        try {
+          const sepPayload = buildSepPayloadPolicy({
+            ref: selectedBpjsReference.value,
+            noPeserta,
+            businessDate: businessDate.value ?? '',
+            clock: (deps.now ?? Date.now)(),
+            pasienId: patientId,
+            fallbackNoRujukan:
+              currentMode === 'booking' ? (bookingDetail.value?.extAppRef?.reffId ?? '') : '',
+          })
 
-        // SEP creation is one-time (TD-006): never retried, even for an
-        // unknown/ambiguous outcome. Recovery must not create a second SEP.
-        postRegistrationPhase.value = 'SEP_CREATE_ATTEMPTED'
-        const sepRes = await deps.createSep(sepPayload)
+          // SEP creation is one-time (TD-006): never retried, even for an
+          // unknown/ambiguous outcome. Recovery must not create a second SEP.
+          postRegistrationPhase.value = 'SEP_CREATE_ATTEMPTED'
+          sepRes = await deps.createSep(sepPayload)
+        } catch (error) {
+          reportSepContractFailure(error)
+          throw error
+        }
         if (typeof sepRes === 'string') {
           throw new Error(`Gagal membuat SEP: ${sepRes}`)
         }
-        sepNo.value = sepRes.sepNo
         postRegistrationPhase.value = 'SEP_CREATED'
 
-        await withAttemptLimit(
+        // TD-SJP-01: the resolved `Sep/upload` result is the sole authoritative
+        // SEP identity for eligibility and for the session `sepNo` (print
+        // context). The create result survives only as the upload request key.
+        const uploadRes: ResponseUploadSep = await withAttemptLimit(
           async () => {
-            const uploadRes = await deps.uploadSep({ sepId: sepRes.sepId, regId: result.regId })
-            if (typeof uploadRes === 'string') {
-              throw new Error(`Gagal upload SEP: ${uploadRes}`)
+            const res = await deps.uploadSep({ sepId: sepRes.sepId, regId: result.regId })
+            if (typeof res === 'string') {
+              throw new Error(`Gagal upload SEP: ${res}`)
             }
-            return uploadRes
+            return res
           },
           MAX_POST_REGISTRATION_ATTEMPTS,
           'SEP upload',
           { regId: result.regId },
         )
         postRegistrationPhase.value = 'SEP_UPLOADED'
+        // TD-SJP-02: a missing, blank, or placeholder upload `sepNo` is a
+        // fallback signal, not eligibility data. No `setDataEligibility` call is
+        // issued and create values are never substituted; the throw reuses the
+        // existing TD-007 recovery, which preserves `regId` and performs no
+        // second registration or SEP.
+        if (!isValidUploadSepNo(uploadRes.sepNo)) {
+          reportInvalidUploadIdentity(result.regId)
+          throw new Error('Identitas SEP hasil upload tidak valid.')
+        }
+        sepNo.value = uploadRes.sepNo
 
         await withAttemptLimit(
           () =>
             deps.setDataEligibility({
               regId: result.regId,
-              sjpNo: sepRes.sepNo,
+              sjpNo: uploadRes.sepNo,
               pesertaJaminanId: noPeserta,
-              sjpId: sepRes.sepId,
+              sjpId: uploadRes.sepId,
             }),
           MAX_POST_REGISTRATION_ATTEMPTS,
           'Reg/setDataEligibility',
