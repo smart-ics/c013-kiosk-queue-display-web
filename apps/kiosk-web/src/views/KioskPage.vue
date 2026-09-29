@@ -17,9 +17,8 @@ import { resolveFallbackServicePointId } from '../lib/fallbackServicePoint'
 import { createBiometricClient } from '../lib/biometric'
 import { scanQrFromCamera } from '../lib/qrScanner'
 import { useKioskIntake } from '../composables/useKioskIntake'
-import { useKioskPrint } from '../composables/useKioskPrint'
-import { useKioskRegistration } from '../composables/useKioskRegistration'
 import { useKioskSelfPrint } from '../composables/useKioskSelfPrint'
+import { useKioskRegistration } from '../composables/useKioskRegistration'
 import type { PatientContextItem } from '@aq/shared-types'
 import BootErrorPage from './BootErrorPage.vue'
 import KioskHome from './KioskHome.vue'
@@ -129,14 +128,6 @@ const {
   resetToSelection,
 } = useKioskIntake(offerings)
 
-const { printPending, printError, printSucceeded, printCommittedLabel, resetPrintState } =
-  useKioskPrint({
-    stationId: stationIdRef,
-    result,
-    offerings,
-    printerProxyPort,
-  })
-
 const catalog = getServiceCatalog()
 
 const selfPrint = useKioskSelfPrint({
@@ -176,9 +167,21 @@ const registration = useKioskRegistration({
     offerings.value.find((sp) => sp.servicePointId === servicePointId)?.displayName,
 })
 
+function resolveIntakeServicePointName(): string | undefined {
+  const id = lastAttemptServicePointId.value
+  if (!id) return undefined
+  return offerings.value.find((sp) => sp.servicePointId === id)?.displayName
+}
+
+async function printIntakeTicket(): Promise<void> {
+  const intake = result.value
+  if (!intake) return
+  await selfPrint.printQueueTicket(intake, resolveIntakeServicePointName())
+}
+
 watch(result, (next, prev) => {
   if (next && next !== prev) {
-    void printCommittedLabel(lastAttemptServicePointId.value ?? undefined)
+    void printIntakeTicket()
   }
 })
 
@@ -199,18 +202,17 @@ function isBpjs(sp: AdmissionServicePoint): boolean {
 }
 
 function onResetToSelection() {
-  resetPrintState()
+  selfPrint.resetPrintState()
   resetToSelection()
 }
 
 function onReprint() {
-  void printCommittedLabel(lastAttemptServicePointId.value ?? undefined)
+  void printIntakeTicket()
 }
 
 function onHome() {
   scanError.value = null
   resetToSelection()
-  resetPrintState()
   selfPrint.resetPrintState()
   homeMode.value = 'idle'
   registration.goHome()
@@ -358,17 +360,17 @@ const loadingMessage = computed(() => {
           <div class="queue-label" data-testid="queue-label">{{ result.queueLabel }}</div>
           <p class="status ok">Antrian ID {{ result.antrianId }} · Urut {{ result.noUrut }}</p>
 
-          <p v-if="printPending" class="status" data-testid="print-pending">Sedang mencetak…</p>
-          <p v-else-if="printSucceeded && !printError" class="status ok" data-testid="print-ok">
+          <p v-if="selfPrint.printPending.value" class="status" data-testid="print-pending">Sedang mencetak…</p>
+          <p v-else-if="selfPrint.printSucceeded.value && !selfPrint.printError.value" class="status ok" data-testid="print-ok">
             Tiket berhasil dicetak.
           </p>
-          <p v-if="printError" class="status error" data-testid="print-error">{{ printError }}</p>
+          <p v-if="selfPrint.printError.value" class="status error" data-testid="print-error">{{ selfPrint.printError.value }}</p>
 
           <div class="actions">
             <button
               type="button"
               class="secondary-btn"
-              :disabled="printPending"
+              :disabled="selfPrint.printPending.value"
               data-testid="reprint"
               @click="onReprint"
             >
@@ -377,7 +379,7 @@ const loadingMessage = computed(() => {
             <button
               type="button"
               class="secondary-btn"
-              :disabled="printPending"
+              :disabled="selfPrint.printPending.value"
               @click="onResetToSelection"
             >
               Ambil nomor lain

@@ -141,6 +141,39 @@ describe('useKioskSelfPrint', () => {
     expect(arg.notice).toBeUndefined()
   })
 
+  it('reprints the same intake label after a failed attempt', async () => {
+    const labelsPrinted: string[] = []
+    const printPng = vi.fn(async (): Promise<PrintProxyResult> => ({
+      success: false,
+      error: 'No printer detected',
+      isNetworkError: false,
+    }))
+    const print = useKioskSelfPrint({
+      stationId: ref('loket-03'),
+      createClient: (): PrintProxyClient =>
+        ({
+          baseUrl: 'http://localhost:5050/print',
+          checkHealth: async () => null,
+          printPng,
+        }) as unknown as PrintProxyClient,
+      renderTicket: async (data: QueueTicketData) => {
+        labelsPrinted.push(data.queueLabel)
+        return new Blob(['png'], { type: 'image/png' })
+      },
+    })
+
+    const ticket = makeTicket('A0042')
+    const first = await print.printQueueTicket(ticket, 'Registrasi')
+    expect(first.printed).toBe(false)
+    expect(print.printError.value).toBe('No printer detected')
+    expect(labelsPrinted).toEqual(['A0042'])
+
+    printPng.mockResolvedValueOnce({ success: true, jobId: 'j2', isNetworkError: false })
+    const second = await print.printQueueTicket(ticket, 'Registrasi')
+    expect(second.printed).toBe(true)
+    expect(labelsPrinted).toEqual(['A0042', 'A0042'])
+  })
+
   it('surfaces printError when a registration print is already pending', async () => {
     let resolveRender!: (v: Blob) => void
     const pendingRender = new Promise<Blob>((resolve) => {
