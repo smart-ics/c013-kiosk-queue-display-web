@@ -394,13 +394,6 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     }
   }
 
-  function startBookingFlow() {
-    touch()
-    mode.value = 'booking'
-    errorContext.value = null
-    transition('BOOKING_SEARCH')
-  }
-
   function submitBookingKeyword(keyword: string): Promise<void> {
     touch()
     const trimmed = keyword.trim()
@@ -1273,7 +1266,6 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     bpjsReferences,
     selectedBpjsReference,
     postRegistrationPhase,
-    startBookingFlow,
     goHome,
     dispose,
     submitBookingKeyword,

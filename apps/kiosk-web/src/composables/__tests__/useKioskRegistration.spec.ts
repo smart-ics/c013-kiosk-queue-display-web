@@ -256,7 +256,6 @@ const SEP_CLOCK_OTHER_DAY = new Date(2026, 7, 4, 22, 30, 9).getTime()
 describe('useKioskRegistration booking flow', () => {
   it('routes booking-not-found straight to failure', async () => {
     const reg = useKioskRegistration(makeDeps({ searchBooking: vi.fn(async () => []) }))
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('NOPE')
     expect(reg.flow.value).toBe('FAILURE')
     expect(reg.errorContext.value?.code).toBe('PATIENT_NOT_REGISTERED')
@@ -264,7 +263,6 @@ describe('useKioskRegistration booking flow', () => {
 
   it('shows confirm with needsEligibility for BPJS booking', async () => {
     const reg = useKioskRegistration(makeDeps())
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     expect(reg.flow.value).toBe('BOOKING_CONFIRM')
     expect(reg.bookingEligibility.value?.needsEligibility).toBe(true)
@@ -273,7 +271,6 @@ describe('useKioskRegistration booking flow', () => {
   it('registers a non-BPJS booking to success', async () => {
     const deps = makeDeps({ getBookingDetail: vi.fn(async () => umumDetail) })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
@@ -297,7 +294,6 @@ describe('useKioskRegistration booking flow', () => {
       }),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
     expect(deps.verifyBiometric).toHaveBeenCalledTimes(1)
@@ -309,7 +305,6 @@ describe('useKioskRegistration booking flow', () => {
   it('maps biometric timeout to failure', async () => {
     const deps = makeDeps({ verifyBiometric: vi.fn(async () => ({ outcome: 'TIMEOUT' as const })) })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
     expect(reg.flow.value).toBe('FAILURE')
@@ -323,7 +318,6 @@ describe('useKioskRegistration booking flow', () => {
       }),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     expect(reg.flow.value).toBe('FAILURE')
     expect(reg.errorContext.value?.code).toBe('BACKEND_ERROR')
@@ -332,7 +326,6 @@ describe('useKioskRegistration booking flow', () => {
   it('skips the jaminan group lookup for an Umum booking', async () => {
     const deps = makeDeps({ getBookingDetail: vi.fn(async () => umumDetail) })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     expect(deps.getGroupJaminanMap).not.toHaveBeenCalled()
     expect(reg.bookingEligibility.value?.needsEligibility).toBe(false)
@@ -347,7 +340,6 @@ describe('useKioskRegistration booking flow', () => {
       }),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
@@ -363,7 +355,6 @@ describe('useKioskRegistration booking flow', () => {
       }),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
     expect(reg.flow.value).toBe('FAILURE')
@@ -385,7 +376,6 @@ describe('useKioskRegistration patient context cascade', () => {
     const reg = useKioskRegistration(
       makeDeps({ searchBooking: vi.fn(async () => []), searchPatientContext }),
     )
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
     expect(reg.patientContextResult.value).toEqual(contextResponse)
@@ -413,7 +403,6 @@ describe('useKioskRegistration patient context cascade', () => {
       deepSearchPasien,
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
 
     await reg.submitBookingKeyword('RG00000891')
 
@@ -434,7 +423,6 @@ describe('useKioskRegistration patient context cascade', () => {
       deepSearchPasien: vi.fn(async () => []),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
 
     await reg.submitBookingKeyword('RG:891')
 
@@ -460,7 +448,6 @@ describe('useKioskRegistration patient context cascade', () => {
     const reg = useKioskRegistration(
       makeDeps({ searchBooking: vi.fn(async () => []), searchPatientContext }),
     )
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('XYZ')
     expect(reg.flow.value).toBe('FAILURE')
     expect(reg.errorContext.value?.code).toBe('PATIENT_NOT_REGISTERED')
@@ -487,7 +474,6 @@ describe('useKioskRegistration patient context cascade', () => {
       })),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('XYZ')
     expect(reg.flow.value).toBe('FAILURE')
     expect(reg.errorContext.value?.code).toBe('PATIENT_NOT_REGISTERED')
@@ -503,7 +489,6 @@ describe('useKioskRegistration patient context cascade', () => {
     const reg = useKioskRegistration(
       makeDeps({ searchBooking: vi.fn(async () => []), searchPatientContext }),
     )
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
     await reg.confirmPatientContext(contextItem)
@@ -520,7 +505,6 @@ describe('useKioskRegistration patient context cascade', () => {
       getRegistrationPrintData: vi.fn(async () => registrationPrintData),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
     await reg.confirmPatientContext(contextItem)
@@ -544,7 +528,6 @@ describe('useKioskRegistration patient context cascade', () => {
       getRegistrationPrintData: vi.fn(async () => registrationPrintData),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     reg.patientContextResult.value = registrationContextWithEmptyRegistrations
     expect(reg.patientContextResult.value?.registrations.items).toHaveLength(0)
@@ -579,7 +562,6 @@ describe('useKioskRegistration patient context cascade', () => {
       getRegistrationPrintData: vi.fn(async () => registrationPrintData),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     reg.patientContextResult.value = registrationContextWithEmptyRegistrations
     await reg.confirmPatientContext(prefixedPatient)
@@ -608,7 +590,6 @@ describe('useKioskRegistration patient context cascade', () => {
       searchPatientContext: vi.fn(async () => contextResponse),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
     expect(reg.patientContextResult.value?.registrations.items).toHaveLength(0)
@@ -637,7 +618,6 @@ describe('useKioskRegistration patient context cascade', () => {
       getGroupJaminanMap: vi.fn(async () => group),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
 
@@ -670,7 +650,6 @@ describe('useKioskRegistration patient context cascade', () => {
       getGroupJaminanMap: vi.fn(async () => group),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
 
@@ -734,7 +713,6 @@ describe('useKioskRegistration patient context cascade', () => {
       })),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('PT2')
 
     reg.patientContextResult.value = originalContext
@@ -753,7 +731,6 @@ describe('useKioskRegistration patient context cascade', () => {
       searchPatientContext: searchPatientContextMock,
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
 
@@ -769,7 +746,6 @@ describe('useKioskRegistration patient context cascade', () => {
     const reg = useKioskRegistration(
       makeDeps({ searchPatientContext: vi.fn(async () => contextResponse) }),
     )
-    reg.startBookingFlow()
     reg.cancelPatientContext()
     expect(reg.flow.value).toBe('HOME')
     expect(reg.patientContextResult.value).toBeNull()
@@ -950,7 +926,6 @@ describe('useKioskRegistration goshow walk-in flow', () => {
   }
 
   async function reachContextConfirm(reg: ReturnType<typeof useKioskRegistration>) {
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
   }
@@ -1107,7 +1082,6 @@ describe('useKioskRegistration guards and reset', () => {
     })
     const deps = makeDeps({ searchBooking: vi.fn(() => pendingSearch) })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     const first = reg.submitBookingKeyword('BK1')
     const second = reg.submitBookingKeyword('BK1')
     resolveSearch([bookingItem])
@@ -1120,8 +1094,8 @@ describe('useKioskRegistration guards and reset', () => {
     vi.useFakeTimers()
     const reg = useKioskRegistration(makeDeps({ now: () => nowMs }))
     reg.startIdleReset()
-    reg.startBookingFlow()
-    expect(reg.flow.value).toBe('BOOKING_SEARCH')
+    await reg.submitBookingKeyword('BK1')
+    expect(reg.flow.value).toBe('BOOKING_CONFIRM')
     nowMs = 2000 + 60_000
     await vi.advanceTimersByTimeAsync(1100)
     expect(reg.flow.value).toBe('HOME')
@@ -1131,7 +1105,6 @@ describe('useKioskRegistration guards and reset', () => {
     vi.useFakeTimers()
     const deps = makeDeps({ getBookingDetail: vi.fn(async () => umumDetail) })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
     expect(reg.flow.value).toBe('REGISTRATION_SUCCESS')
@@ -1167,7 +1140,6 @@ describe('useKioskRegistration gap closure features', () => {
       verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -1213,7 +1185,6 @@ describe('useKioskRegistration gap closure features', () => {
       verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -1247,7 +1218,6 @@ describe('useKioskRegistration gap closure features', () => {
       })),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -1269,7 +1239,6 @@ describe('useKioskRegistration gap closure features', () => {
       listKarcis: vi.fn(async () => [{ id: 'K-DEFAULT', name: 'Default' }]),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -1290,7 +1259,6 @@ describe('useKioskRegistration gap closure features', () => {
       ]),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -1319,7 +1287,6 @@ describe('useKioskRegistration gap closure features', () => {
       ]),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -1352,7 +1319,6 @@ describe('useKioskRegistration gap closure features', () => {
       ]),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -1379,7 +1345,6 @@ describe('useKioskRegistration gap closure features', () => {
       ]),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -1603,7 +1568,6 @@ describe('useKioskRegistration gap closure features', () => {
         deepSearchPasien: vi.fn(async () => [mockDeepSearchResult]),
       })
       const reg = useKioskRegistration(deps)
-      reg.startBookingFlow()
 
       await reg.submitBookingKeyword('08123456789')
 
@@ -1671,7 +1635,6 @@ describe('useKioskRegistration PATIENT_CONTEXT_SEARCH entry', () => {
       ),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     const p = reg.confirmBooking()
     await flushPromises()
@@ -1690,7 +1653,6 @@ describe('useKioskRegistration P2-S04 reference-specific pre-registration prepar
   it('resolves the rujukan PPK mapping before the booking registration and uses local ids', async () => {
     const deps = makeDeps()
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -1711,7 +1673,6 @@ describe('useKioskRegistration P2-S04 reference-specific pre-registration prepar
   it('never copies the BPJS rujukan number into the local rujukanId', async () => {
     const deps = makeDeps()
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -1753,7 +1714,6 @@ describe('useKioskRegistration P2-S04 reference-specific pre-registration prepar
       verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     expect(reg.flow.value).toBe('PATIENT_CONTEXT_CONFIRM')
     await reg.confirmPatientContext(contextItem)
@@ -1788,7 +1748,6 @@ describe('useKioskRegistration P2-S04 reference-specific pre-registration prepar
       verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     await reg.confirmPatientContext(contextItem)
     await reg.selectWalkinGuarantee({
@@ -1821,7 +1780,6 @@ describe('useKioskRegistration P2-S04 reference-specific pre-registration prepar
       verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     await reg.confirmPatientContext(contextItem)
     await reg.selectWalkinGuarantee({
@@ -1910,7 +1868,6 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
       now: () => SEP_CLOCK,
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -1942,7 +1899,6 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
       now: () => SEP_CLOCK,
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -1974,7 +1930,6 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
       now: () => SEP_CLOCK,
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     await reg.confirmPatientContext(contextItem)
     await reg.selectWalkinGuarantee({
@@ -2011,7 +1966,6 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
   it('attempts SEP creation exactly once per registration flow', async () => {
     const deps = makeDeps()
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -2026,7 +1980,6 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
       }),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -2221,7 +2174,6 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
       now: () => SEP_CLOCK_OTHER_DAY,
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -2237,7 +2189,6 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
       getBusinessDate: vi.fn(async () => ''),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -2247,7 +2198,6 @@ describe('useKioskRegistration P2-S05 reference-specific SEP payload constructio
 
 describe('useKioskRegistration P2-S04 SEP contract-failure behaviour', () => {
   async function reachBookingRegister(reg: ReturnType<typeof useKioskRegistration>) {
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
   }
@@ -2351,7 +2301,6 @@ describe('useKioskRegistration P2-S04 SEP contract-failure behaviour', () => {
 
 describe('useKioskRegistration P3-S06 post-registration retry and admisi fallback', () => {
   async function reachBookingRegister(reg: ReturnType<typeof useKioskRegistration>) {
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
   }
@@ -2367,7 +2316,6 @@ describe('useKioskRegistration P3-S06 post-registration retry and admisi fallbac
       ),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     const pending = reg.confirmBooking()
     await flushPromises()
@@ -2434,7 +2382,6 @@ describe('useKioskRegistration P3-S06 post-registration retry and admisi fallbac
   it('keeps REGISTRATION_CREATED when no SEP processing is required', async () => {
     const deps = makeDeps({ getBookingDetail: vi.fn(async () => umumDetail) })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
 
@@ -2617,7 +2564,6 @@ describe('useKioskRegistration P3-S06 post-registration retry and admisi fallbac
       verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     await reg.confirmPatientContext(contextItem)
     await reg.selectWalkinGuarantee({
@@ -2668,13 +2614,11 @@ describe('useKioskRegistration P3-S06 post-registration retry and admisi fallbac
 
 describe('useKioskRegistration P1-S02 invalid upload identity guard', () => {
   async function reachBookingRegister(reg: ReturnType<typeof useKioskRegistration>) {
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
   }
 
   async function reachWalkinRegister(reg: ReturnType<typeof useKioskRegistration>) {
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     await reg.confirmPatientContext(contextItem)
     await reg.selectWalkinGuarantee({
@@ -2862,7 +2806,6 @@ describe('useKioskRegistration P1-S02 invalid upload identity guard', () => {
 
 describe('useKioskRegistration P3-S07 recovery print output', () => {
   async function reachBookingRegister(reg: ReturnType<typeof useKioskRegistration>) {
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
   }
@@ -2901,7 +2844,6 @@ describe('useKioskRegistration P3-S07 recovery print output', () => {
       verifyBiometric: vi.fn(async () => ({ outcome: 'SUCCESS' as const })),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('Budi')
     await reg.confirmPatientContext(contextItem)
     await reg.selectWalkinGuarantee({
@@ -2935,7 +2877,6 @@ describe('useKioskRegistration P3-S07 recovery print output', () => {
       }),
     })
     const reg = useKioskRegistration(deps)
-    reg.startBookingFlow()
     await reg.submitBookingKeyword('BK1')
     await reg.confirmBooking()
     expect(reg.postRegistrationPhase.value).toBeNull()
