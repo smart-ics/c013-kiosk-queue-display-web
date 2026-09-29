@@ -187,7 +187,7 @@ describe('hisSchemas', () => {
     const parsed = sepCreateBodySchema.parse({
       sepId: '',
       noPeserta: '0001234567890',
-      sepDate: '2026-08-03',
+      sepDate: '2026-08-03 09:15:00',
       noRujukan: 'SKDP1',
       pasienId: 'PT1',
       kelasRawatId: '1',
@@ -203,6 +203,41 @@ describe('hisSchemas', () => {
     expect(parsed.assesmentPelayananId).toBe('5')
     expect(parsed.faskesPerujukId).toBe('')
     expect(parsed.noRujukan).toBe('SKDP1')
+  })
+
+  it('accepts a SEP-create sepDate in yyyy-MM-dd HH:mm:ss', () => {
+    const parsed = sepCreateBodySchema.parse({
+      noPeserta: '0001234567890',
+      sepDate: '2026-08-03 09:15:42',
+      userId: 'hidokkiosk',
+    })
+    expect(parsed.sepDate).toBe('2026-08-03 09:15:42')
+  })
+
+  it('rejects a date-only sepDate on SEP create', () => {
+    expect(() =>
+      sepCreateBodySchema.parse({ noPeserta: '0001234567890', sepDate: '2026-08-03' }),
+    ).toThrow()
+  })
+
+  it('rejects a minutes-only sepDate on SEP create', () => {
+    expect(() =>
+      sepCreateBodySchema.parse({ noPeserta: '0001234567890', sepDate: '2026-08-03 09:15' }),
+    ).toThrow()
+  })
+
+  it('rejects an ISO T separator sepDate on SEP create', () => {
+    expect(() =>
+      sepCreateBodySchema.parse({ noPeserta: '0001234567890', sepDate: '2026-08-03T09:15:42' }),
+    ).toThrow()
+  })
+
+  it('rejects an empty sepDate on SEP create', () => {
+    expect(() => sepCreateBodySchema.parse({ noPeserta: '0001234567890', sepDate: '' })).toThrow()
+  })
+
+  it('rejects a missing sepDate on SEP create', () => {
+    expect(() => sepCreateBodySchema.parse({ noPeserta: '0001234567890' })).toThrow()
   })
 
   it('accepts a plain string business-error payload on SEP create', () => {

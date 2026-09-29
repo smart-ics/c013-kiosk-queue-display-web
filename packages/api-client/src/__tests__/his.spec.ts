@@ -349,9 +349,43 @@ describe('createJetliApi', () => {
     expect(String(fetchImpl.mock.calls[0]?.[0])).toContain('Sep/rujukan/0001234567890/peserta')
   })
 
+  it('rejects a SEP create without a conforming sepDate and issues no request', async () => {
+    const { fetchImpl, api } = jetliClient('Biometrik tidak ditemukan')
+    expect(() => api.createSep({ noPeserta: '0001234567890', userId: 'hidokkiosk' })).toThrow()
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('issues no request for a date-only sepDate and does not repair it', () => {
+    const { fetchImpl, api } = jetliClient('Biometrik tidak ditemukan')
+    expect(() =>
+      api.createSep({
+        noPeserta: '0001234567890',
+        sepDate: '2026-08-03',
+        userId: 'hidokkiosk',
+      }),
+    ).toThrow()
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('issues no request for a sepDate without the seconds component', () => {
+    const { fetchImpl, api } = jetliClient('Biometrik tidak ditemukan')
+    expect(() =>
+      api.createSep({
+        noPeserta: '0001234567890',
+        sepDate: '2026-08-03 09:15',
+        userId: 'hidokkiosk',
+      }),
+    ).toThrow()
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
   it('creates a SEP and tolerates a plain-string business error', async () => {
     const { fetchImpl, api } = jetliClient('Biometrik tidak ditemukan')
-    const result = await api.createSep({ noPeserta: '0001234567890', userId: 'hidokkiosk' })
+    const result = await api.createSep({
+      noPeserta: '0001234567890',
+      sepDate: '2026-08-03 09:15:42',
+      userId: 'hidokkiosk',
+    })
     expect(result).toBe('Biometrik tidak ditemukan')
     const url = String(fetchImpl.mock.calls[0]?.[0])
     expect(url).toContain('Sep')

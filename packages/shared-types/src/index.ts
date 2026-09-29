@@ -619,7 +619,8 @@ export const sepCreateBodySchema = z
   .object({
     sepId: z.string().optional(),
     noPeserta: z.string().optional(),
-    sepDate: z.string().optional(),
+    // Jetli SepDate contract: yyyy-MM-dd HH:mm:ss, seconds component required by the receiver
+    sepDate: z.string().regex(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/),
     noRujukan: z.string().optional(),
     pasienId: z.string().optional(),
     kelasRawatId: z.string().optional(),
