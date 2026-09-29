@@ -86,10 +86,20 @@ payload captured at failure:
 
 ### Expected Result
 
-The SEP payload `sepDate` should be formatted as `yyyy-mm-dd hh:mm` (date plus
-time), compatible with the Jetli VClaim `POST /sep` contract. SEP creation should
-succeed, and the normal registration receipt with the SEP number should print,
-without the admisi-fallback notice.
+The SEP payload `sepDate` should be formatted as `yyyy-MM-dd HH:mm:ss` (19
+characters, date plus time with a required seconds component), compatible with
+the Jetli VClaim `POST /sep` contract. SEP creation should succeed, and the
+normal registration receipt with the SEP number should print, without the
+admisi-fallback notice.
+
+> **Expectation corrected 2026-09-29.** This case previously recorded
+> `yyyy-mm-dd hh:mm` as the expected format. That value is **refuted** by
+> `docs/analysis/KIOSK-SEP-SKDP-BUG-INVESTIGATION.md` finding F-01, which
+> executed the Jetli date helper: `yyyy-MM-dd HH:mm` throws the identical
+> `Invalid string date` as the date-only value. The accepted pattern is
+> `yyyy-MM-dd HH:mm:ss`. Testing this case against the superseded expectation
+> would have failed for the correct implementation and consumed a cycle.
+> The correction is against the Jetli contract, not against a preference.
 
 ### Evidence
 
@@ -98,8 +108,8 @@ without the admisi-fallback notice.
 - Source location (evidence only — no code change): `apps/kiosk-web/src/composables/useKioskRegistration.ts`
   line 908 passes `sepDate: businessDate.value ?? ''`, where `businessDate` is a
   date-only value (`yyyy-mm-dd`) obtained from `ensureBusinessDate()` /
-  `deps.getBusinessDate()` (line 373-378). Jetli expects the `yyyy-mm-dd hh:mm`
-  format for `sepDate`.
+  `deps.getBusinessDate()` (line 373-378). Jetli expects the
+  `yyyy-MM-dd HH:mm:ss` format for `sepDate`.
 
 ---
 
@@ -338,7 +348,14 @@ Actual Result:
 
 Expected Result:
 
-`sepDate` must be formatted as `yyyy-mm-dd hh:mm` (date plus time) as required by the Jetli VClaim `POST /sep` contract, so SEP creation succeeds and the normal receipt with SEP number prints.
+`sepDate` must be formatted as `yyyy-MM-dd HH:mm:ss` (date plus time, seconds
+required) as required by the Jetli VClaim `POST /sep` contract, so SEP creation
+succeeds and the normal receipt with SEP number prints.
+
+> **Expectation corrected 2026-09-29** — previously recorded as
+> `yyyy-mm-dd hh:mm`, which the Jetli contract rejects with the identical
+> `Invalid string date` error. See
+> `docs/analysis/KIOSK-SEP-SKDP-BUG-INVESTIGATION.md` F-01 and OQ-BI-05.
 
 Evidence:
 
@@ -351,3 +368,39 @@ Evidence:
 Open Issues:
 
 - DEF-001
+
+## 5. Retest Required — DEF-001 (2026-09-29)
+
+DEF-001 has been corrected and the correction is COMPLETED, but **this
+document's FAIL and BLOCKED results predate the fix**. They describe the
+system as it was, not as it is now. Do not read them as current state.
+
+Correction shipped: `a67c0e4` — `sepDate` is composed as `yyyy-MM-dd HH:mm:ss`
+(ARCHITECTURE TD-008), validated at the shared client boundary before any
+request is issued (TD-009), with request-direction conformance coverage
+(TD-010). Unit and contract coverage is green; the service has not yet been
+exercised.
+
+**Re-run at minimum TC-RE-02.** It is Rujukan-only and is not blocked by the
+SKDP data gap that blocks TC-BR-02/03, so it is executable right now.
+
+Preconditions for the retest:
+
+1. `jetliApiBase` now points at `http://dev.smart-ics.com:8888/JknTrustedLink/api`
+   (commit `ce7a045`), not the former `8089/JetliAPi` deployment.
+2. The `SepDate` contract was established by tracing
+   `SepCreateCommand.cs` in `b12-Jetli-JknTrustedLinkApi` at the former
+   8089 target (BUG-INVESTIGATION assumption A-02). If the 8888 deployment
+   was built from a different source revision, that evidence must be
+   re-established before a FAIL is attributed to the fix.
+3. On success, verify the printed output is the normal registration receipt
+   carrying the SEP number, and that no admisi-fallback notice
+   (`Berhasil Registrasi regid : ...` / `Silakan menuju Loket Admisi ...`)
+   appears. Capturing the `POST /sep` request body is what closes DEF-001.
+
+Also worth re-running while the kiosk is in that state, since they are cheap
+and share the same fixture: TC-ERR-01 (SEP-create failure must still fall back
+exactly once, without a blind second create) and TC-ERR-04. TC-ERR-01 in
+particular previously passed *because* DEF-001 forced a SEP-create failure;
+with DEF-001 fixed that accident no longer supplies the scenario, so it needs
+an induced failure to remain meaningful.
