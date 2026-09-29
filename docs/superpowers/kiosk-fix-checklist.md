@@ -68,9 +68,11 @@ kode mati / UI placeholder / wiring putus. Acuan verifikasi tiap item:
 
 ## P3 — Cleanup
 
-- [ ] **P3-1. `startBookingFlow()` dead code** — `useKioskRegistration.ts:272-277`
+- [x] **P3-1. `startBookingFlow()` dead code** - `useKioskRegistration.ts:272-277`
   tak dipanggil di `src/` (hanya di test). Hapus + migrasi spec ke flow asli.
-  - Status: **OPEN**.
+  - Status: **DONE** - `e9cfc0e`. Fungsi dan export-nya dihapus; 60 call site di spec dibuang, test kini memakai entry point produksi (`submitBookingKeyword` langsung dari HOME).
+  - Menyingkap satu test yang mengasumsikan `BOOKING_SEARCH` - state yang tidak terjangkau di produksi. Test idle-reset 60s sekarang naik ke `BOOKING_CONFIRM`; subjek yang diuji tidak berubah.
+  - Verifikasi: 306 test kiosk-web hijau + typecheck bersih.
 
 ## Urutan eksekusi
 
