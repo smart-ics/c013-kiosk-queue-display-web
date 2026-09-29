@@ -45,7 +45,7 @@ Re-copy from that folder when backend/ops docs change. Client-facing procedures 
 
 - [context/kiosk-web/README.md](./context/kiosk-web/README.md) — kiosk intake notes
 - [context/display-web/announcement-audio.md](./context/display-web/announcement-audio.md) — announcement audio
-- [architecture/](./architecture/) — self-registration analysis, registrasi-langsung, post-deploy config patterns
+- [architecture/](./architecture/) — acuan: [kiosk-self-registration-flow.md](./architecture/kiosk-self-registration-flow.md) (CURRENT); arsip: [archive/architecture/](./archive/architecture/); lain: registrasi-langsung, post-deploy config pattern (monorepo)
 
 ## Phase reports (historical)
 
