@@ -1,8 +1,9 @@
-RELEASE NOTE — v0.2.4
+RELEASE NOTE — v0.2.12 (kiosk-web, 2026-10-01)
 
-# Added
-    - Menambahkan alur pemilihan Rujukan atau SKDP (Surat Kontrol) BPJS yang aktif apabila ditemukan lebih dari satu rujukan/SKDP aktif, sehingga pasien dapat memilih rujukan yang sesuai.
-    - Menambahkan API pencarian mendalam data pasien (`deepSearchPasien`) untuk mendukung integrasi pencarian identitas pasien.
+# Fixed
+- Alur kiosk tidak lagi macet: pencarian pasien bisa dibatalkan, verifikasi biometrik ada tombol Batal, hasil basi setelah batal/home diabaikan.
+- SEP BPJS kini berhasil dibuat (format tanggal sesuai kontrak Jetli), tidak lagi 400 Invalid string date.
 
-# Improved
-    - Mengoptimalkan ukuran video iklan/edukasi pada kiosk (`adv-video.mp4`) dari 14.5MB menjadi 2.5MB untuk performa pemuatan yang lebih cepat dan efisien.
+# Changed
+- Identitas eligibility mengikuti hasil SEP/upload; endpoint Jetli mengarah ke deployment JknTrustedLink.
+- Hasil test akhir: 10 lolos, 0 gagal, 2 tertunda (data SKDP dev belum tersedia, bukan defect).
