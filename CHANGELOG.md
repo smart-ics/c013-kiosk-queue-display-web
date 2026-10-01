@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.12] - 2026-10-01
+
+### Fixed
+
+- **P0 stuck flows (kiosk-web)**: Patient search is cancellable with stale-result guard, biometric pending shows interactive Batal, late biometric/booking results after cancel/home are ignored, and patient search explicitly enters `PATIENT_CONTEXT_SEARCH`.
+- **SEP date contract (kiosk-web, DEF-001)**: `POST /sep` now sends `sepDate` as `yyyy-MM-dd HH:mm:ss` so SEP creation succeeds instead of `400 Invalid string date`.
+
+### Changed
+
+- **Eligibility identity (kiosk-web)**: Sep/upload result is the authoritative `setDataEligibility` identity.
+- **Jetli endpoint (kiosk-web)**: `jetliApiBase` points at the `JknTrustedLink` deployment.
+- **Intake print (kiosk-web)**: Migrated to `useKioskSelfPrint`, removed `useKioskPrint` and the unreachable `startBookingFlow` entry point.
+- **IIS guide (all apps)**: `docs/IIS_INSTALL_GUIDE.id.md` is copied into prod `dist/` and served as `text/markdown`.
+- **Test execution**: `docs/test/TEST-EXECUTION.md` final — 15 cases: 10 Passed, 0 Failed, 2 Blocked (no active SKDP participant in dev DB, not a product defect), 3 Not Tested.
+
 ## [0.2.11] - 2026-09-18
 
 ### Changed
