@@ -45,6 +45,27 @@ describe('createHisApi', () => {
     expect(String(fetchImpl.mock.calls[0]?.[0])).toContain('Reg/RG12345678')
   })
 
+  it('maps a Rujukan PPK id to the local RujukanId and CaraMasukDkId', async () => {
+    const { fetchImpl, api } = hisClient({
+      rujukanId: 'RJ-001',
+      rujukanName: 'Puskesmas Sehat',
+      isAktif: true,
+      ppkId: '0137R016',
+      alamat: { provinsiId: '32', kotaId: '3273', kecamatanId: '327301' },
+      telepon: '021-555',
+      rujukanTipeId: '1',
+      rujukanTipeName: 'Rujukan PPK 1',
+      kelasId: '3',
+      kelasName: 'Kelas 3',
+      caraMasukDkId: '6',
+      caraMasukDkName: 'Rujukan Faskes 1',
+    })
+    const res = await api.getRujukanByPpk('0137R016')
+    expect(res.rujukanId).toBe('RJ-001')
+    expect(res.caraMasukDkId).toBe('6')
+    expect(String(fetchImpl.mock.calls[0]?.[0])).toContain('Rujukan/ppk/0137R016')
+  })
+
   it('searches booking with tglBerobat + keyword in path', async () => {
     const fetchImpl = vi.fn(async () =>
       new Response(
@@ -328,9 +349,43 @@ describe('createJetliApi', () => {
     expect(String(fetchImpl.mock.calls[0]?.[0])).toContain('Sep/rujukan/0001234567890/peserta')
   })
 
+  it('rejects a SEP create without a conforming sepDate and issues no request', async () => {
+    const { fetchImpl, api } = jetliClient('Biometrik tidak ditemukan')
+    expect(() => api.createSep({ noPeserta: '0001234567890', userId: 'hidokkiosk' })).toThrow()
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('issues no request for a date-only sepDate and does not repair it', () => {
+    const { fetchImpl, api } = jetliClient('Biometrik tidak ditemukan')
+    expect(() =>
+      api.createSep({
+        noPeserta: '0001234567890',
+        sepDate: '2026-08-03',
+        userId: 'hidokkiosk',
+      }),
+    ).toThrow()
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('issues no request for a sepDate without the seconds component', () => {
+    const { fetchImpl, api } = jetliClient('Biometrik tidak ditemukan')
+    expect(() =>
+      api.createSep({
+        noPeserta: '0001234567890',
+        sepDate: '2026-08-03 09:15',
+        userId: 'hidokkiosk',
+      }),
+    ).toThrow()
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
   it('creates a SEP and tolerates a plain-string business error', async () => {
     const { fetchImpl, api } = jetliClient('Biometrik tidak ditemukan')
-    const result = await api.createSep({ noPeserta: '0001234567890', userId: 'hidokkiosk' })
+    const result = await api.createSep({
+      noPeserta: '0001234567890',
+      sepDate: '2026-08-03 09:15:42',
+      userId: 'hidokkiosk',
+    })
     expect(result).toBe('Biometrik tidak ditemukan')
     const url = String(fetchImpl.mock.calls[0]?.[0])
     expect(url).toContain('Sep')

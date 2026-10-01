@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import type { AdmissionQueueIntakeResponse } from '@aq/shared-types'
 import { useKioskSelfPrint } from '../useKioskSelfPrint'
 import type { PrintProxyClient, PrintProxyResult } from '../../lib/printProxy'
+import type { QueueTicketData } from '../../lib/queueTicket'
 
 function makeTicket(label = 'B-001'): AdmissionQueueIntakeResponse {
   return { antrianId: 'B1', noUrut: 1, queueLabel: label, createdAt: '2026-08-03T08:00:00' }
@@ -80,6 +81,97 @@ describe('useKioskSelfPrint', () => {
     expect(result.printed).toBe(true)
     expect(urls).toEqual(['label_mr'])
     expect(print.printSucceeded.value).toBe(true)
+  })
+
+  it('passes an admisi fallback notice through to the queue-ticket renderer', async () => {
+    const renderTicket = vi.fn(
+      async (_data: QueueTicketData) => new Blob(['png'], { type: 'image/png' }),
+    )
+    const printPng = vi.fn(async (): Promise<PrintProxyResult> => {
+      return { success: true, jobId: 'j4', isNetworkError: false }
+    })
+    const print = useKioskSelfPrint({
+      stationId: ref('K01'),
+      createClient: (): PrintProxyClient =>
+        ({
+          baseUrl: 'http://localhost:5050/print',
+          checkHealth: async () => null,
+          printPng,
+        }) as unknown as PrintProxyClient,
+      renderRegistration: async () => new Blob(['png'], { type: 'image/png' }),
+      renderTicket,
+    })
+
+    const notice = {
+      regId: 'RG01069593',
+      instruction: 'Silakan menuju Loket Admisi untuk penyelesaian berkas.',
+    }
+    const result = await print.printQueueTicket(makeTicket('B-001'), 'Loket Admisi', notice)
+    expect(result.printed).toBe(true)
+    expect(renderTicket).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queueLabel: 'B-001',
+        servicePointName: 'Loket Admisi',
+        notice,
+      }),
+    )
+  })
+
+  it('renders a queue ticket without a notice when none is supplied', async () => {
+    const renderTicket = vi.fn(
+      async (_data: QueueTicketData) => new Blob(['png'], { type: 'image/png' }),
+    )
+    const printPng = vi.fn(async (): Promise<PrintProxyResult> => {
+      return { success: true, jobId: 'j5', isNetworkError: false }
+    })
+    const print = useKioskSelfPrint({
+      stationId: ref('K01'),
+      createClient: (): PrintProxyClient =>
+        ({
+          baseUrl: 'http://localhost:5050/print',
+          checkHealth: async () => null,
+          printPng,
+        }) as unknown as PrintProxyClient,
+      renderRegistration: async () => new Blob(['png'], { type: 'image/png' }),
+      renderTicket,
+    })
+
+    await print.printQueueTicket(makeTicket())
+    const arg = renderTicket.mock.calls[0][0]
+    expect(arg.notice).toBeUndefined()
+  })
+
+  it('reprints the same intake label after a failed attempt', async () => {
+    const labelsPrinted: string[] = []
+    const printPng = vi.fn(async (): Promise<PrintProxyResult> => ({
+      success: false,
+      error: 'No printer detected',
+      isNetworkError: false,
+    }))
+    const print = useKioskSelfPrint({
+      stationId: ref('loket-03'),
+      createClient: (): PrintProxyClient =>
+        ({
+          baseUrl: 'http://localhost:5050/print',
+          checkHealth: async () => null,
+          printPng,
+        }) as unknown as PrintProxyClient,
+      renderTicket: async (data: QueueTicketData) => {
+        labelsPrinted.push(data.queueLabel)
+        return new Blob(['png'], { type: 'image/png' })
+      },
+    })
+
+    const ticket = makeTicket('A0042')
+    const first = await print.printQueueTicket(ticket, 'Registrasi')
+    expect(first.printed).toBe(false)
+    expect(print.printError.value).toBe('No printer detected')
+    expect(labelsPrinted).toEqual(['A0042'])
+
+    printPng.mockResolvedValueOnce({ success: true, jobId: 'j2', isNetworkError: false })
+    const second = await print.printQueueTicket(ticket, 'Registrasi')
+    expect(second.printed).toBe(true)
+    expect(labelsPrinted).toEqual(['A0042', 'A0042'])
   })
 
   it('surfaces printError when a registration print is already pending', async () => {

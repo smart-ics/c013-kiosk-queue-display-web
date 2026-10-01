@@ -161,7 +161,7 @@ onUnmounted(() => {
             type="button"
             class="queue-intake-btn"
             data-testid="start-intake"
-            :disabled="pending"
+            :disabled="pending || !intakeAvailable"
             @click="emit('startIntake')"
           >
             Ambil Antrian Admisi

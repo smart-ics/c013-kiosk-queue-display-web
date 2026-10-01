@@ -11,7 +11,8 @@ import type {
   PatientContextSearchResponse,
   Polis,
   ReturnCreateWalkIn,
-  RujukanSkpdResponse,
+  RjkGetByPpkIdResponse,
+  RujukanBpjsGetResponse,
   ServiceSelection,
   PayloadDirectRegisterRajalByBooking,
   PayloadDirectRegisterRajalWalkIn,
@@ -32,6 +33,9 @@ import {
   UMAT_TIPE_JAMINAN_ID,
 } from '../lib/eligibility'
 import { IDLE_RESET_MS, KIOSK_USER_ID } from '../lib/constants'
+import { composeSepDate } from '../lib/sepDate'
+import { reportSepContractFailure } from '../lib/sepContract'
+import { isValidUploadSepNo, reportInvalidUploadIdentity } from '../lib/uploadIdentity'
 import {
   mapErrorToFailureCode,
   FAILURE_CODES,
@@ -40,6 +44,7 @@ import {
 } from '../lib/failureCode'
 import { mapBackendErrorToUserMessage } from '@aq/api-client'
 import type { BiometricVerdict } from '../lib/biometric'
+import { buildAdmisiFallbackNotice, type QueueTicketNotice } from '../lib/queueTicket'
 import type { RegistrationPrintContext, RegistrationPrintResult } from './useKioskSelfPrint'
 
 export type FlowMode = 'booking' | 'walkin'
@@ -69,7 +74,8 @@ export type KioskRegistrationDeps = {
   appConfig: AppConfig
   verifyBiometric: (noka: string) => Promise<BiometricVerdict>
   listKarcis: (layananId: string) => Promise<KarcisItem[]>
-  getRujukanSkpd: (noPeserta: string) => Promise<RujukanSkpdResponse>
+  getRujukanSkpd: (noPeserta: string) => Promise<RujukanBpjsGetResponse>
+  getRujukanByPpk: (ppkId: string) => Promise<RjkGetByPpkIdResponse>
   registerBooking: (ctx: PayloadDirectRegisterRajalByBooking) => Promise<ReturnCreateWalkIn>
   registerWalkin: (ctx: PayloadDirectRegisterRajalWalkIn) => Promise<ReturnCreateWalkIn>
   createSep: (body: SepCreateBody) => Promise<ResponseCreateSep>
@@ -82,6 +88,7 @@ export type KioskRegistrationDeps = {
   printQueueTicket: (
     ticket: AdmissionQueueIntakeResponse,
     servicePointName?: string,
+    notice?: QueueTicketNotice,
   ) => Promise<RegistrationPrintResult>
   offeringsName?: (servicePointId: string) => string | undefined
   now?: () => number
@@ -159,15 +166,114 @@ function resolveDefaultKarcisId(
   return appConfig.kioskDefaultKarcisId ?? ''
 }
 
+/**
+ * Kiosk reference-selection display model. UI display fields (`id`, `date`,
+ * `diagnosa*`) are derived from the already-validated Jetli response
+ * (`RujukanBpjsGetResponse`); `type` and `faskesPerujukId` preserve the
+ * reference discriminator and the PPK mapping key required by TD-002/TD-003.
+ */
 export type BpjsReference = {
   type: 'skdp' | 'rujukan'
   id: string // noSkdp or noRujukan
-  date: string // tglMulai or tglRujukan
+  date: string // tglRencanaKontrol or tglRujukan
   diagnosaId: string
   diagnosaName: string
   kelasRawatId: string
   tglLahir: string
-  original: any
+  faskesPerujukId?: string // rujukan-only: Jetli FaskesPerujuk.FaskesId
+  original: Record<string, unknown>
+}
+
+/**
+ * Reference-specific SEP payload policy (architecture TD-005). Builds the
+ * Jetli `POST Sep` request body from the selected typed reference and
+ * participant context:
+ * - rujukan: the approved standard outpatient payload defaults.
+ * - skdp: the control/second-visit policy — `tujuanKunjunganId: "2"`,
+ *   `assesmentPelayananId: "5"`, empty `flagProcedureId`/`penunjangId`/
+ *   `faskesPerujukId`, and the selected NoSkdp as Jetli `NoRujukan`.
+ * Diagnosis always comes from the selected Jetli reference. Missing
+ * diagnosis is a validation failure — never an implicit `Z00.0` fallback.
+ *
+ * `sepDate` is composed here, at the request boundary, per ARCHITECTURE TD-008:
+ * the date part is the HIS business date, the time part is the supplied kiosk
+ * host clock. Both reference branches share this one contract.
+ */
+export function buildSepPayloadPolicy(input: {
+  ref: BpjsReference | null
+  noPeserta: string
+  businessDate: string
+  clock: number
+  pasienId: string
+  fallbackNoRujukan: string
+}): SepCreateBody {
+  const { ref, noPeserta, businessDate, clock, pasienId, fallbackNoRujukan } = input
+  const isSkdp = ref?.type === 'skdp'
+  const diagnosaId = ref?.diagnosaId
+  if (!diagnosaId) {
+    throw new Error('Diagnosa rujukan/SKDP BPJS tidak ditemukan. Hubungi petugas.')
+  }
+  return {
+    sepId: '',
+    noPeserta,
+    sepDate: composeSepDate(businessDate, clock),
+    noRujukan: ref?.id ?? fallbackNoRujukan,
+    pasienId,
+    kelasRawatId: ref?.kelasRawatId || '3',
+    tujuanKunjunganId: isSkdp ? '2' : '0',
+    flagProcedureId: '',
+    assesmentPelayananId: isSkdp ? '5' : '',
+    penunjangId: '',
+    faskesPerujukId: isSkdp ? '' : undefined,
+    katarak: '0',
+    catatan: 'Kiosk Self Registration',
+    kll: '0',
+    tglKLL: '',
+    noLaporanPolisi: '',
+    keteranganKLL: '',
+    propIdKll: '',
+    kabIdKll: '',
+    kecIdKll: '',
+    diagnosaId,
+    userId: KIOSK_USER_ID,
+  }
+}
+
+/**
+ * Post-registration SEP/eligibility lifecycle and recovery state (architecture
+ * TD-007). The registration is retained as soon as it is created; every later
+ * failure transitions to `ADMISI_FALLBACK` while preserving `regId` and never
+ * creating a second registration or SEP.
+ */
+export type PostRegistrationPhase =
+  | 'REGISTRATION_CREATED'
+  | 'SEP_CREATE_ATTEMPTED'
+  | 'SEP_CREATED'
+  | 'SEP_UPLOADED'
+  | 'ELIGIBILITY_RECORDED'
+  | 'ADMISI_FALLBACK'
+
+const MAX_POST_REGISTRATION_ATTEMPTS = 3
+
+async function withAttemptLimit<T>(
+  operation: () => Promise<T>,
+  attempts: number,
+  label: string,
+  context: { regId: string },
+): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await operation()
+    } catch (error) {
+      lastError = error
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[kiosk] ${label} gagal (percobaan ${attempt}/${attempts}) regId=${context.regId}`,
+      )
+    }
+  }
+  throw lastError
 }
 
 export function useKioskRegistration(deps: KioskRegistrationDeps) {
@@ -190,6 +296,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   const sepNo = ref<string | null>(null)
   const assistanceTicket = ref<AdmissionQueueIntakeResponse | null>(null)
   const assistanceServicePointId = ref<string | null>(null)
+  const assistanceNotice = ref<QueueTicketNotice | null>(null)
   const patientContextResult = ref<PatientContextSearchResponse | null>(null)
   const selectedContextPatient = ref<PatientContextItem | null>(null)
   const registrationReprintData = ref<RegistrationPrintData | null>(null)
@@ -198,14 +305,12 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   const biometricVerdict = ref<BiometricVerdict | null>(null)
   const bpjsReferences = ref<BpjsReference[]>([])
   const selectedBpjsReference = ref<BpjsReference | null>(null)
-  const activeBpjsContext = ref<{
-    noRujukan: string
-    kelasRawatId: string
-    diagnosaId: string
-  } | null>(null)
+  const postRegistrationPhase = ref<PostRegistrationPhase | null>(null)
 
   const lastActivity = ref(deps.now ? deps.now() : Date.now())
   let idleTimer: number | null = null
+  let patientSearchSeq = 0
+  let biometricSeq = 0
 
   function touch() {
     lastActivity.value = deps.now ? deps.now() : Date.now()
@@ -223,7 +328,26 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     transition('FAILURE')
   }
 
+  /**
+   * Post-registration recovery entry (architecture TD-007). A failure after
+   * registration is not a registration failure: keep the created `regId`,
+   * mark the recovery state, and route to the existing admisi fallback. No
+   * second registration or SEP is ever created from this state.
+   */
+  function enterAdmisiFallback() {
+    postRegistrationPhase.value = 'ADMISI_FALLBACK'
+    const regId = registrationResult.value?.regId ?? ''
+    // eslint-disable-next-line no-console
+    console.warn(`[kiosk] Post-registration recovery: admisi fallback regId=${regId}`)
+    setFailure(
+      FAILURE_CODES.BACKEND_ERROR,
+      `Pendaftaran berhasil (${regId}), namun pemrosesan SEP belum selesai. Silakan menuju Loket Admisi untuk penyelesaian berkas.`,
+    )
+  }
+
   function goHome() {
+    patientSearchSeq++
+    biometricSeq++
     flow.value = 'HOME'
     mode.value = null
     businessDate.value = null
@@ -239,6 +363,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     sepNo.value = null
     assistanceTicket.value = null
     assistanceServicePointId.value = null
+    assistanceNotice.value = null
     errorContext.value = null
     patientContextResult.value = null
     selectedContextPatient.value = null
@@ -247,7 +372,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     biometricVerdict.value = null
     bpjsReferences.value = []
     selectedBpjsReference.value = null
-    activeBpjsContext.value = null
+    postRegistrationPhase.value = null
     submitting.value = false
     touch()
   }
@@ -269,13 +394,6 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     }
   }
 
-  function startBookingFlow() {
-    touch()
-    mode.value = 'booking'
-    errorContext.value = null
-    transition('BOOKING_SEARCH')
-  }
-
   function submitBookingKeyword(keyword: string): Promise<void> {
     touch()
     const trimmed = keyword.trim()
@@ -285,15 +403,20 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     mode.value = 'booking'
     registrationReprintData.value = null
     return withSubmit(async () => {
+      const seq = ++patientSearchSeq
       try {
+        transition('PATIENT_CONTEXT_SEARCH')
         const tgl = await ensureBusinessDate()
+        if (seq !== patientSearchSeq) return
         const matches = await deps.searchBooking(tgl, normalizedKeyword)
+        if (seq !== patientSearchSeq) return
         if (matches.length === 0) {
           if (isCanonicalRegistrationIdKeyword(normalizedKeyword)) {
-            await searchPatientContextFor(normalizedKeyword)
+            await searchPatientContextFor(normalizedKeyword, seq)
             return
           }
           const deepMatches = await deps.deepSearchPasien(normalizedKeyword)
+          if (seq !== patientSearchSeq) return
           if (deepMatches.length > 0) {
             const mapped = deepMatches.map((item) => ({
               kind: 'Patient' as const,
@@ -328,7 +451,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
             transition('PATIENT_CONTEXT_CONFIRM')
             return
           }
-          await searchPatientContextFor(normalizedKeyword)
+          await searchPatientContextFor(normalizedKeyword, seq)
           return
         }
         if (matches.length > 1) {
@@ -372,18 +495,21 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         }
         transition('BOOKING_CONFIRM')
       } catch (error) {
+        if (seq !== patientSearchSeq) return
         setFailure(mapErrorToFailureCode(error), messageFromError(error))
       }
     })
   }
 
-  async function searchPatientContextFor(keyword: string): Promise<void> {
+  async function searchPatientContextFor(keyword: string, seq: number): Promise<void> {
+    const stale = () => seq !== patientSearchSeq
     try {
       const tgl = await ensureBusinessDate()
       const result = await deps.searchPatientContext({
         keyword,
         businessDate: tgl,
       })
+      if (stale()) return
       patientContextResult.value = result
       if (isCanonicalRegistrationIdKeyword(keyword)) {
         const exactMatches = result.registrations.items.filter(
@@ -398,6 +524,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         }
         if (exactMatches.length === 1) {
           const data = await deps.getRegistrationPrintData(keyword)
+          if (stale()) return
           registrationReprintData.value = data
           transition('REGISTRATION_REPRINT')
           return
@@ -416,6 +543,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         )
       }
     } catch (error) {
+      if (stale()) return
       setFailure(mapErrorToFailureCode(error), messageFromError(error))
     }
   }
@@ -430,10 +558,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         const name = (p.tipeJaminan?.tipeJaminanName || '').toLowerCase()
         const id = (p.tipeJaminan?.tipeJaminanId || '').toLowerCase()
         return (
-          name.includes('bpjs') ||
-          name.includes('jkn') ||
-          id.includes('bpjs') ||
-          id.includes('jkn')
+          name.includes('bpjs') || name.includes('jkn') || id.includes('bpjs') || id.includes('jkn')
         )
       })
       if (detail.coverageInfo?.noPeserta && !hasBpjsPolicy) {
@@ -566,35 +691,38 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     const res = await deps.getRujukanSkpd(noPeserta)
     const parsedRefs: BpjsReference[] = []
 
-    if (res.listSkdp) {
-      for (const skdp of res.listSkdp as any[]) {
+    if (res.listSkdp && Array.isArray(res.listSkdp)) {
+      for (const skdp of res.listSkdp) {
         if (skdp.noSkdp) {
           parsedRefs.push({
             type: 'skdp',
             id: skdp.noSkdp,
-            date: skdp.tglMulai || '',
-            diagnosaId: skdp.diagnosa?.kode || 'Z00.0',
-            diagnosaName: skdp.diagnosa?.nama || '',
+            date: skdp.tglRencanaKontrol || '',
+            diagnosaId: skdp.diagnosa.icd10Id,
+            diagnosaName: skdp.diagnosa.icd10Name,
             kelasRawatId: res.peserta.hakKelas.kode,
             tglLahir: res.peserta.tglLahir,
-            original: skdp,
+            original: skdp as unknown as Record<string, unknown>,
           })
         }
       }
     }
 
-    const rujukan = res.rujukan as any
-    if (rujukan && rujukan.noRujukan) {
-      parsedRefs.push({
-        type: 'rujukan',
-        id: rujukan.noRujukan,
-        date: rujukan.tglRujukan || '',
-        diagnosaId: rujukan.diagnosa?.kode || 'Z00.0',
-        diagnosaName: rujukan.diagnosa?.nama || '',
-        kelasRawatId: res.peserta.hakKelas.kode,
-        tglLahir: res.peserta.tglLahir,
-        original: rujukan,
-      })
+    if (res.rujukan) {
+      const rujukan = res.rujukan
+      if (rujukan.noRujukan) {
+        parsedRefs.push({
+          type: 'rujukan',
+          id: rujukan.noRujukan,
+          date: rujukan.tglRujukan || '',
+          diagnosaId: rujukan.diagnosaRujukan.icd10Id,
+          diagnosaName: rujukan.diagnosaRujukan.icd10Name,
+          kelasRawatId: res.peserta.hakKelas.kode,
+          tglLahir: res.peserta.tglLahir,
+          faskesPerujukId: rujukan.faskesPerujuk.faskesId,
+          original: rujukan as unknown as Record<string, unknown>,
+        })
+      }
     }
 
     if (parsedRefs.length === 0) {
@@ -607,14 +735,8 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
 
     if (parsedRefs.length === 1) {
       selectedBpjsReference.value = parsedRefs[0]
-      activeBpjsContext.value = {
-        noRujukan: parsedRefs[0].id,
-        kelasRawatId: parsedRefs[0].kelasRawatId,
-        diagnosaId: parsedRefs[0].diagnosaId,
-      }
     } else {
       selectedBpjsReference.value = null
-      activeBpjsContext.value = null
     }
 
     return res.peserta.tglLahir
@@ -648,7 +770,9 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   async function runBiometricForWalkin(noPeserta: string): Promise<void> {
     biometricVerdict.value = null
     try {
+      const seq = ++biometricSeq
       const verdict = await deps.verifyBiometric(noPeserta)
+      if (seq !== biometricSeq) return
       biometricVerdict.value = verdict
       if (verdict.outcome === 'SUCCESS' || verdict.outcome === 'READY') {
         if (selectedBpjsReference.value) {
@@ -722,7 +846,9 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   async function runBiometric(currentMode: FlowMode, noPeserta: string): Promise<void> {
     biometricVerdict.value = null
     try {
+      const seq = ++biometricSeq
       const verdict = await deps.verifyBiometric(noPeserta)
+      if (seq !== biometricSeq) return
       biometricVerdict.value = verdict
       if (verdict.outcome === 'SUCCESS' || verdict.outcome === 'READY') {
         if (selectedBpjsReference.value) {
@@ -743,11 +869,6 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
   function selectBpjsReference(ref: BpjsReference): Promise<void> {
     touch()
     selectedBpjsReference.value = ref
-    activeBpjsContext.value = {
-      noRujukan: ref.id,
-      kelasRawatId: ref.kelasRawatId,
-      diagnosaId: ref.diagnosaId,
-    }
 
     if (mode.value === 'walkin') {
       transition('WALKIN_SELECT_SERVICE')
@@ -768,6 +889,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       const result =
         currentMode === 'booking' ? await registerBookingCommit() : await registerWalkinCommit()
       registrationResult.value = result
+      postRegistrationPhase.value = 'REGISTRATION_CREATED'
 
       const eligibility =
         currentMode === 'booking' ? bookingEligibility.value : walkinEligibility.value
@@ -777,44 +899,76 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
             ? bookingDetail.value!.reg.pasienId
             : selectedPatient.value!.pasienId
         const noPeserta = eligibility.noPeserta ?? ''
-        const sepPayload: SepCreateBody = {
-          sepId: '',
-          noPeserta,
-          sepDate: businessDate.value ?? '',
-          noRujukan:
-            activeBpjsContext.value?.noRujukan ||
-            (currentMode === 'booking' ? (bookingDetail.value?.extAppRef?.reffId ?? '') : ''),
-          pasienId: patientId,
-          kelasRawatId: activeBpjsContext.value?.kelasRawatId || '3',
-          tujuanKunjunganId: '0',
-          flagProcedureId: '',
-          assesmentPelayananId: '',
-          penunjangId: '',
-          katarak: '0',
-          catatan: 'Kiosk Self Registration',
-          kll: '0',
-          tglKLL: '',
-          noLaporanPolisi: '',
-          keteranganKLL: '',
-          propIdKll: '',
-          kabIdKll: '',
-          kecIdKll: '',
-          diagnosaId: activeBpjsContext.value?.diagnosaId || 'Z00.0',
-          userId: KIOSK_USER_ID,
-        }
+        // TD-009: a non-conforming `sepDate` is a local contract failure. Both
+        // the composer and the shared client contract reject it before any
+        // `POST /sep` request is issued; the rejection is logged as a contract
+        // failure naming the field, then rethrown to the post-registration
+        // recovery path below. No retry, no fallback date, no second SEP.
+        let sepRes: ResponseCreateSep
+        try {
+          const sepPayload = buildSepPayloadPolicy({
+            ref: selectedBpjsReference.value,
+            noPeserta,
+            businessDate: businessDate.value ?? '',
+            clock: (deps.now ?? Date.now)(),
+            pasienId: patientId,
+            fallbackNoRujukan:
+              currentMode === 'booking' ? (bookingDetail.value?.extAppRef?.reffId ?? '') : '',
+          })
 
-        const sepRes = await deps.createSep(sepPayload)
+          // SEP creation is one-time (TD-006): never retried, even for an
+          // unknown/ambiguous outcome. Recovery must not create a second SEP.
+          postRegistrationPhase.value = 'SEP_CREATE_ATTEMPTED'
+          sepRes = await deps.createSep(sepPayload)
+        } catch (error) {
+          reportSepContractFailure(error)
+          throw error
+        }
         if (typeof sepRes === 'string') {
           throw new Error(`Gagal membuat SEP: ${sepRes}`)
         }
-        sepNo.value = sepRes.sepNo
-        await deps.uploadSep({ sepId: sepRes.sepId, regId: result.regId })
-        await deps.setDataEligibility({
-          regId: result.regId,
-          sjpNo: sepRes.sepNo,
-          pesertaJaminanId: noPeserta,
-          sjpId: sepRes.sepId,
-        })
+        postRegistrationPhase.value = 'SEP_CREATED'
+
+        // TD-SJP-01: the resolved `Sep/upload` result is the sole authoritative
+        // SEP identity for eligibility and for the session `sepNo` (print
+        // context). The create result survives only as the upload request key.
+        const uploadRes: ResponseUploadSep = await withAttemptLimit(
+          async () => {
+            const res = await deps.uploadSep({ sepId: sepRes.sepId, regId: result.regId })
+            if (typeof res === 'string') {
+              throw new Error(`Gagal upload SEP: ${res}`)
+            }
+            return res
+          },
+          MAX_POST_REGISTRATION_ATTEMPTS,
+          'SEP upload',
+          { regId: result.regId },
+        )
+        postRegistrationPhase.value = 'SEP_UPLOADED'
+        // TD-SJP-02: a missing, blank, or placeholder upload `sepNo` is a
+        // fallback signal, not eligibility data. No `setDataEligibility` call is
+        // issued and create values are never substituted; the throw reuses the
+        // existing TD-007 recovery, which preserves `regId` and performs no
+        // second registration or SEP.
+        if (!isValidUploadSepNo(uploadRes.sepNo)) {
+          reportInvalidUploadIdentity(result.regId)
+          throw new Error('Identitas SEP hasil upload tidak valid.')
+        }
+        sepNo.value = uploadRes.sepNo
+
+        await withAttemptLimit(
+          () =>
+            deps.setDataEligibility({
+              regId: result.regId,
+              sjpNo: uploadRes.sepNo,
+              pesertaJaminanId: noPeserta,
+              sjpId: uploadRes.sepId,
+            }),
+          MAX_POST_REGISTRATION_ATTEMPTS,
+          'Reg/setDataEligibility',
+          { regId: result.regId },
+        )
+        postRegistrationPhase.value = 'ELIGIBILITY_RECORDED'
       }
 
       transition('REGISTRATION_SUCCESS')
@@ -824,8 +978,40 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
         await deps.printLabel(printCtx).catch(() => ({ printed: false }))
       }
     } catch (error) {
+      if (registrationResult.value) {
+        enterAdmisiFallback()
+        return
+      }
       setFailure(mapErrorToFailureCode(error), messageFromError(error))
     }
+  }
+
+  /**
+   * Resolves the Bilreg local registration reference data (TD-003/TD-004)
+   * before registration is created:
+   * - rujukan: maps the Jetli FaskesPerujuk.FaskesId through Bilreg
+   *   `Rujukan/ppk/{ppkId}` to obtain the local RujukanId and CaraMasukDkId.
+   * - skdp: skips the PPK lookup entirely and registers as DATANG SENDIRI
+   *   with an empty local rujukanId.
+   * A BPJS rujukan/skdp number is never copied into the local rujukanId; the
+   * non-BPJS fallback id is used only when no BPJS reference was selected.
+   */
+  async function prepareBilregRegistrationData(
+    ref: BpjsReference | null,
+    fallbackRujukanId: string,
+  ): Promise<{ rujukanId: string; caraMasukDkId: string }> {
+    if (ref?.type === 'rujukan') {
+      const ppkId = ref.faskesPerujukId
+      if (!ppkId) {
+        throw new Error('Data faskes perujuk rujukan BPJS tidak ditemukan. Hubungi petugas.')
+      }
+      const mapping = await deps.getRujukanByPpk(ppkId)
+      return { rujukanId: mapping.rujukanId, caraMasukDkId: mapping.caraMasukDkId }
+    }
+    if (ref?.type === 'skdp') {
+      return { rujukanId: '', caraMasukDkId: '8' }
+    }
+    return { rujukanId: fallbackRujukanId, caraMasukDkId: '8' }
   }
 
   async function registerBookingCommit(): Promise<ReturnCreateWalkIn> {
@@ -833,7 +1019,6 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     if (!detail) throw new Error('Booking detail missing')
 
     const tipeJaminan = bookingEligibility.value?.tipeJaminanId ?? '00000'
-    const isBpjs = tipeJaminan !== '00000'
     const noPeserta = bookingEligibility.value?.noPeserta ?? ''
 
     const resolvedKarcis = resolveDefaultKarcisId(
@@ -849,12 +1034,17 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       )
     }
 
+    const registration = await prepareBilregRegistrationData(
+      selectedBpjsReference.value,
+      detail.extAppRef?.reffId || '',
+    )
+
     return deps.registerBooking({
       bookingId: detail.bookingId,
       userId: KIOSK_USER_ID,
       karcisId: resolvedKarcis,
-      caraMasukDkId: isBpjs ? '1' : '8',
-      rujukanId: activeBpjsContext.value?.noRujukan || detail.extAppRef?.reffId || '',
+      caraMasukDkId: registration.caraMasukDkId,
+      rujukanId: registration.rujukanId,
       tipeJaminanId: tipeJaminan,
       pesertaJaminanId: noPeserta,
     })
@@ -866,7 +1056,6 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     if (!patient || !service) throw new Error('Walk-in selection incomplete')
 
     const tipeJaminan = walkinEligibility.value?.tipeJaminanId ?? '00000'
-    const isBpjs = tipeJaminan !== '00000'
     const noPeserta = walkinNoPeserta.value || walkinEligibility.value?.noPeserta || ''
     const jamPraktek = service.jadwal.jamPraktek.substring(0, 5)
 
@@ -879,12 +1068,14 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
       )
     }
 
+    const registration = await prepareBilregRegistrationData(selectedBpjsReference.value, '')
+
     return deps.registerWalkin({
       pasienId: patient.pasienId,
       userId: KIOSK_USER_ID,
       tipeJaminanId: tipeJaminan,
-      caraMasukDkId: isBpjs ? '1' : '8',
-      rujukanId: activeBpjsContext.value?.noRujukan || '',
+      caraMasukDkId: registration.caraMasukDkId,
+      rujukanId: registration.rujukanId,
       dokterId: service.dokter.id,
       layananId: service.poli.id,
       jamPraktek,
@@ -962,8 +1153,13 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
             : await deps.intake(servicePointId)
         assistanceTicket.value = ticket
         assistanceServicePointId.value = servicePointId
+        const notice: QueueTicketNotice | undefined =
+          postRegistrationPhase.value === 'ADMISI_FALLBACK' && registrationResult.value
+            ? buildAdmisiFallbackNotice(registrationResult.value.regId)
+            : undefined
+        assistanceNotice.value = notice ?? null
         transition('ASSISTANCE_QUEUE')
-        await deps.printQueueTicket(ticket, deps.offeringsName?.(servicePointId))
+        await deps.printQueueTicket(ticket, deps.offeringsName?.(servicePointId), notice)
       } catch (error) {
         errorContext.value = {
           code: mapErrorToFailureCode(error),
@@ -1006,6 +1202,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     await deps.printQueueTicket(
       assistanceTicket.value,
       deps.offeringsName?.(assistanceServicePointId.value ?? ''),
+      assistanceNotice.value ?? undefined,
     )
   }
 
@@ -1068,7 +1265,7 @@ export function useKioskRegistration(deps: KioskRegistrationDeps) {
     biometricVerdict,
     bpjsReferences,
     selectedBpjsReference,
-    startBookingFlow,
+    postRegistrationPhase,
     goHome,
     dispose,
     submitBookingKeyword,

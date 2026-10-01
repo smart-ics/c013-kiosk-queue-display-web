@@ -10,7 +10,10 @@ import {
   responseSepByRegSchema,
   responseUploadSepUnionSchema,
   returnCreateWalkInSchema,
-  rujukanSkpdResponseSchema,
+  rujukanBpjsGetResponseSchema,
+  rujukanReferenceSchema,
+  sepCreateBodySchema,
+  skdpReferenceSchema,
 } from '../index'
 
 const sepItem = {
@@ -82,8 +85,8 @@ describe('hisSchemas', () => {
     expect(parsed.id).toBe('1')
   })
 
-  it('parses rujukan/SKDP response with nullable rujukan', () => {
-    const parsed = rujukanSkpdResponseSchema.parse({
+  it('parses rujukan/SKDP response with Jetli field names', () => {
+    const parsed = rujukanBpjsGetResponseSchema.parse({
       peserta: {
         noPeserta: '0001234567890',
         nama: 'John Doe',
@@ -95,12 +98,146 @@ describe('hisSchemas', () => {
         tglTat: '2026-08-06',
         tglLahir: '1990-01-01',
       },
-      rujukan: { noRujukan: '0122R0030823V000098', tglRujukan: '2026-08-01' },
-      listSkdp: [{ noSkdp: 'SKDP1', tglMulai: '2026-08-01' }],
+      rujukan: {
+        noRujukan: '0122R0030823V000098',
+        tglRujukan: '2026-08-01',
+        tujuan: { poliBpjsId: 'POL-1', poliBpjsName: 'Poli Umum' },
+        faskesPerujuk: { faskesId: '0137R016', faskesName: 'Puskesmas Sehat' },
+        diagnosaRujukan: { icd10Id: 'E11.8', icd10Name: 'Type 2 DM' },
+      },
+      listSkdp: [
+        {
+          noSkdp: 'SKDP1',
+          tglRencanaKontrol: '2026-08-15',
+          tglExpired: '2026-08-20',
+          isSpri: false,
+          poliPerujuk: { layananId: 'LY-1', layananName: 'Poli Penyakit Dalam' },
+          poliTujuan: { layananId: 'LY-2', layananName: 'Poli Jantung' },
+          diagnosa: { icd10Id: 'I10', icd10Name: 'Hypertension' },
+          keterangan: 'Kontrol rutin',
+        },
+      ],
     })
     expect(parsed.peserta.noPeserta).toBe('0001234567890')
     expect(parsed.rujukan?.noRujukan).toBe('0122R0030823V000098')
+    expect(parsed.rujukan?.faskesPerujuk.faskesId).toBe('0137R016')
+    expect(parsed.rujukan?.diagnosaRujukan.icd10Id).toBe('E11.8')
     expect(parsed.listSkdp).toHaveLength(1)
+    expect(parsed.listSkdp[0]?.tglRencanaKontrol).toBe('2026-08-15')
+  })
+
+  it('rejects a rujukan response missing required Jetli diagnosis data', () => {
+    expect(() =>
+      rujukanBpjsGetResponseSchema.parse({
+        peserta: {
+          noPeserta: '0001234567890',
+          nama: 'John Doe',
+          hakKelas: { kode: 'K1', nama: 'Kelas 1' },
+          status: { kode: '1', info: 'AKTIF' },
+          jenisPeserta: { kode: 'PNS', nama: 'PNS' },
+          provider: { kode: 'P1', nama: 'RS A' },
+          prbInfo: null,
+          tglTat: '2026-08-06',
+          tglLahir: '1990-01-01',
+        },
+        rujukan: {
+          noRujukan: '0122R0030823V000098',
+          tglRujukan: '2026-08-01',
+          tujuan: { poliBpjsId: 'POL-1', poliBpjsName: 'Poli Umum' },
+          faskesPerujuk: { faskesId: '0137R016', faskesName: 'Puskesmas Sehat' },
+        },
+        listSkdp: [],
+      }),
+    ).toThrow()
+  })
+
+  it('parses RujukanReference and SkdpReference with distinct discriminator types', () => {
+    const rujukanRef = rujukanReferenceSchema.parse({
+      type: 'rujukan',
+      noRujukan: '0122R0030823V000098',
+      faskesPerujukId: '0137R016',
+      diagnosisId: 'E11.8',
+      diagnosisName: 'Type 2 DM',
+    })
+    expect(rujukanRef.type).toBe('rujukan')
+    expect(rujukanRef.faskesPerujukId).toBe('0137R016')
+
+    const skdpRef = skdpReferenceSchema.parse({
+      type: 'skdp',
+      noSkdp: 'SKDP1',
+      tglRencanaKontrol: '2026-08-15',
+      diagnosisId: 'I10',
+      diagnosisName: 'Hypertension',
+    })
+    expect(skdpRef.type).toBe('skdp')
+    expect(skdpRef.tglRencanaKontrol).toBe('2026-08-15')
+
+    expect(() => rujukanReferenceSchema.parse({ type: 'skdp' } as never)).toThrow()
+    expect(() => skdpReferenceSchema.parse({ type: 'rujukan', noSkdp: 'SKDP1' } as never)).toThrow()
+    expect(() =>
+      rujukanReferenceSchema.parse({
+        type: 'rujukan',
+        noRujukan: '0122R0030823V000098',
+        faskesPerujukId: '0137R016',
+      } as never),
+    ).toThrow()
+  })
+
+  it('accepts the SKDP control SEP-create policy fields (empty faskesPerujukId)', () => {
+    const parsed = sepCreateBodySchema.parse({
+      sepId: '',
+      noPeserta: '0001234567890',
+      sepDate: '2026-08-03 09:15:00',
+      noRujukan: 'SKDP1',
+      pasienId: 'PT1',
+      kelasRawatId: '1',
+      tujuanKunjunganId: '2',
+      flagProcedureId: '',
+      assesmentPelayananId: '5',
+      penunjangId: '',
+      faskesPerujukId: '',
+      diagnosaId: 'I10',
+      userId: 'hidokkiosk',
+    })
+    expect(parsed.tujuanKunjunganId).toBe('2')
+    expect(parsed.assesmentPelayananId).toBe('5')
+    expect(parsed.faskesPerujukId).toBe('')
+    expect(parsed.noRujukan).toBe('SKDP1')
+  })
+
+  it('accepts a SEP-create sepDate in yyyy-MM-dd HH:mm:ss', () => {
+    const parsed = sepCreateBodySchema.parse({
+      noPeserta: '0001234567890',
+      sepDate: '2026-08-03 09:15:42',
+      userId: 'hidokkiosk',
+    })
+    expect(parsed.sepDate).toBe('2026-08-03 09:15:42')
+  })
+
+  it('rejects a date-only sepDate on SEP create', () => {
+    expect(() =>
+      sepCreateBodySchema.parse({ noPeserta: '0001234567890', sepDate: '2026-08-03' }),
+    ).toThrow()
+  })
+
+  it('rejects a minutes-only sepDate on SEP create', () => {
+    expect(() =>
+      sepCreateBodySchema.parse({ noPeserta: '0001234567890', sepDate: '2026-08-03 09:15' }),
+    ).toThrow()
+  })
+
+  it('rejects an ISO T separator sepDate on SEP create', () => {
+    expect(() =>
+      sepCreateBodySchema.parse({ noPeserta: '0001234567890', sepDate: '2026-08-03T09:15:42' }),
+    ).toThrow()
+  })
+
+  it('rejects an empty sepDate on SEP create', () => {
+    expect(() => sepCreateBodySchema.parse({ noPeserta: '0001234567890', sepDate: '' })).toThrow()
+  })
+
+  it('rejects a missing sepDate on SEP create', () => {
+    expect(() => sepCreateBodySchema.parse({ noPeserta: '0001234567890' })).toThrow()
   })
 
   it('accepts a plain string business-error payload on SEP create', () => {

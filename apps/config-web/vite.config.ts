@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 function versionJsonPlugin() {
@@ -15,6 +15,10 @@ function versionJsonPlugin() {
       mkdirSync(outDir, { recursive: true })
       writeFileSync(resolve(outDir, 'version.json'), JSON.stringify(version, null, 2))
       copyFileSync(resolve(__dirname, 'web.config'), resolve(outDir, 'web.config'))
+      const guideSrc = resolve(__dirname, '../../docs/IIS_INSTALL_GUIDE.id.md')
+      if (existsSync(guideSrc)) {
+        copyFileSync(guideSrc, resolve(outDir, 'IIS_INSTALL_GUIDE.id.md'))
+      }
     },
   }
 }

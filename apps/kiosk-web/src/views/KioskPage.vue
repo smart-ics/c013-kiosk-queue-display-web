@@ -17,9 +17,8 @@ import { resolveFallbackServicePointId } from '../lib/fallbackServicePoint'
 import { createBiometricClient } from '../lib/biometric'
 import { scanQrFromCamera } from '../lib/qrScanner'
 import { useKioskIntake } from '../composables/useKioskIntake'
-import { useKioskPrint } from '../composables/useKioskPrint'
-import { useKioskRegistration } from '../composables/useKioskRegistration'
 import { useKioskSelfPrint } from '../composables/useKioskSelfPrint'
+import { useKioskRegistration } from '../composables/useKioskRegistration'
 import type { PatientContextItem } from '@aq/shared-types'
 import BootErrorPage from './BootErrorPage.vue'
 import KioskHome from './KioskHome.vue'
@@ -129,14 +128,6 @@ const {
   resetToSelection,
 } = useKioskIntake(offerings)
 
-const { printPending, printError, printSucceeded, printCommittedLabel, resetPrintState } =
-  useKioskPrint({
-    stationId: stationIdRef,
-    result,
-    offerings,
-    printerProxyPort,
-  })
-
 const catalog = getServiceCatalog()
 
 const selfPrint = useKioskSelfPrint({
@@ -161,6 +152,7 @@ const registration = useKioskRegistration({
   verifyBiometric: (noka) => createBiometricClient({ port: printerProxyPort.value }).verify(noka),
   listKarcis: (layananId) => getHisApi().listKarcis(layananId),
   getRujukanSkpd: (noPeserta) => getJetliApi().getRujukanSkpd(noPeserta),
+  getRujukanByPpk: (ppkId) => getHisApi().getRujukanByPpk(ppkId),
   registerBooking: (ctx) => getHisApi().registerByBookingDirect(ctx),
   registerWalkin: (ctx) => getHisApi().registerWalkInDirect(ctx),
   createSep: (body) => getJetliApi().createSep(body),
@@ -175,9 +167,21 @@ const registration = useKioskRegistration({
     offerings.value.find((sp) => sp.servicePointId === servicePointId)?.displayName,
 })
 
+function resolveIntakeServicePointName(): string | undefined {
+  const id = lastAttemptServicePointId.value
+  if (!id) return undefined
+  return offerings.value.find((sp) => sp.servicePointId === id)?.displayName
+}
+
+async function printIntakeTicket(): Promise<void> {
+  const intake = result.value
+  if (!intake) return
+  await selfPrint.printQueueTicket(intake, resolveIntakeServicePointName())
+}
+
 watch(result, (next, prev) => {
   if (next && next !== prev) {
-    void printCommittedLabel(lastAttemptServicePointId.value ?? undefined)
+    void printIntakeTicket()
   }
 })
 
@@ -198,18 +202,17 @@ function isBpjs(sp: AdmissionServicePoint): boolean {
 }
 
 function onResetToSelection() {
-  resetPrintState()
+  selfPrint.resetPrintState()
   resetToSelection()
 }
 
 function onReprint() {
-  void printCommittedLabel(lastAttemptServicePointId.value ?? undefined)
+  void printIntakeTicket()
 }
 
 function onHome() {
   scanError.value = null
   resetToSelection()
-  resetPrintState()
   selfPrint.resetPrintState()
   homeMode.value = 'idle'
   registration.goHome()
@@ -297,13 +300,15 @@ watch(
       if (flow !== 'ASSISTANCE_QUEUE') automaticFallbackUsed.value = false
       return
     }
+    const postRegistrationRecovery =
+      registration.postRegistrationPhase.value === 'ADMISI_FALLBACK'
     if (
       automaticFallbackAttempted.value ||
-      mode !== 'booking' ||
       submitting ||
       !fallbackServicePointId ||
       errorCode === 'BOOKING_NOT_FOUND' ||
-      errorCode === 'PATIENT_NOT_REGISTERED'
+      errorCode === 'PATIENT_NOT_REGISTERED' ||
+      (mode !== 'booking' && !postRegistrationRecovery)
     )
       return
 
@@ -355,17 +360,17 @@ const loadingMessage = computed(() => {
           <div class="queue-label" data-testid="queue-label">{{ result.queueLabel }}</div>
           <p class="status ok">Antrian ID {{ result.antrianId }} · Urut {{ result.noUrut }}</p>
 
-          <p v-if="printPending" class="status" data-testid="print-pending">Sedang mencetak…</p>
-          <p v-else-if="printSucceeded && !printError" class="status ok" data-testid="print-ok">
+          <p v-if="selfPrint.printPending.value" class="status" data-testid="print-pending">Sedang mencetak…</p>
+          <p v-else-if="selfPrint.printSucceeded.value && !selfPrint.printError.value" class="status ok" data-testid="print-ok">
             Tiket berhasil dicetak.
           </p>
-          <p v-if="printError" class="status error" data-testid="print-error">{{ printError }}</p>
+          <p v-if="selfPrint.printError.value" class="status error" data-testid="print-error">{{ selfPrint.printError.value }}</p>
 
           <div class="actions">
             <button
               type="button"
               class="secondary-btn"
-              :disabled="printPending"
+              :disabled="selfPrint.printPending.value"
               data-testid="reprint"
               @click="onReprint"
             >
@@ -374,7 +379,7 @@ const loadingMessage = computed(() => {
             <button
               type="button"
               class="secondary-btn"
-              :disabled="printPending"
+              :disabled="selfPrint.printPending.value"
               @click="onResetToSelection"
             >
               Ambil nomor lain
@@ -400,6 +405,8 @@ const loadingMessage = computed(() => {
               'BIOMETRIC_VERIFY',
               'REGISTRATION_SUCCESS',
               'ASSISTANCE_QUEUE',
+              'REGISTRATION_REPRINT',
+              'FAILURE',
             ].includes(registration.flow.value)
           "
         >
@@ -525,6 +532,16 @@ const loadingMessage = computed(() => {
           <section v-else-if="registration.flow.value === 'PATIENT_CONTEXT_SEARCH'" class="panel">
             <h1>Mencari Data</h1>
             <p class="status">Mencari data pasien…</p>
+            <div class="actions" style="justify-content: center">
+              <button
+                type="button"
+                class="secondary-btn"
+                data-testid="patient-search-cancel"
+                @click="onCancelPatientContext"
+              >
+                Batal
+              </button>
+            </div>
           </section>
           <BookingConfirmStep
             v-else-if="registration.flow.value === 'BOOKING_CONFIRM'"
@@ -549,7 +566,7 @@ const loadingMessage = computed(() => {
           <BiometricStep
             v-else-if="registration.flow.value === 'BIOMETRIC_VERIFY'"
             :pending="registration.submitting.value"
-            :error-message="null"
+            @back="onHome"
           />
           <WalkinSelectGuaranteeStep
             v-else-if="registration.flow.value === 'WALKIN_SELECT_GUARANTEE'"

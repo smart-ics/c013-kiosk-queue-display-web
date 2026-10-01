@@ -1,11 +1,13 @@
 import { ref, type Ref } from 'vue'
 import type { AdmissionQueueIntakeResponse, ReturnCreateWalkIn } from '@aq/shared-types'
 import { createPrintProxyClient, type PrintProxyClient } from '../lib/printProxy'
-import { renderQueueTicketPng } from '../lib/queueTicket'
+import { renderQueueTicketPng, type QueueTicketNotice } from '../lib/queueTicket'
 import { renderRegistrationReceiptPng } from '../lib/registrationReceipt'
 import { renderPatientLabelPng } from '../lib/patientLabel'
 import { brandingService } from '../lib/branding'
 import { generateQrDataUrl } from '../lib/qrCode'
+
+export type { QueueTicketNotice } from '../lib/queueTicket'
 
 export type RegistrationPrintResult = { printed: boolean; error?: string }
 
@@ -143,6 +145,7 @@ export function useKioskSelfPrint(options: UseKioskSelfPrintOptions) {
   async function printQueueTicket(
     ticket: AdmissionQueueIntakeResponse,
     servicePointName?: string,
+    notice?: QueueTicketNotice,
   ): Promise<RegistrationPrintResult> {
     if (!ticket.queueLabel) {
       printError.value = 'Tidak ada nomor antrian untuk dicetak.'
@@ -161,6 +164,7 @@ export function useKioskSelfPrint(options: UseKioskSelfPrintOptions) {
         queueLabel: ticket.queueLabel,
         servicePointName,
         stationId: options.stationId.value,
+        notice,
       })
 
       const proxyResult = await client.printPng(blob, 'antrian')

@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
-import type { AdmissionQueueIntakeResponse, PatientContextSearchResponse } from '@aq/shared-types'
+import type {
+  AdmissionQueueIntakeResponse,
+  GroupJaminanMap,
+  JadwalItem,
+  PatientContextSearchResponse,
+  ServiceItem,
+} from '@aq/shared-types'
 import KioskPage from '../KioskPage.vue'
 
 const selfPrintMocks = vi.hoisted(() => ({
@@ -65,6 +71,68 @@ const registrationMocks = vi.hoisted(() => ({
   })),
   deepSearchPasien: vi.fn<() => Promise<unknown[]>>(async () => []),
   listPolis: vi.fn<() => Promise<unknown[]>>(async () => []),
+  listKarcis: vi.fn<() => Promise<Array<{ id: string; name: string }>>>(async () => [
+    { id: 'K', name: 'Karcis' },
+  ]),
+  registerWalkInDirect: vi.fn<() => Promise<{ regId: string; noAntrian: number }>>(async () => ({
+    regId: 'R2',
+    noAntrian: 13,
+  })),
+  setDataEligibility: vi.fn<() => Promise<string>>(async () => 'OK'),
+  getRujukanByPpk: vi.fn(async () => ({
+    rujukanId: 'RUJ-LOCAL-1',
+    rujukanName: 'Puskesmas Sehat',
+    isAktif: true,
+    ppkId: '0137R016',
+    alamat: {},
+    telepon: '',
+    rujukanTipeId: '1',
+    rujukanTipeName: 'First Level',
+    kelasId: '3',
+    kelasName: 'Kelas 3',
+    caraMasukDkId: '5',
+    caraMasukDkName: 'RUJUKAN',
+  })),
+}))
+
+const jetliMocks = vi.hoisted(() => ({
+  getGroupJaminanMap: vi.fn<() => Promise<GroupJaminanMap | null>>(async () => null),
+  getRujukanSkpd: vi.fn(async () => ({
+    peserta: {
+      noPeserta: '000123456',
+      nama: 'Andi',
+      hakKelas: { kode: '3', nama: 'Kelas 3' },
+      status: { kode: '1', info: 'AKTIF' },
+      jenisPeserta: { kode: 'PNS', nama: 'PNS' },
+      provider: { kode: 'P1', nama: 'RS A' },
+      prbInfo: null,
+      tglTat: '2026-08-06',
+      tglLahir: '1990-01-01',
+    },
+    rujukan: {
+      noRujukan: 'REF1',
+      tglRujukan: '2026-08-01',
+      tujuan: { poliBpjsId: 'POL-1', poliBpjsName: 'Poli Umum' },
+      faskesPerujuk: { faskesId: '0137R016', faskesName: 'Puskesmas Sehat' },
+      diagnosaRujukan: { icd10Id: 'E11.8', icd10Name: 'Type 2 DM' },
+    },
+    listSkdp: [],
+  })),
+  createSep: vi.fn(async () => {
+    throw new Error('SEP create failed')
+  }),
+  uploadSep: vi.fn(async () => ({
+    sepId: 'sep-1',
+    sepNo: '0112R',
+    noPeserta: '000123456',
+    namaPeserta: 'Andi',
+  })),
+}))
+
+const serviceCatalogMocks = vi.hoisted(() => ({
+  listPoli: vi.fn<() => Promise<ServiceItem[]>>(async () => []),
+  listDokter: vi.fn<() => Promise<ServiceItem[]>>(async () => []),
+  listJadwal: vi.fn<() => Promise<JadwalItem[]>>(async () => []),
 }))
 
 const appConfigMocks = vi.hoisted(() => ({
@@ -97,6 +165,10 @@ vi.mock('../../infrastructure', () => ({
     patientContextSearch: registrationMocks.patientContextSearch,
     deepSearchPasien: registrationMocks.deepSearchPasien,
     listPolis: registrationMocks.listPolis,
+    listKarcis: registrationMocks.listKarcis,
+    registerWalkInDirect: registrationMocks.registerWalkInDirect,
+    setDataEligibility: registrationMocks.setDataEligibility,
+    getRujukanByPpk: registrationMocks.getRujukanByPpk,
     getRegistrationPrintData: vi.fn(async () => ({
       regId: 'RG12345678',
       noAntrian: 12,
@@ -110,13 +182,12 @@ vi.mock('../../infrastructure', () => ({
     })),
   })),
   getJetliApi: vi.fn(() => ({
-    getGroupJaminanMap: vi.fn(async () => null),
+    getRujukanSkpd: jetliMocks.getRujukanSkpd,
+    createSep: jetliMocks.createSep,
+    uploadSep: jetliMocks.uploadSep,
+    getGroupJaminanMap: jetliMocks.getGroupJaminanMap,
   })),
-  getServiceCatalog: vi.fn(() => ({
-    listPoli: vi.fn(async () => []),
-    listDokter: vi.fn(async () => []),
-    listJadwal: vi.fn(async () => []),
-  })),
+  getServiceCatalog: vi.fn(() => serviceCatalogMocks),
 }))
 
 vi.mock('@aq/app-config', () => ({
@@ -622,5 +693,176 @@ describe('KioskPage booking fallback assistance', () => {
 
     expect(wrapper.find('[data-testid="assist-redirect-queue"]').exists()).toBe(false)
     expect(wrapper.get('[data-testid="assist-queue-label"]').text()).toBe('BOK-001')
+  })
+})
+
+describe('KioskPage cancellable patient search', () => {
+  it('ignores a late patient-context result after cancelling the search', async () => {
+    let release!: (v: PatientContextSearchResponse) => void
+    registrationMocks.patientContextSearch.mockImplementationOnce(
+      () => new Promise<PatientContextSearchResponse>((resolve) => { release = resolve }),
+    )
+    const wrapper = mountPage()
+    await flushPromises()
+    await flushPromises()
+    await wrapper.get('[data-testid="search-keyword"]').setValue('Andi')
+    await wrapper.get('[data-testid="search-submit"]').trigger('click')
+    await flushPromises()
+    await vi.waitFor(() => expect(release).toBeDefined())
+    expect(wrapper.find('[data-testid="patient-search-cancel"]').exists()).toBe(true)
+    await wrapper.get('[data-testid="patient-search-cancel"]').trigger('click')
+    await flushPromises()
+    release({
+      businessDate: '2026-09-02',
+      bookings: { items: [], total: 0, hasMore: false },
+      registrations: { items: [], total: 0, hasMore: false },
+      patients: { items: [], total: 0, hasMore: false },
+      bestMatch: null,
+      canCreatePatient: false,
+    })
+    await flushPromises()
+    await flushPromises()
+    expect(wrapper.findAll('[data-testid="search-keyword"]').length).toBe(1)
+  })
+})
+
+describe('KioskPage post-registration recovery fallback', () => {
+  beforeEach(() => {
+    registrationMocks.searchBooking.mockReset()
+    registrationMocks.searchBooking.mockResolvedValue([])
+    registrationMocks.patientContextSearch.mockReset()
+    registrationMocks.deepSearchPasien.mockReset()
+    registrationMocks.deepSearchPasien.mockResolvedValue([])
+    registrationMocks.listPolis.mockReset()
+    registrationMocks.listPolis.mockResolvedValue([])
+    registrationMocks.intake.mockReset()
+    registrationMocks.intake.mockResolvedValue({
+      queueLabel: 'BOK-001',
+      antrianId: 'A1',
+      noUrut: 1,
+    })
+    registrationMocks.bookingAssistance.mockReset()
+    registrationMocks.bookingAssistance.mockResolvedValue({
+      queueLabel: 'BOK-001',
+      antrianId: 'A1',
+      noUrut: 1,
+    })
+    jetliMocks.getGroupJaminanMap.mockReset()
+    jetliMocks.getGroupJaminanMap.mockResolvedValue({
+      tipeJaminanId: 'BPJS',
+      groupJaminanId: 'G1',
+      groupJaminanName: 'BPJS',
+    })
+    serviceCatalogMocks.listPoli.mockReset()
+    serviceCatalogMocks.listPoli.mockResolvedValue([])
+    serviceCatalogMocks.listDokter.mockReset()
+    serviceCatalogMocks.listDokter.mockResolvedValue([])
+    serviceCatalogMocks.listJadwal.mockReset()
+    serviceCatalogMocks.listJadwal.mockResolvedValue([])
+    selfPrintMocks.printQueueTicket.mockClear()
+    appConfigMocks.config = {
+      bilregApiBase: 'http://x',
+      kioskDefaultKarcisId: 'K',
+      fallbackServicePoints: { bookingFailure: 'BOK' },
+    }
+  })
+
+  it('auto-routes a walk-in post-registration failure to the configured admisi fallback', async () => {
+    registrationMocks.patientContextSearch.mockImplementationOnce(async () => ({
+      businessDate: '2026-09-02',
+      bookings: { items: [], total: 0, hasMore: false },
+      registrations: { items: [], total: 0, hasMore: false },
+      patients: {
+        items: [
+          {
+            kind: 'Patient' as const,
+            id: 'PT1',
+            patientName: 'Andi',
+            patientId: 'PT1',
+            birthDate: '1990-01-01',
+            gender: 'L',
+            locality: null,
+            maskedNik: null,
+            maskedPhone: null,
+            visitDate: null,
+            visitTime: null,
+            serviceName: null,
+            doctorName: null,
+            state: '',
+            bookingId: null,
+            registrationId: null,
+            matchType: 'Exact' as const,
+            isExactMatch: true,
+            rank: 1,
+            warnings: [],
+          },
+        ],
+        total: 1,
+        hasMore: false,
+      },
+      bestMatch: null,
+      canCreatePatient: false,
+    }))
+    registrationMocks.listPolis.mockImplementationOnce(async () => [
+      {
+        polisId: 'P1',
+        noPolis: '000123456',
+        atasName: 'Andi',
+        pasien: { pasienId: 'PT1' },
+        tipeJaminan: { tipeJaminanId: 'BPJS', tipeJaminanName: 'BPJS' },
+        tglExpired: null,
+      },
+    ])
+    serviceCatalogMocks.listPoli.mockResolvedValue([{ id: 'POL-1', name: 'Poli Jantung' }])
+    serviceCatalogMocks.listDokter.mockResolvedValue([{ id: 'DOC-1', name: 'Dr. Budi' }])
+    serviceCatalogMocks.listJadwal.mockResolvedValue([
+      { jadwalId: 'JD-1', ppaId: 'DOC-1', jamPraktek: '08:00', sisaKuota: 12 },
+    ])
+
+    const wrapper = mountPage()
+
+    await flushPromises()
+    await flushPromises()
+    await wrapper.get('[data-testid="search-keyword"]').setValue('Andi')
+    await wrapper.get('[data-testid="search-submit"]').trigger('click')
+    await flushPromises()
+    await flushPromises()
+    await wrapper.get('[data-testid="patient-PT1"]').trigger('click')
+    await flushPromises()
+    await flushPromises()
+    await wrapper.get('[data-testid="guarantee-policy-BPJS"]').trigger('click')
+    await flushPromises()
+    await flushPromises()
+
+    const poliButton = wrapper.findAll('button').find((b) => b.text().includes('Poli Jantung'))
+    await poliButton!.trigger('click')
+    await flushPromises()
+    await flushPromises()
+    const dokterButton = wrapper.findAll('button').find((b) => b.text().includes('Dr. Budi'))
+    await dokterButton!.trigger('click')
+    await flushPromises()
+    await flushPromises()
+
+    await wrapper.get('[data-testid="walkin-confirm"]').trigger('click')
+    await flushPromises()
+    await flushPromises()
+
+    expect(jetliMocks.createSep).toHaveBeenCalledTimes(1)
+    expect(registrationMocks.bookingAssistance).not.toHaveBeenCalled()
+    expect(registrationMocks.intake).toHaveBeenCalledTimes(1)
+    expect(registrationMocks.intake).toHaveBeenCalledWith({ servicePointId: 'BOK' })
+    expect(selfPrintMocks.printQueueTicket).toHaveBeenCalledTimes(1)
+    expect(selfPrintMocks.printQueueTicket).toHaveBeenCalledWith(
+      expect.objectContaining({ queueLabel: 'BOK-001' }),
+      'Loket Bantuan',
+      expect.objectContaining({
+        regId: 'R2',
+        instruction: 'Silakan menuju Loket Admisi untuk penyelesaian berkas.',
+      }),
+    )
+    expect(wrapper.find('[data-testid="assist-redirect-queue"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="assist-title"]').text()).toBe(
+      'Registrasi di Kiosk belum berhasil',
+    )
   })
 })
